@@ -1064,12 +1064,12 @@ and genExpr astContext synExpr ctx =
                         +> col sepSemi children (genExpr astContext)
                         +> tokN closingTokenRange closingTokenType (ifElse isArray sepCloseA sepCloseL)
 
-                    !-identifier
+                    genExpr astContext identifier
                     +> sepSpace
                     +> ifElse (List.isEmpty children) noChildren genChildren
 
                 let elmishExpression =
-                    !-identifier
+                    genExpr astContext identifier
                     +> sepSpace
                     +> tokN openingTokenRange openTokenType (ifElse isArray sepOpenA sepOpenL)
                     +> atCurrentColumn (
@@ -1095,7 +1095,7 @@ and genExpr astContext synExpr ctx =
                             (Map.tryFindOrEmptyList closingTokenType ctx.TriviaTokenNodes)
 
                     atCurrentColumn (
-                        !-identifier
+                        genExpr astContext identifier
                         +> sepSpace
                         +> tokN openingTokenRange openTokenType (ifElse isArray sepOpenAFixed sepOpenLFixed)
                         +> indent

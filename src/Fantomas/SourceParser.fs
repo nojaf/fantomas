@@ -1700,11 +1700,16 @@ let isFunctionBinding (p: SynPat) =
 
 let (|ElmishReactWithoutChildren|_|) e =
     match e with
-    | App (OptVar (ident, _, _), [ (ArrayOrList (isArray, children, _) as aolEx) ])
-    | App (OptVar (ident, _, _), [ (ArrayOrListOfSeqExpr (isArray, CompExpr (_, Sequentials children)) as aolEx) ]) ->
-        Some(ident, isArray, children, aolEx.Range)
-    | App (OptVar (ident, _, _), [ (ArrayOrListOfSeqExpr (isArray, CompExpr (_, singleChild)) as aolEx) ]) ->
-        Some(ident, isArray, [ singleChild ], aolEx.Range)
+    | App ((OptVar _ as fnName), [ (ArrayOrList (isArray, children, _) as aolEx) ])
+    | App ((OptVar _ as fnName), [ (ArrayOrListOfSeqExpr (isArray, CompExpr (_, Sequentials children)) as aolEx) ]) ->
+        Some(fnName, isArray, children, aolEx.Range)
+    | App ((OptVar _ as fnName), [ (ArrayOrListOfSeqExpr (isArray, CompExpr (_, singleChild)) as aolEx) ]) ->
+        Some(fnName, isArray, [ singleChild ], aolEx.Range)
+    | SynExpr.App (_,
+                   _,
+                   (SynExpr.App (_, _, OptVar _, ConstExpr (SynConst.String _, _), _) as fnName),
+                   (ArrayOrListOfSeqExpr (isArray, CompExpr (_, singleChild)) as aolEx),
+                   _) -> Some(fnName, isArray, [ singleChild ], aolEx.Range)
     | _ -> None
 
 let (|ElmishReactWithChildren|_|) e =
