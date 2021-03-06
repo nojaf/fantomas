@@ -106,7 +106,7 @@ let formatSourceStringWithDefines defines (s: string) config =
                 |> Array.head
                 |> fun (ast, _, hashTokens) -> ast, hashTokens
 
-            return CodeFormatterImpl.formatWith ast defines hashTokens formatContext config
+            return! CodeFormatterImpl.formatWith ast defines hashTokens formatContext config
         }
         |> Async.RunSynchronously
 

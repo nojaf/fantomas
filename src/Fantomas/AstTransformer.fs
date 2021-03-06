@@ -18,7 +18,7 @@ module Helpers =
     let lid (id: LongIdentWithDots) = li id.Lid
     let mkNode (t: FsAstType) (r: range) = TriviaNodeAssigner(MainNode(t), r)
 
-module private Ast =
+module internal Ast =
     open Helpers
 
     let rec visitSynModuleOrNamespace (modOrNs: SynModuleOrNamespace) : TriviaNodeAssigner list =

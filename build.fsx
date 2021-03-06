@@ -414,8 +414,8 @@ Target.create "CheckFormat" (fun _ ->
 Target.create "All" ignore
 
 "Clean"
-    ==> "ProjectVersion"
-    ==> "CheckFormat"
+    // ==> "ProjectVersion"
+    // ==> "CheckFormat"
     ==> "Build"
     ==> "UnitTests"
     ==> "Benchmark"

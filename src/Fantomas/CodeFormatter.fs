@@ -16,7 +16,6 @@ type CodeFormatter =
             CodeFormatterImpl.createFormatContext fileName (Option.defaultValue (SourceOrigin.SourceString "") source)
 
         CodeFormatterImpl.formatAST ast defines formatContext config
-        |> async.Return
 
     static member FormatDocumentAsync(fileName, source, config, parsingOptions, checker) =
         CodeFormatterImpl.createFormatContext fileName source

@@ -146,10 +146,11 @@ let rec private getTokenizedHashes (sourceCode: string) : Token list =
             let hashContentLength = String.length hashContent
 
             let tokens =
-                let defineExpressionWithHash = lineContent.Substring(hashContentLength)
+                let defineExpressionWithHash =
+                    lineContent.Substring(hashContentLength)
 
                 if String.isNotNullOrEmpty defineExpressionWithHash then
-                    tokenize [] [] defineExpressionWithHash
+                    tokenize [] [] [ defineExpressionWithHash ]
                 else
                     []
 
@@ -326,13 +327,9 @@ let rec private getTokenizedHashes (sourceCode: string) : Token list =
             initialState
         |> fun state -> state.Defines |> List.rev |> List.collect id
 
-and tokenize defines (hashTokens: Token list) (content: string) : Token list =
+and tokenize defines (hashTokens: Token list) (lines: string list) : Token list =
     let sourceTokenizer =
         FSharpSourceTokenizer(defines, Some "/tmp.fsx")
-
-    let lines =
-        String.normalizeThenSplitNewLine content
-        |> Array.toList
 
     let tokens =
         tokenizeLines sourceTokenizer lines FSharpTokenizerLexState.Initial

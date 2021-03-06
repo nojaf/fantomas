@@ -14,6 +14,7 @@ open Fantomas.FormatConfig
 open Fantomas.SourceOrigin
 open Fantomas.SourceParser
 open Fantomas.CodePrinter
+open Fantomas.TriviaTypes
 
 let private getSourceString (source: SourceOrigin) =
     match source with
@@ -376,32 +377,79 @@ let isValidFSharpCode (checker: FSharpChecker) (parsingOptions: FSharpParsingOpt
         with _ -> return false
     }
 
-let formatWith ast defines hashTokens formatContext config =
-    let sourceCodeOrEmptyString =
-        if String.IsNullOrWhiteSpace formatContext.Source then
-            String.Empty
-        else
-            formatContext.Source
+//let formatWith ast defines hashTokens formatContext config =
+//    let sourceCodeOrEmptyString =
+//        if String.IsNullOrWhiteSpace formatContext.Source then
+//            String.Empty
+//        else
+//            formatContext.Source
+//
+//    let formattedSourceCode =
+//        let context =
+//            Context.Context.Create config defines formatContext.FileName hashTokens sourceCodeOrEmptyString (Some ast)
+//
+//        context
+//        |> genParsedInput ASTContext.Default ast
+//        |> Dbg.tee (fun ctx -> printfn "%A" ctx.WriterEvents)
+//        |> Context.dump
+//
+//    formattedSourceCode
 
-    let formattedSourceCode =
-        let context =
-            Context.Context.Create config defines formatContext.FileName hashTokens sourceCodeOrEmptyString (Some ast)
+let formatWith (ast: ParsedInput) (defines: string list) (hashTokens: Token list) (formatContext: FormatContext) (config: FormatConfig): Async<string> =
+    let newline = config.EndOfLine.NewLineString
+    // TODO: strict mode has not source
+    let sourceCodeLines = String.normalizeThenSplitNewLine formatContext.Source |> List.ofArray
+    
+    let formatModuleDeclaration (decl: SynModuleDecl) : Async<string> =
+        async {
+            let source = sourceCodeLines.[decl.Range.StartLine .. decl.Range.EndLine]
+            let ctx = Context.Context.Create config defines formatContext.FileName hashTokens source decl
+            let fragment =
+                genModuleDecl ASTContext.Default decl ctx
+                |> Context.dump
+            return fragment
+        }
 
-        context
-        |> genParsedInput ASTContext.Default ast
-        |> Dbg.tee (fun ctx -> printfn "%A" ctx.WriterEvents)
-        |> Context.dump
+    let formatModule (SynModuleOrNamespace(decls = decls)) : Async<string> =
+        List.map formatModuleDeclaration decls
+        |> Async.Parallel
+        |> Async.map (fun fragments ->
+            let frags = Array.zeroCreate (fragments.Length + 1)
+            Array.iteri (fun idx fragment -> frags.[idx] <- fragment) fragments
+            frags.[fragments.Length] <- System.String.Empty
+            String.concat newline frags)
 
-    formattedSourceCode
-
+    match ast with
+    | ParsedInput.ImplFile(ParsedImplFileInput.ParsedImplFileInput(modules = [singleModule])) ->
+        formatModule singleModule
+    | _ -> async { return "" }
+    
+//    let sourceCodeOrEmptyString =
+//        if String.IsNullOrWhiteSpace formatContext.Source then
+//            String.Empty
+//        else
+//            formatContext.Source
+//
+//    let formattedSourceCode =
+//        let context =
+//            Context.Context.Create config defines formatContext.FileName hashTokens sourceCodeOrEmptyString (Some ast)
+//
+//        context
+//        |> genParsedInput ASTContext.Default ast
+//        |> Dbg.tee (fun ctx -> printfn "%A" ctx.WriterEvents)
+//        |> Context.dump
+//
+//    formattedSourceCode
+    
 let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
     async {
         let! asts = parse checker parsingOptions formatContext
 
-        let results =
+        let! results =
             asts
             |> Array.map (fun (ast', defines, hashTokens) -> formatWith ast' defines hashTokens formatContext config)
-            |> List.ofArray
+            |> Async.Parallel
+            |> Async.map (Array.toList)
 
         let merged =
             match results with
@@ -624,7 +672,7 @@ let private formatRange
     let reconstructSourceCode startCol formatteds pre post =
         Debug.WriteLine("Formatted parts: '{0}' at column {1}", sprintf "%A" formatteds, startCol)
         // Realign results on the correct column
-        Context.Context.Create config [] fileName [] String.Empty None
+        { Context.Context.Default with FileName = fileName }
         // Mono version of indent text writer behaves differently from .NET one,
         // So we add an empty string first to regularize it
         |> if returnFormattedContentOnly then

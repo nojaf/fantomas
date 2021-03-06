@@ -86,6 +86,8 @@
     <Compile Include="MultilineFunctionApplicationsInConditionExpressionsTests.fs" />
     <Compile Include="KeepIndentInBranchTests.fs" />
     <Compile Include="BlankLinesAroundNestedMultilineExpressions.fs" />
+    <Compile Include="KeepIndentInBranch.fs" />
+    <Compile Include="BetweenTheBars.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Fantomas.Extras\Fantomas.Extras.fsproj" />

@@ -158,8 +158,6 @@ type internal Context =
       WriterEvents: Queue<WriterEvent>
       BreakLines: bool
       BreakOn: string -> bool
-      /// The original source string to query as a last resort
-      Content: string
       TriviaMainNodes: Map<FsAstType, TriviaNode list>
       TriviaTokenNodes: Map<FsTokenType, TriviaNode list>
       RecordBraceStart: int list
@@ -172,7 +170,6 @@ type internal Context =
           WriterEvents = Queue.empty
           BreakLines = true
           BreakOn = (fun _ -> false)
-          Content = ""
           TriviaMainNodes = Map.empty
           TriviaTokenNodes = Map.empty
           RecordBraceStart = []
@@ -183,22 +180,20 @@ type internal Context =
         defines
         (fileName: string)
         (hashTokens: Token list)
-        (content: string)
-        (maybeAst: ParsedInput option)
+        (content: string list)
+        (maybeAstNode: SynModuleDecl)
         =
-        let content = String.normalizeNewLine content
-
         let tokens =
             TokenParser.tokenize defines hashTokens content
 
         let trivia =
-            match maybeAst, config.StrictMode with
-            | Some ast, false ->
+            if config.StrictMode then
+                []
+            else
                 let mkRange (startLine, startCol) (endLine, endCol) =
                     mkRange fileName (mkPos startLine startCol) (mkPos endLine endCol)
 
-                Trivia.collectTrivia mkRange tokens ast
-            | _ -> []
+                Trivia.collectTrivia mkRange tokens maybeAstNode
 
         let triviaByNodes =
             trivia
@@ -224,11 +219,10 @@ type internal Context =
 
         { Context.Default with
               Config = config
-              Content = content
               TriviaMainNodes = triviaByNodes
               TriviaTokenNodes = triviaByTokenNames
               FileName = fileName }
-
+    
     member x.WithDummy(writerCommands, ?keepPageWidth) =
         let keepPageWidth =
             keepPageWidth |> Option.defaultValue false
