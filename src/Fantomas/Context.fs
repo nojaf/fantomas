@@ -180,7 +180,7 @@ type internal Context =
         defines
         (fileName: string)
         (hashTokens: Token list)
-        (content: string list)
+        (content: string array)
         (maybeAstNode: SynModuleDecl)
         =
         let tokens =
@@ -222,7 +222,7 @@ type internal Context =
               TriviaMainNodes = triviaByNodes
               TriviaTokenNodes = triviaByTokenNames
               FileName = fileName }
-    
+
     member x.WithDummy(writerCommands, ?keepPageWidth) =
         let keepPageWidth =
             keepPageWidth |> Option.defaultValue false

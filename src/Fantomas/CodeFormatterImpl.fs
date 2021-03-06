@@ -395,52 +395,67 @@ let isValidFSharpCode (checker: FSharpChecker) (parsingOptions: FSharpParsingOpt
 //
 //    formattedSourceCode
 
-let formatWith (ast: ParsedInput) (defines: string list) (hashTokens: Token list) (formatContext: FormatContext) (config: FormatConfig): Async<string> =
+let formatWith
+    (ast: ParsedInput)
+    (defines: string list)
+    (hashTokens: Token list)
+    (formatContext: FormatContext)
+    (config: FormatConfig)
+    : Async<string> =
     let newline = config.EndOfLine.NewLineString
     // TODO: strict mode has not source
-    let sourceCodeLines = String.normalizeThenSplitNewLine formatContext.Source |> List.ofArray
-    
+    let sourceCodeLines =
+        String.normalizeThenSplitNewLine formatContext.Source
+
     let formatModuleDeclaration (decl: SynModuleDecl) : Async<string> =
         async {
-            let source = sourceCodeLines.[decl.Range.StartLine .. decl.Range.EndLine]
-            let ctx = Context.Context.Create config defines formatContext.FileName hashTokens source decl
+            let source =
+                sourceCodeLines.[(decl.Range.StartLine - 1)..(decl.Range.EndLine - 1)]
+
+            let ctx =
+                Context.Context.Create config defines formatContext.FileName hashTokens source decl
+
             let fragment =
                 genModuleDecl ASTContext.Default decl ctx
                 |> Context.dump
+
             return fragment
         }
 
-    let formatModule (SynModuleOrNamespace(decls = decls)) : Async<string> =
-        List.map formatModuleDeclaration decls
+    let formatModule (SynModuleOrNamespace (decls = decls)) : Async<string> =
+        let lastDeclIndex = decls.Length - 1
+
+        [ 0 .. decls.Length ]
+        |> List.pairwise
+        |> List.collect
+            (fun (x, y) ->
+                let formatCode = formatModuleDeclaration decls.[x]
+
+                let triviaBetweenDeclarations =
+                    (if x = lastDeclIndex then
+                         Some(async.Return System.String.Empty)
+                     else
+                         let endOfX = decls.[x].Range.EndLine
+                         let startOfY = decls.[y].Range.StartLine - 2 // minus one because zero based, minus another because range .. are inclusive
+
+                         if endOfX <= startOfY then
+                             sourceCodeLines.[endOfX..startOfY]
+                             |> String.concat newline
+                             |> async.Return
+                             |> Some
+                         else
+                             None)
+                    |> Option.toList
+
+                formatCode :: triviaBetweenDeclarations)
         |> Async.Parallel
-        |> Async.map (fun fragments ->
-            let frags = Array.zeroCreate (fragments.Length + 1)
-            Array.iteri (fun idx fragment -> frags.[idx] <- fragment) fragments
-            frags.[fragments.Length] <- System.String.Empty
-            String.concat newline frags)
+        |> Async.map (String.concat newline)
 
     match ast with
-    | ParsedInput.ImplFile(ParsedImplFileInput.ParsedImplFileInput(modules = [singleModule])) ->
+    | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput(modules = [ singleModule ])) ->
         formatModule singleModule
     | _ -> async { return "" }
-    
-//    let sourceCodeOrEmptyString =
-//        if String.IsNullOrWhiteSpace formatContext.Source then
-//            String.Empty
-//        else
-//            formatContext.Source
-//
-//    let formattedSourceCode =
-//        let context =
-//            Context.Context.Create config defines formatContext.FileName hashTokens sourceCodeOrEmptyString (Some ast)
-//
-//        context
-//        |> genParsedInput ASTContext.Default ast
-//        |> Dbg.tee (fun ctx -> printfn "%A" ctx.WriterEvents)
-//        |> Context.dump
-//
-//    formattedSourceCode
-    
+
 let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
     async {
         let! asts = parse checker parsingOptions formatContext
@@ -672,7 +687,8 @@ let private formatRange
     let reconstructSourceCode startCol formatteds pre post =
         Debug.WriteLine("Formatted parts: '{0}' at column {1}", sprintf "%A" formatteds, startCol)
         // Realign results on the correct column
-        { Context.Context.Default with FileName = fileName }
+        { Context.Context.Default with
+              FileName = fileName }
         // Mono version of indent text writer behaves differently from .NET one,
         // So we add an empty string first to regularize it
         |> if returnFormattedContentOnly then
