@@ -407,7 +407,7 @@ let formatWith
     let sourceCodeLines =
         String.normalizeThenSplitNewLine formatContext.Source
 
-    let formatModuleDeclaration (decl: SynModuleDecl) : Async<string> =
+    let formatModuleDeclaration (decl: SynModuleDecl) : Async<string * Range> =
         async {
             let source =
                 sourceCodeLines.[(decl.Range.StartLine - 1)..(decl.Range.EndLine - 1)]
@@ -419,37 +419,56 @@ let formatWith
                 genModuleDecl ASTContext.Default decl ctx
                 |> Context.dump
 
-            return fragment
+            return (fragment, decl.Range)
         }
 
-    let formatModule (SynModuleOrNamespace (decls = decls)) : Async<string> =
-        let lastDeclIndex = decls.Length - 1
+    let formatModule (SynModuleOrNamespace (decls = decls; range = moduleRange)) : Async<string> =
+        let getContentBetweenDecls (r1: Range) (r2: Range) : string option =
+            let endLineFirst = r1.EndLine
+            let startLineLast = r2.StartLine
+            let distance = Math.Abs(endLineFirst - startLineLast)
 
-        [ 0 .. decls.Length ]
-        |> List.pairwise
-        |> List.collect
-            (fun (x, y) ->
-                let formatCode = formatModuleDeclaration decls.[x]
+            if distance > 1 then
+                sourceCodeLines.[endLineFirst..(startLineLast - 2)]
+                |> String.concat newline
+                |> Some
+            else
+                None
 
-                let triviaBetweenDeclarations =
-                    (if x = lastDeclIndex then
-                         Some(async.Return System.String.Empty)
-                     else
-                         let endOfX = decls.[x].Range.EndLine
-                         let startOfY = decls.[y].Range.StartLine - 2 // minus one because zero based, minus another because range .. are inclusive
-
-                         if endOfX <= startOfY then
-                             sourceCodeLines.[endOfX..startOfY]
-                             |> String.concat newline
-                             |> async.Return
-                             |> Some
-                         else
-                             None)
-                    |> Option.toList
-
-                formatCode :: triviaBetweenDeclarations)
+        decls
+        |> List.map formatModuleDeclaration
         |> Async.Parallel
-        |> Async.map (String.concat newline)
+        |> Async.map
+            (fun decls ->
+                let lastIndex = decls.Length - 1
+
+                let file =
+                    ResizeArray<string>(decls.Length * 2 + 1)
+
+                Array.iteri
+                    (fun idx (decl: string, r: Range) ->
+                        if idx <> 0 then
+                            // print content between last and current decl
+                            getContentBetweenDecls (snd decls.[idx - 1]) r
+                            |> Option.iter (file.Add)
+                        else
+                            // print previous lines above first decl
+                            let startOfFile =
+                                mkRange formatContext.FileName (mkPos 1 0) (mkPos 1 0)
+
+                            getContentBetweenDecls startOfFile r
+                            |> Option.iter
+                                (fun leading ->
+                                    if not (String.IsNullOrWhiteSpace(leading)) then
+                                        file.Add(leading.TrimStart()))
+
+                        if idx = lastIndex && not (decl.EndsWith(newline)) then // TODO: move last newline check to module level later
+                            file.Add(String.Concat(decl, newline))
+                        else
+                            file.Add(decl))
+                    decls
+
+                String.concat newline file)
 
     match ast with
     | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput(modules = [ singleModule ])) ->
