@@ -506,9 +506,16 @@ let private triviaNodeIsNotEmpty (triviaNode: TriviaNodeAssigner) =
     3. Merge trivias with triviaNodes
     4. genTrivia should use ranges to identify what extra content should be added from what triviaNode
 *)
-let collectTrivia (mkRange: MkRange) tokens (ast: SynModuleDecl) =
+let collectTrivia (mkRange: MkRange) tokens (ast: Choice<SynModuleDecl, LongIdent>) =
     let triviaNodesFromAST =
-        Ast.visitSynModuleDecl ast
+        match ast with
+        | Choice1Of2 decl -> Ast.visitSynModuleDecl decl
+        | Choice2Of2 longId -> Ast.visitLongIdent longId
+
+    let startOfSourceCode =
+        match List.tryHead triviaNodesFromAST with
+        | Some r -> r.Range.StartLine
+        | None -> 1
 
     let hasAnyAttributesWithLinesBetweenParent =
         List.exists (fun (tn: TriviaNodeAssigner) -> Option.isSome tn.AttributeLinesBetweenParent) triviaNodesFromAST
@@ -531,11 +538,6 @@ let collectTrivia (mkRange: MkRange) tokens (ast: SynModuleDecl) =
 
     let trivias =
         TokenParser.getTriviaFromTokens mkRange tokens
-
-    let startOfSourceCode =
-        match tokens with
-        | h :: _ -> h.LineNumber // Keep track of comments or hash defines before the first AST node
-        | _ -> 1
 
     match trivias with
     | [] -> []

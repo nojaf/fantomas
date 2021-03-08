@@ -413,7 +413,7 @@ let formatWith
                 sourceCodeLines.[(decl.Range.StartLine - 1)..(decl.Range.EndLine - 1)]
 
             let ctx =
-                Context.Context.Create config defines formatContext.FileName hashTokens source decl
+                Context.Context.Create config defines formatContext.FileName hashTokens source (Choice1Of2 decl)
 
             let fragment =
                 genModuleDecl ASTContext.Default decl ctx
@@ -422,8 +422,38 @@ let formatWith
             return (fragment, decl.Range)
         }
 
-    let formatModule (SynModuleOrNamespace (decls = decls; range = moduleRange)) : Async<string> =
-        let getContentBetweenDecls (r1: Range) (r2: Range) : string option =
+    let formatModule
+        (SynModuleOrNamespace (longId, isRecursive, kind, decls, prexml, attributes, ao, moduleRange))
+        : Async<string> =
+        let moduleName =
+            match kind with
+            | SynModuleOrNamespaceKind.NamedModule ->
+                async {
+                    let range =
+                        mkRange formatContext.FileName moduleRange.Start (longId |> List.last).idRange.End
+
+                    let source =
+                        sourceCodeLines.[range.StartLine..range.EndLine]
+
+                    let ctx =
+                        Context.Context.Create
+                            config
+                            defines
+                            formatContext.FileName
+                            hashTokens
+                            source
+                            (Choice2Of2 longId)
+
+                    let fragment =
+                        genModuleName ASTContext.Default kind longId ctx
+                        |> Context.dump
+
+                    return (fragment, range)
+                }
+                |> Some
+            | _ -> None
+
+        let getContentBetweenExpressions (r1: Range) (r2: Range) : string option =
             let endLineFirst = r1.EndLine
             let startLineLast = r2.StartLine
             let distance = Math.Abs(endLineFirst - startLineLast)
@@ -435,8 +465,14 @@ let formatWith
             else
                 None
 
-        decls
-        |> List.map formatModuleDeclaration
+        let declExpressions = List.map formatModuleDeclaration decls
+
+        let topLevelExpressions =
+            match moduleName with
+            | Some mn -> mn :: declExpressions
+            | None -> declExpressions
+
+        topLevelExpressions
         |> Async.Parallel
         |> Async.map
             (fun decls ->
@@ -449,14 +485,14 @@ let formatWith
                     (fun idx (decl: string, r: Range) ->
                         if idx <> 0 then
                             // print content between last and current decl
-                            getContentBetweenDecls (snd decls.[idx - 1]) r
+                            getContentBetweenExpressions (snd decls.[idx - 1]) r
                             |> Option.iter (file.Add)
                         else
                             // print previous lines above first decl
                             let startOfFile =
                                 mkRange formatContext.FileName (mkPos 1 0) (mkPos 1 0)
 
-                            getContentBetweenDecls startOfFile r
+                            getContentBetweenExpressions startOfFile r
                             |> Option.iter
                                 (fun leading ->
                                     if not (String.IsNullOrWhiteSpace(leading)) then

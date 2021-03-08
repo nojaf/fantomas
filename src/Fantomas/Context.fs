@@ -181,7 +181,7 @@ type internal Context =
         (fileName: string)
         (hashTokens: Token list)
         (content: string array)
-        (maybeAstNode: SynModuleDecl)
+        (maybeAstNode: Choice<SynModuleDecl, LongIdent>)
         =
         let tokens =
             TokenParser.tokenize defines hashTokens content

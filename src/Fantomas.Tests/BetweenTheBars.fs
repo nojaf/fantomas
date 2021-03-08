@@ -137,9 +137,49 @@ let moo () = printfn "moohhhh"
 let moo () = printfn "moohhhh"
 """
 
+[<Test>]
+let ``named module with single let binding`` () =
+    formatSourceString
+        false
+        """
+module  Foo
+
+let add x  y = x +  y
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module Foo
+
+let add x y = x + y
+"""
+
+[<Test>]
+let ``named module with comment and single let binding`` () =
+    formatSourceString
+        false
+        """
+module  Foo
+// bar
+let add x  y = x +  y
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module Foo
+// bar
+let add x y = x + y
+"""
+
 (* TODO:
 - Named modules, namespaces
 - Multiple modules
 - Signature files
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?
+- other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * SynModuleDecl list * PreXmlDoc * SynAttributes * SynAccess option * range
+- Tests without newline in original source
 *)
