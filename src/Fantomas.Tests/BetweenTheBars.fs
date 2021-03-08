@@ -140,4 +140,6 @@ let moo () = printfn "moohhhh"
 (* TODO:
 - Named modules, namespaces
 - Multiple modules
+- Signature files
+- Attributes are not part of the range of an SynModuleDecl, consider custom range?
 *)
