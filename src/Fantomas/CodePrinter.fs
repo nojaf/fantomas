@@ -118,7 +118,10 @@ and genParsedHashDirective (ParsedHashDirective (h, s, r)) =
     !- "#" -- h +> sepSpace +> printIdent
     |> genTriviaFor ParsedHashDirective_ r
 
-and genModuleName astContext (kind: SynModuleOrNamespaceKind) (LongIdent s) = !-(sprintf "module %s" s)
+and genModuleName astContext (kind: SynModuleOrNamespaceKind) (ao: SynAccess option) (LongIdent s) =
+    !- "module "
+    +> optSingle (fun ao -> genAccess ao +> sepSpace) ao
+    +> !-s
 
 and genModuleOrNamespace astContext (ModuleOrNamespace (ats, px, ao, s, mds, isRecursive, moduleKind) as node) =
     let sepModuleAndFirstDecl =

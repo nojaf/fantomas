@@ -445,7 +445,7 @@ let formatWith
                             (Choice2Of2 longId)
 
                     let fragment =
-                        genModuleName ASTContext.Default kind longId ctx
+                        genModuleName ASTContext.Default kind ao longId ctx
                         |> Context.dump
 
                     return (fragment, range)

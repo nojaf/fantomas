@@ -175,11 +175,47 @@ module Foo
 let add x y = x + y
 """
 
+[<Test>]
+let ``empty module`` () =
+    formatSourceString
+        false
+        """
+module  FooBar
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module FooBar
+"""
+
+[<Test>]
+let ``private module`` () =
+    formatSourceString
+        false
+        """
+module private Foobar
+
+let a =9
+let b= 10
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module private Foobar
+
+let a = 9
+let b = 10
+"""
+
 (* TODO:
 - Named modules, namespaces
 - Multiple modules
 - Signature files
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?
-- other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * SynModuleDecl list * PreXmlDoc * SynAttributes * SynAccess option * range
+- other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Tests without newline in original source
 *)
