@@ -374,6 +374,50 @@ module X
 let a = 40
 """
 
+[<Test>]
+let ``single line let binding and multiline let binding`` () =
+    formatSourceString
+        false
+        """
+module X
+let a = 14
+let sum x y z =
+    // some complex math
+    x + y + z
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module X
+
+let a = 14
+
+let sum x y z =
+    // some complex math
+    x + y + z
+"""
+
+[<Test>]
+let ``comment in let binding in anon module`` () =
+    formatSourceString
+        false
+        """
+let sum x y z =
+    // some complex math
+    x + y + z
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let sum x y z =
+    // some complex math
+    x + y + z
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

@@ -469,9 +469,11 @@ let formatWith
                             firstDeclRange
                             |> Option.map (fun r -> r.StartLine)
                             |> Option.defaultValue (sourceCodeLines.Length)
-                            |> (+) -1 // sourceCodeLines is zero based
+                            |> (+) -2 // -1 for sourceCodeLines zero based, -1 to get line before decl
 
-                        TokenParser.tokenize defines hashTokens (sourceCodeLines.[0..firstDeclHeadLine])
+                        let source = sourceCodeLines.[0..firstDeclHeadLine]
+
+                        TokenParser.tokenize defines hashTokens 1 source
 
                     let range =
                         let startPos =
@@ -499,7 +501,7 @@ let formatWith
                         mkRange formatContext.FileName startPos endPos
 
                     let source =
-                        sourceCodeLines.[range.StartLine..range.EndLine]
+                        sourceCodeLines.[(range.StartLine - 1)..(range.EndLine - 1)]
 
                     let ctx =
                         Context.Context.Create
@@ -544,7 +546,7 @@ let formatWith
                     ResizeArray<string>(decls.Length * 2 + 1)
 
                 Array.iteri
-                    (fun idx (decl: string, r: Range, _) ->
+                    (fun idx (decl: string, r: Range, isModule: bool) ->
                         let contentBetweenExpressions =
                             if idx = 0 then
                                 let startOfFile =
@@ -568,14 +570,23 @@ let formatWith
                             Option.iter file.Add contentBetweenExpressions
 
                         let firstDeclWithoutContentBetweenModuleName =
-                            idx > 0
+                            idx = 1
                             && let (_, _, isModule) = decls.[idx - 1] in
 
                                isModule
                                && Option.isNone contentBetweenExpressions
 
+                        let multilineDeclWithoutContentBetweenPreviousDecl () =
+                            idx > 0
+                            && Option.isNone contentBetweenExpressions
+                            && not isModule
+                            && decl.Contains(newline)
+
                         if firstDeclWithoutContentBetweenModuleName then
                             // add an extra newline between the module name and the first decl
+                            file.Add(String.Concat(newline, decl))
+                        elif multilineDeclWithoutContentBetweenPreviousDecl () then
+                            // current decl is multiline and there is no content in between with the last one
                             file.Add(String.Concat(newline, decl))
                         else
                             file.Add(decl))

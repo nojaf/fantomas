@@ -4,7 +4,6 @@ open System
 open FSharp.Compiler.Text
 open FSharp.Compiler.Text.Range
 open FSharp.Compiler.Text.Pos
-open FSharp.Compiler.SyntaxTree
 open Fantomas
 open Fantomas.FormatConfig
 open Fantomas.TriviaTypes
@@ -186,7 +185,10 @@ type internal Context =
         let tokens =
             match info with
             | TriviaCollectionStartInfo.NamespaceOrModule (_, _, tokens) -> tokens
-            | _ -> TokenParser.tokenize defines hashTokens content
+            | TriviaCollectionStartInfo.ModuleDeclaration (decl) ->
+                TokenParser.tokenize defines hashTokens decl.Range.StartLine content
+            | TriviaCollectionStartInfo.SignatureDeclaration (decl) ->
+                TokenParser.tokenize defines hashTokens decl.Range.StartLine content
 
         let trivia =
             if config.StrictMode then

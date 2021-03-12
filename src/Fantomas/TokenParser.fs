@@ -21,13 +21,20 @@ let private isTokenAfterGreater token (greaterToken: Token) =
     && token.Tag <> greaterTag
     && greaterToken.RightColumn <> (token.LeftColumn + 1)
 
-let private getTokenText (sourceCodeLines: string array) line (token: FSharpTokenInfo) =
-    sourceCodeLines.[line - 1]
+let private getTokenText (sourceCodeLines: string array) (lineOffset: int) (line: int) (token: FSharpTokenInfo) =
+    sourceCodeLines.[line - lineOffset]
         .Substring(token.LeftColumn, token.RightColumn - token.LeftColumn + 1)
     |> String.normalizeNewLine
 
 /// Tokenize a single line of F# code
-let rec private tokenizeLine (tokenizer: FSharpLineTokenizer) (sourceCodeLines: string array) state lineNumber tokens =
+let rec private tokenizeLine
+    (tokenizer: FSharpLineTokenizer)
+    (sourceCodeLines: string array)
+    (lineOffset: int)
+    state
+    lineNumber
+    tokens
+    =
     match tokenizer.ScanToken(state), List.tryHead tokens with
     | (Some tok, state), Some greaterToken when (isTokenAfterGreater tok greaterToken) ->
         let extraTokenInfo =
@@ -41,38 +48,38 @@ let rec private tokenizeLine (tokenizer: FSharpLineTokenizer) (sourceCodeLines: 
         let extraToken =
             { TokenInfo = extraTokenInfo
               LineNumber = lineNumber
-              Content = getTokenText sourceCodeLines lineNumber extraTokenInfo
+              Content = getTokenText sourceCodeLines lineOffset lineNumber extraTokenInfo
               Index = 0 }
 
         let token =
             { TokenInfo = tok
               LineNumber = lineNumber
-              Content = getTokenText sourceCodeLines lineNumber tok
+              Content = getTokenText sourceCodeLines lineOffset lineNumber tok
               Index = 0 }
 
-        tokenizeLine tokenizer sourceCodeLines state lineNumber (token :: extraToken :: tokens)
+        tokenizeLine tokenizer sourceCodeLines lineOffset state lineNumber (token :: extraToken :: tokens)
 
     | (Some tok, state), _ ->
         let token : Token =
             { TokenInfo = tok
               LineNumber = lineNumber
-              Content = getTokenText sourceCodeLines lineNumber tok
+              Content = getTokenText sourceCodeLines lineOffset lineNumber tok
               Index = 0 }
         // Tokenize the rest, in the new state
-        tokenizeLine tokenizer sourceCodeLines state lineNumber (token :: tokens)
+        tokenizeLine tokenizer sourceCodeLines lineOffset state lineNumber (token :: tokens)
 
     | (None, state), _ -> state, tokens
 
-let private tokenizeLines (sourceTokenizer: FSharpSourceTokenizer) allLines state =
+let private tokenizeLines (sourceTokenizer: FSharpSourceTokenizer) (lineOffset: int) allLines state =
     allLines
-    |> Array.mapi (fun index line -> line, (index + 1)) // line number is needed in tokenizeLine
+    |> Array.mapi (fun index line -> line, (index + lineOffset)) // line number is needed in tokenizeLine
     |> Array.fold
         (fun (state, tokens) (line, lineNumber) ->
             let tokenizer =
                 sourceTokenizer.CreateLineTokenizer(line)
 
             let nextState, tokensOfLine =
-                tokenizeLine tokenizer allLines state lineNumber []
+                tokenizeLine tokenizer allLines lineOffset state lineNumber []
 
             let allTokens =
                 List.append tokens (List.rev tokensOfLine) // tokens of line are add in reversed order
@@ -149,7 +156,7 @@ let rec private getTokenizedHashes (sourceCode: string) : Token list =
                 let defineExpressionWithHash = lineContent.Substring(hashContentLength)
 
                 if String.isNotNullOrEmpty defineExpressionWithHash then
-                    tokenize [] [] [| defineExpressionWithHash |]
+                    tokenize [] [] lineNumber [| defineExpressionWithHash |]
                 else
                     []
 
@@ -326,12 +333,12 @@ let rec private getTokenizedHashes (sourceCode: string) : Token list =
             initialState
         |> fun state -> state.Defines |> List.rev |> List.collect id
 
-and tokenize defines (hashTokens: Token list) (lines: string array) : Token list =
+and tokenize defines (hashTokens: Token list) (startLine: int) (lines: string array) : Token list =
     let sourceTokenizer =
         FSharpSourceTokenizer(defines, Some "/tmp.fsx")
 
     let tokens =
-        tokenizeLines sourceTokenizer lines FSharpTokenizerLexState.Initial
+        tokenizeLines sourceTokenizer startLine lines FSharpTokenizerLexState.Initial
         |> List.filter (fun t -> t.TokenInfo.TokenName <> "INACTIVECODE")
 
     let existingLines =
