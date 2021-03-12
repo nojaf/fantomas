@@ -287,6 +287,29 @@ namespace global
 type X = int
 """
 
+[<Test>]
+let ``signature namespace with single type`` () =
+    formatSourceString
+        true
+        """
+namespace  Foo
+
+type X =
+    {
+        Y: int
+        Z: string
+    }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace Foo
+
+type X = { Y: int; Z: string }
+"""
+
 (* TODO:
 - Named modules, namespaces, global namespace
 - Multiple modules

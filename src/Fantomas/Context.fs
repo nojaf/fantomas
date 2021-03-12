@@ -185,8 +185,8 @@ type internal Context =
         =
         let tokens =
             match info with
-            | TriviaCollectionStartInfo.ModuleDeclaration _ -> TokenParser.tokenize defines hashTokens content
             | TriviaCollectionStartInfo.NamespaceOrModule (_, _, tokens) -> tokens
+            | _ -> TokenParser.tokenize defines hashTokens content
 
         let trivia =
             if config.StrictMode then

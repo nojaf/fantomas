@@ -510,6 +510,9 @@ let collectTrivia (mkRange: MkRange) tokens (info: TriviaCollectionStartInfo) =
         match info with
         | TriviaCollectionStartInfo.ModuleDeclaration decl ->
             Ast.visitSynModuleDecl decl, decl.Range.StartLine
+        | TriviaCollectionStartInfo.SignatureDeclaration decl ->
+            Ast.visitSynModuleSigDecl decl,
+            decl.Range.StartLine
         | TriviaCollectionStartInfo.NamespaceOrModule (longId, range, _) -> Ast.visitLongIdent longId, range.StartLine
 
     let hasAnyAttributesWithLinesBetweenParent =

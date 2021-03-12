@@ -361,4 +361,5 @@ type MkRange = int * int -> int * int -> Range
 [<RequireQualifiedAccess>]
 type TriviaCollectionStartInfo =
     | ModuleDeclaration of SynModuleDecl
+    | SignatureDeclaration of SynModuleSigDecl
     | NamespaceOrModule of LongIdent * Range * Token list

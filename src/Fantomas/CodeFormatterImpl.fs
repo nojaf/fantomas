@@ -428,8 +428,34 @@ let formatWith
             return (fragment, decl.Range)
         }
 
+    let formatSignatureDeclaration (sigDecl: SynModuleSigDecl) : Async<string * Range> =
+        async {
+            let source =
+                sourceCodeLines.[(sigDecl.Range.StartLine - 1)..(sigDecl.Range.EndLine - 1)]
+
+            let ctx =
+                Context.Context.Create
+                    config
+                    defines
+                    formatContext.FileName
+                    hashTokens
+                    source
+                    (TriviaCollectionStartInfo.SignatureDeclaration sigDecl)
+
+            let fragment =
+                genSigModuleDecl ASTContext.Default sigDecl ctx
+                |> Context.dump
+
+            return (fragment, sigDecl.Range)
+        }
+
     let formatModule
-        (SynModuleOrNamespace (longId, isRecursive, kind, decls, prexml, attributes, ao, moduleRange))
+        (kind: SynModuleOrNamespaceKind)
+        (longId: LongIdent)
+        (ao: SynAccess option)
+        (isRecursive: bool)
+        (firstDeclRange: Range option)
+        (declExpressions: Async<string * Range> list)
         : Async<string> =
         let moduleName =
             match kind with
@@ -439,8 +465,8 @@ let formatWith
                 async {
                     let tokens =
                         let firstDeclHeadLine =
-                            List.tryHead decls
-                            |> Option.map (fun decl -> decl.Range.StartLine)
+                            firstDeclRange // List.tryHead decls
+                            |> Option.map (fun r -> r.StartLine)
                             |> Option.defaultValue (sourceCodeLines.Length)
                             |> (+) -1 // sourceCodeLines is zero based
 
@@ -503,8 +529,6 @@ let formatWith
             else
                 None
 
-        let declExpressions = List.map formatModuleDeclaration decls
-
         let topLevelExpressions =
             match moduleName with
             | Some mn -> mn :: declExpressions
@@ -545,9 +569,32 @@ let formatWith
                 String.concat newline file)
 
     match ast with
-    | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput(modules = [ singleModule ])) ->
-        formatModule singleModule
-    | _ -> async { return "" }
+    | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput (modules = modules)) ->
+        List.map
+            (fun (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, _)) ->
+                let firstDeclRange =
+                    List.tryHead decls
+                    |> Option.map (fun d -> d.Range)
+
+                let declExprs = List.map formatModuleDeclaration decls
+                formatModule kind longIdent ao isRecursive firstDeclRange declExprs)
+            modules
+        |> Async.Parallel
+        |> Async.map (String.concat newline)
+    | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
+        List.map
+            (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, _)) ->
+                let firstSigDecl =
+                    List.tryHead sigDecls
+                    |> Option.map (fun sd -> sd.Range)
+
+                let sigDeclExprs =
+                    List.map formatSignatureDeclaration sigDecls
+
+                formatModule kind longIdent ao isRecursive firstSigDecl sigDeclExprs)
+            modules
+        |> Async.Parallel
+        |> Async.map (String.concat newline)
 
 let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
     async {
