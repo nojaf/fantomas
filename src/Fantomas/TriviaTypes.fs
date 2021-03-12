@@ -2,6 +2,7 @@ module Fantomas.TriviaTypes
 
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Text
+open FSharp.Compiler.SyntaxTree
 
 type FsTokenType =
     | AMP
@@ -356,3 +357,8 @@ type TriviaNodeAssigner(nodeType: TriviaNodeType, range: Range, ?linesBetweenPar
     member val ContentAfter = ResizeArray<TriviaContent>() with get, set
 
 type MkRange = int * int -> int * int -> Range
+
+[<RequireQualifiedAccess>]
+type TriviaCollectionStartInfo =
+    | ModuleDeclaration of SynModuleDecl
+    | NamespaceOrModule of LongIdent * Range * Token list

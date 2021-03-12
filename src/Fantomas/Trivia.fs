@@ -5,7 +5,6 @@ open Fantomas
 open Fantomas.AstTransformer
 open Fantomas.TriviaTypes
 open FSharp.Compiler.Text
-open FSharp.Compiler.SyntaxTree
 
 let inline private isMainNodeButNotAnonModule (node: TriviaNodeAssigner) =
     match node.Type with
@@ -506,16 +505,12 @@ let private triviaNodeIsNotEmpty (triviaNode: TriviaNodeAssigner) =
     3. Merge trivias with triviaNodes
     4. genTrivia should use ranges to identify what extra content should be added from what triviaNode
 *)
-let collectTrivia (mkRange: MkRange) tokens (ast: Choice<SynModuleDecl, LongIdent>) =
-    let triviaNodesFromAST =
-        match ast with
-        | Choice1Of2 decl -> Ast.visitSynModuleDecl decl
-        | Choice2Of2 longId -> Ast.visitLongIdent longId
-
-    let startOfSourceCode =
-        match List.tryHead triviaNodesFromAST with
-        | Some r -> r.Range.StartLine
-        | None -> 1
+let collectTrivia (mkRange: MkRange) tokens (info: TriviaCollectionStartInfo) =
+    let triviaNodesFromAST, startOfSourceCode =
+        match info with
+        | TriviaCollectionStartInfo.ModuleDeclaration decl ->
+            Ast.visitSynModuleDecl decl, decl.Range.StartLine
+        | TriviaCollectionStartInfo.NamespaceOrModule (longId, range, _) -> Ast.visitLongIdent longId, range.StartLine
 
     let hasAnyAttributesWithLinesBetweenParent =
         List.exists (fun (tn: TriviaNodeAssigner) -> Option.isSome tn.AttributeLinesBetweenParent) triviaNodesFromAST

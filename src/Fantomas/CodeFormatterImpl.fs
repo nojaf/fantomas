@@ -413,7 +413,13 @@ let formatWith
                 sourceCodeLines.[(decl.Range.StartLine - 1)..(decl.Range.EndLine - 1)]
 
             let ctx =
-                Context.Context.Create config defines formatContext.FileName hashTokens source (Choice1Of2 decl)
+                Context.Context.Create
+                    config
+                    defines
+                    formatContext.FileName
+                    hashTokens
+                    source
+                    (TriviaCollectionStartInfo.ModuleDeclaration decl)
 
             let fragment =
                 genModuleDecl ASTContext.Default decl ctx
@@ -427,10 +433,42 @@ let formatWith
         : Async<string> =
         let moduleName =
             match kind with
-            | SynModuleOrNamespaceKind.NamedModule ->
+            | SynModuleOrNamespaceKind.NamedModule
+            | SynModuleOrNamespaceKind.DeclaredNamespace
+            | SynModuleOrNamespaceKind.GlobalNamespace ->
                 async {
+                    let tokens =
+                        let firstDeclHeadLine =
+                            List.tryHead decls
+                            |> Option.map (fun decl -> decl.Range.StartLine)
+                            |> Option.defaultValue (sourceCodeLines.Length)
+                            |> (+) -1 // sourceCodeLines is zero based
+
+                        TokenParser.tokenize defines hashTokens (sourceCodeLines.[0..firstDeclHeadLine])
+
                     let range =
-                        mkRange formatContext.FileName moduleRange.Start (longId |> List.last).idRange.End
+                        let startPos =
+                            let namespaceOrModuleToken =
+                                tokens
+                                |> List.skipWhile
+                                    (fun t ->
+                                        t.TokenInfo.TokenName <> "NAMESPACE"
+                                        && t.TokenInfo.TokenName <> "MODULE")
+                                |> List.head
+
+                            mkPos namespaceOrModuleToken.LineNumber namespaceOrModuleToken.TokenInfo.LeftColumn
+
+                        let endPos =
+                            List.tryLast longId
+                            |> Option.map (fun l -> l.idRange.End)
+                            |> Option.defaultWith
+                                (fun () ->
+                                    tokens
+                                    |> List.skipWhile (fun t -> t.TokenInfo.TokenName <> "GLOBAL")
+                                    |> List.head
+                                    |> fun t -> mkPos t.LineNumber t.TokenInfo.RightColumn)
+
+                        mkRange formatContext.FileName startPos endPos
 
                     let source =
                         sourceCodeLines.[range.StartLine..range.EndLine]
@@ -442,10 +480,10 @@ let formatWith
                             formatContext.FileName
                             hashTokens
                             source
-                            (Choice2Of2 longId)
+                            (TriviaCollectionStartInfo.NamespaceOrModule(longId, range, tokens))
 
                     let fragment =
-                        genModuleName ASTContext.Default kind ao longId ctx
+                        genModuleName kind isRecursive ao longId ctx
                         |> Context.dump
 
                     return (fragment, range)

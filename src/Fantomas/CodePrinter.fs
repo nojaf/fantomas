@@ -118,8 +118,16 @@ and genParsedHashDirective (ParsedHashDirective (h, s, r)) =
     !- "#" -- h +> sepSpace +> printIdent
     |> genTriviaFor ParsedHashDirective_ r
 
-and genModuleName astContext (kind: SynModuleOrNamespaceKind) (ao: SynAccess option) (LongIdent s) =
-    !- "module "
+and genModuleName (kind: SynModuleOrNamespaceKind) (isRecursive: bool) (ao: SynAccess option) (LongIdent s) =
+    let moduleOrNamespace =
+        match kind with
+        | SynModuleOrNamespaceKind.NamedModule -> Some "module "
+        | SynModuleOrNamespaceKind.DeclaredNamespace -> Some "namespace "
+        | SynModuleOrNamespaceKind.GlobalNamespace -> Some "namespace global "
+        | _ -> None
+
+    optSingle (!-) moduleOrNamespace
+    +> onlyIf isRecursive !- "rec "
     +> optSingle (fun ao -> genAccess ao +> sepSpace) ao
     +> !-s
 

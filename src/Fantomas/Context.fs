@@ -181,10 +181,12 @@ type internal Context =
         (fileName: string)
         (hashTokens: Token list)
         (content: string array)
-        (maybeAstNode: Choice<SynModuleDecl, LongIdent>)
+        (info: TriviaCollectionStartInfo)
         =
         let tokens =
-            TokenParser.tokenize defines hashTokens content
+            match info with
+            | TriviaCollectionStartInfo.ModuleDeclaration _ -> TokenParser.tokenize defines hashTokens content
+            | TriviaCollectionStartInfo.NamespaceOrModule (_, _, tokens) -> tokens
 
         let trivia =
             if config.StrictMode then
@@ -193,7 +195,7 @@ type internal Context =
                 let mkRange (startLine, startCol) (endLine, endCol) =
                     mkRange fileName (mkPos startLine startCol) (mkPos endLine endCol)
 
-                Trivia.collectTrivia mkRange tokens maybeAstNode
+                Trivia.collectTrivia mkRange tokens info
 
         let triviaByNodes =
             trivia

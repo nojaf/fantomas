@@ -211,8 +211,84 @@ let a = 9
 let b = 10
 """
 
+[<Test>]
+let ``simple namespace`` () =
+    formatSourceString
+        false
+        """
+namespace   Company.Product.Domain.Project
+
+let a =  42
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace Company.Product.Domain.Project
+
+let a = 42
+"""
+
+[<Test>]
+let ``recursive module`` () =
+    formatSourceString
+        false
+        """
+module   rec   Foobar
+
+type X =   int
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module rec Foobar
+
+type X = int
+"""
+
+[<Test>]
+let ``recursive namespace`` () =
+    formatSourceString
+        false
+        """
+namespace   rec   Foobar
+
+type X =   int
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace rec Foobar
+
+type X = int
+"""
+
+[<Test>]
+let ``global namespace`` () =
+    formatSourceString
+        false
+        """
+namespace  global
+
+type X = int
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace global
+
+type X = int
+"""
+
 (* TODO:
-- Named modules, namespaces
+- Named modules, namespaces, global namespace
 - Multiple modules
 - Signature files
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?
