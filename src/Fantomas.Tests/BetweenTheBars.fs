@@ -310,11 +310,73 @@ namespace Foo
 type X = { Y: int; Z: string }
 """
 
+[<Test>]
+let ``module with attribute`` () =
+    formatSourceString
+        false
+        """
+[<  Foo  >]
+module Bar
+
+let s = "meh"
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[<Foo>]
+module Bar
+
+let s = "meh"
+"""
+
+[<Test>]
+let ``signature file module with multiple attribute and comment`` () =
+    formatSourceString
+        true
+        """
+//    multiple attributes
+[<  Foo  >]
+[< EvenFooer     >]
+module   Bar
+
+val s :   int -> string
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+//    multiple attributes
+[<Foo>]
+[<EvenFooer>]
+module Bar
+
+val s : int -> string
+"""
+
+[<Test>]
+let ``no existing newline in source`` () =
+    formatSourceString
+        false
+        """
+module X
+let a = 40
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module X
+
+let a = 40
+"""
+
 (* TODO:
-- Named modules, namespaces, global namespace
-- Multiple modules
-- Signature files
-- Attributes are not part of the range of an SynModuleDecl, consider custom range?
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
+- Attributes are not part of the range of an SynModuleDecl, consider custom range?
 - Tests without newline in original source
+- StrictMode
 *)

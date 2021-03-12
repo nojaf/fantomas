@@ -407,7 +407,7 @@ let formatWith
     let sourceCodeLines =
         String.normalizeThenSplitNewLine formatContext.Source
 
-    let formatModuleDeclaration (decl: SynModuleDecl) : Async<string * Range> =
+    let formatModuleDeclaration (decl: SynModuleDecl) : Async<string * Range * bool> =
         async {
             let source =
                 sourceCodeLines.[(decl.Range.StartLine - 1)..(decl.Range.EndLine - 1)]
@@ -425,10 +425,10 @@ let formatWith
                 genModuleDecl ASTContext.Default decl ctx
                 |> Context.dump
 
-            return (fragment, decl.Range)
+            return (fragment, decl.Range, false)
         }
 
-    let formatSignatureDeclaration (sigDecl: SynModuleSigDecl) : Async<string * Range> =
+    let formatSignatureDeclaration (sigDecl: SynModuleSigDecl) : Async<string * Range * bool> =
         async {
             let source =
                 sourceCodeLines.[(sigDecl.Range.StartLine - 1)..(sigDecl.Range.EndLine - 1)]
@@ -446,7 +446,7 @@ let formatWith
                 genSigModuleDecl ASTContext.Default sigDecl ctx
                 |> Context.dump
 
-            return (fragment, sigDecl.Range)
+            return (fragment, sigDecl.Range, false)
         }
 
     let formatModule
@@ -454,8 +454,9 @@ let formatWith
         (longId: LongIdent)
         (ao: SynAccess option)
         (isRecursive: bool)
+        (attrs: SynAttributes)
         (firstDeclRange: Range option)
-        (declExpressions: Async<string * Range> list)
+        (declExpressions: Async<string * Range * bool> list)
         : Async<string> =
         let moduleName =
             match kind with
@@ -465,7 +466,7 @@ let formatWith
                 async {
                     let tokens =
                         let firstDeclHeadLine =
-                            firstDeclRange // List.tryHead decls
+                            firstDeclRange
                             |> Option.map (fun r -> r.StartLine)
                             |> Option.defaultValue (sourceCodeLines.Length)
                             |> (+) -1 // sourceCodeLines is zero based
@@ -479,7 +480,8 @@ let formatWith
                                 |> List.skipWhile
                                     (fun t ->
                                         t.TokenInfo.TokenName <> "NAMESPACE"
-                                        && t.TokenInfo.TokenName <> "MODULE")
+                                        && t.TokenInfo.TokenName <> "MODULE"
+                                        && t.TokenInfo.TokenName <> "LBRACK_LESS") // start of attribute
                                 |> List.head
 
                             mkPos namespaceOrModuleToken.LineNumber namespaceOrModuleToken.TokenInfo.LeftColumn
@@ -509,10 +511,10 @@ let formatWith
                             (TriviaCollectionStartInfo.NamespaceOrModule(longId, range, tokens))
 
                     let fragment =
-                        genModuleName kind isRecursive ao longId ctx
+                        genModuleName ASTContext.Default kind isRecursive ao longId attrs ctx
                         |> Context.dump
 
-                    return (fragment, range)
+                    return (fragment, range, true)
                 }
                 |> Some
             | _ -> None
@@ -538,30 +540,43 @@ let formatWith
         |> Async.Parallel
         |> Async.map
             (fun decls ->
-                let lastIndex = decls.Length - 1
-
                 let file =
                     ResizeArray<string>(decls.Length * 2 + 1)
 
                 Array.iteri
-                    (fun idx (decl: string, r: Range) ->
-                        if idx <> 0 then
-                            // print content between last and current decl
-                            getContentBetweenExpressions (snd decls.[idx - 1]) r
-                            |> Option.iter (file.Add)
-                        else
-                            // print previous lines above first decl
-                            let startOfFile =
-                                mkRange formatContext.FileName (mkPos 1 0) (mkPos 1 0)
+                    (fun idx (decl: string, r: Range, _) ->
+                        let contentBetweenExpressions =
+                            if idx = 0 then
+                                let startOfFile =
+                                    mkRange formatContext.FileName (mkPos 1 0) (mkPos 1 0)
 
-                            getContentBetweenExpressions startOfFile r
+                                getContentBetweenExpressions startOfFile r
+                            else
+                                let (_, lastDeclRange, _) = decls.[idx - 1]
+                                getContentBetweenExpressions lastDeclRange r
+
+                        if idx = 0 then
+                            // print content before the first module expression
+                            // trimming out newlines
+                            contentBetweenExpressions
                             |> Option.iter
                                 (fun leading ->
                                     if not (String.IsNullOrWhiteSpace(leading)) then
                                         file.Add(leading.TrimStart()))
+                        else
+                            // print content between last and current decl
+                            Option.iter file.Add contentBetweenExpressions
 
-                        if idx = lastIndex && not (decl.EndsWith(newline)) then // TODO: move last newline check to module level later
-                            file.Add(String.Concat(decl, newline))
+                        let firstDeclWithoutContentBetweenModuleName =
+                            idx > 0
+                            && let (_, _, isModule) = decls.[idx - 1] in
+
+                               isModule
+                               && Option.isNone contentBetweenExpressions
+
+                        if firstDeclWithoutContentBetweenModuleName then
+                            // add an extra newline between the module name and the first decl
+                            file.Add(String.Concat(newline, decl))
                         else
                             file.Add(decl))
                     decls
@@ -577,10 +592,8 @@ let formatWith
                     |> Option.map (fun d -> d.Range)
 
                 let declExprs = List.map formatModuleDeclaration decls
-                formatModule kind longIdent ao isRecursive firstDeclRange declExprs)
+                formatModule kind longIdent ao isRecursive attrs firstDeclRange declExprs)
             modules
-        |> Async.Parallel
-        |> Async.map (String.concat newline)
     | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
         List.map
             (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, _)) ->
@@ -591,10 +604,20 @@ let formatWith
                 let sigDeclExprs =
                     List.map formatSignatureDeclaration sigDecls
 
-                formatModule kind longIdent ao isRecursive firstSigDecl sigDeclExprs)
+                formatModule kind longIdent ao isRecursive attrs firstSigDecl sigDeclExprs)
             modules
-        |> Async.Parallel
-        |> Async.map (String.concat newline)
+    |> Async.Parallel
+    |> Async.map
+        (fun formattedModules ->
+            let combine () = String.concat newline formattedModules
+
+            match Array.tryLast formattedModules with
+            | Some lm ->
+                if not (lm.EndsWith(newline)) then
+                    String.Concat(combine (), newline)
+                else
+                    combine ()
+            | None -> combine ())
 
 let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
     async {
