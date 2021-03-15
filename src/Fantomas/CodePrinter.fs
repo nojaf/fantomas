@@ -7,6 +7,7 @@ open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.SyntaxTree
 open Fantomas
 open Fantomas.FormatConfig
+open Fantomas.AstExtensions
 open Fantomas.SourceParser
 open Fantomas.SourceTransformer
 open Fantomas.Context

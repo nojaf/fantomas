@@ -15,6 +15,7 @@ open Fantomas.SourceOrigin
 open Fantomas.SourceParser
 open Fantomas.CodePrinter
 open Fantomas.TriviaTypes
+open Fantomas.AstExtensions
 
 let private getSourceString (source: SourceOrigin) =
     match source with
@@ -410,7 +411,7 @@ let formatWith
     let formatModuleDeclaration (decl: SynModuleDecl) : Async<string * Range * bool> =
         async {
             let source =
-                sourceCodeLines.[(decl.Range.StartLine - 1)..(decl.Range.EndLine - 1)]
+                sourceCodeLines.[(decl.FullRange.StartLine - 1)..(decl.Range.EndLine - 1)]
 
             let ctx =
                 Context.Context.Create
@@ -425,7 +426,7 @@ let formatWith
                 genModuleDecl ASTContext.Default decl ctx
                 |> Context.dump
 
-            return (fragment, decl.Range, false)
+            return (fragment, decl.FullRange, false)
         }
 
     let formatSignatureDeclaration (sigDecl: SynModuleSigDecl) : Async<string * Range * bool> =

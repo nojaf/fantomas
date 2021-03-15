@@ -1187,12 +1187,6 @@ let (|PatExplicitCtor|_|) =
     | _ -> None
 
 // Members
-type SynSimplePats with
-    member pat.Range =
-        match pat with
-        | SynSimplePats.SimplePats (_, r)
-        | SynSimplePats.Typed (_, _, r) -> r
-
 
 let (|SPAttrib|SPId|SPTyped|) =
     function

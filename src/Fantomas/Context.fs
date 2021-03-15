@@ -7,6 +7,7 @@ open FSharp.Compiler.Text.Pos
 open Fantomas
 open Fantomas.FormatConfig
 open Fantomas.TriviaTypes
+open Fantomas.AstExtensions
 
 type WriterEvent =
     | Write of string
@@ -186,7 +187,7 @@ type internal Context =
             match info with
             | TriviaCollectionStartInfo.NamespaceOrModule (_, _, tokens) -> tokens
             | TriviaCollectionStartInfo.ModuleDeclaration (decl) ->
-                TokenParser.tokenize defines hashTokens decl.Range.StartLine content
+                TokenParser.tokenize defines hashTokens decl.FullRange.StartLine content
             | TriviaCollectionStartInfo.SignatureDeclaration (decl) ->
                 TokenParser.tokenize defines hashTokens decl.Range.StartLine content
 

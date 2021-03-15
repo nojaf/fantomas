@@ -418,6 +418,23 @@ let sum x y z =
     x + y + z
 """
 
+[<Test>]
+let ``attribute above let binding`` () =
+    formatSourceString
+        false
+        """
+[<Foo >]
+let bar =  7
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[<Foo>]
+let bar = 7
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

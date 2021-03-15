@@ -9,3 +9,16 @@ type SynTypeDefnSig with
     member this.FullRange : Range =
         match this with
         | SynTypeDefnSig.TypeDefnSig (comp, _, _, r) -> mkRange r.FileName comp.Range.Start r.End
+
+type SynModuleDecl with
+    member decl.FullRange : Range =
+        match decl with
+        | SynModuleDecl.Let(bindings = Binding(attributes = ha :: _) :: _) ->
+            mkRange decl.Range.FileName ha.Range.Start decl.Range.End
+        | _ -> decl.Range
+
+type SynSimplePats with
+    member pat.Range : Range =
+        match pat with
+        | SynSimplePats.SimplePats (_, r)
+        | SynSimplePats.Typed (_, _, r) -> r
