@@ -435,6 +435,25 @@ let bar =  7
 let bar = 7
 """
 
+[<Test>]
+let ``attribute above type`` () =
+    formatSourceString
+        false
+        """
+[<Foo >]
+type Person =
+    { Name: string
+      Age:  int }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[<Foo>]
+type Person = { Name: string; Age: int }
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

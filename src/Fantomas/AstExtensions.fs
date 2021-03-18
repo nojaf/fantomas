@@ -13,7 +13,8 @@ type SynTypeDefnSig with
 type SynModuleDecl with
     member decl.FullRange : Range =
         match decl with
-        | SynModuleDecl.Let(bindings = Binding(attributes = ha :: _) :: _) ->
+        | SynModuleDecl.Let(bindings = Binding(attributes = ha :: _) :: _)
+        | SynModuleDecl.Types (typeDefns = (TypeDefn(typeInfo = ComponentInfo(attributes = ha :: _)) :: _)) ->
             mkRange decl.Range.FileName ha.Range.Start decl.Range.End
         | _ -> decl.Range
 

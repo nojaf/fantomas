@@ -4,6 +4,7 @@ open FSharp.Compiler.SourceCodeServices
 open Fantomas
 open Fantomas.AstTransformer
 open Fantomas.TriviaTypes
+open Fantomas.AstExtensions
 open FSharp.Compiler.Text
 
 let inline private isMainNodeButNotAnonModule (node: TriviaNodeAssigner) =
@@ -508,7 +509,7 @@ let private triviaNodeIsNotEmpty (triviaNode: TriviaNodeAssigner) =
 let collectTrivia (mkRange: MkRange) tokens (info: TriviaCollectionStartInfo) =
     let triviaNodesFromAST, startOfSourceCode =
         match info with
-        | TriviaCollectionStartInfo.ModuleDeclaration decl -> Ast.visitSynModuleDecl decl, decl.Range.StartLine
+        | TriviaCollectionStartInfo.ModuleDeclaration decl -> Ast.visitSynModuleDecl decl, decl.FullRange.StartLine
         | TriviaCollectionStartInfo.SignatureDeclaration decl -> Ast.visitSynModuleSigDecl decl, decl.Range.StartLine
         | TriviaCollectionStartInfo.NamespaceOrModule (longId, range, _) -> Ast.visitLongIdent longId, range.StartLine
 
