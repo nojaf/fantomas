@@ -454,6 +454,34 @@ type Person =
 type Person = { Name: string; Age: int }
 """
 
+[<Test>]
+let ``hash directive block above let binding`` () =
+    formatSourceStringWithDefines
+        []
+        """
+module MyApp
+
+#if DEBUG
+printfn "DEBUG"
+#endif
+
+let e2e value =
+    Props.Data("e2e", value)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module MyApp
+
+#if DEBUG
+printfn "DEBUG"
+#endif
+
+let e2e value = Props.Data("e2e", value)
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

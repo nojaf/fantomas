@@ -187,6 +187,13 @@ type internal Context =
             match info with
             | TriviaCollectionStartInfo.NamespaceOrModule (_, _, tokens) -> tokens
             | TriviaCollectionStartInfo.ModuleDeclaration (decl) ->
+                let hashTokens =
+                    hashTokens
+                    |> List.filter
+                        (fun ht ->
+                            ht.LineNumber >= decl.FullRange.StartLine
+                            && ht.LineNumber <= decl.FullRange.EndLine)
+
                 TokenParser.tokenize defines hashTokens decl.FullRange.StartLine content
             | TriviaCollectionStartInfo.SignatureDeclaration (decl) ->
                 TokenParser.tokenize defines hashTokens decl.Range.StartLine content
