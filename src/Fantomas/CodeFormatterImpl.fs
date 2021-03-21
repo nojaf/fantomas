@@ -396,6 +396,8 @@ let isValidFSharpCode (checker: FSharpChecker) (parsingOptions: FSharpParsingOpt
 //
 //    formattedSourceCode
 
+let private hashTokenRegex = Regex("^ *#if\s\w+")
+
 let formatWith
     (ast: ParsedInput)
     (defines: string list)
@@ -522,15 +524,38 @@ let formatWith
                 |> Some
             | _ -> None
 
-        let getContentBetweenExpressions (r1: Range) (r2: Range) : string option =
+        let getContentBetweenExpressions (defines: string list) (r1: Range) (r2: Range) : string option =
             let endLineFirst = r1.EndLine
             let startLineLast = r2.StartLine
             let distance = Math.Abs(endLineFirst - startLineLast)
 
             if distance > 1 then
-                sourceCodeLines.[endLineFirst..(startLineLast - 2)]
-                |> String.concat newline
-                |> Some
+                let originalSource =
+                    sourceCodeLines.[endLineFirst..(startLineLast - 2)]
+
+                let containsIfHash =
+                    Array.exists hashTokenRegex.IsMatch originalSource
+
+                if containsIfHash then
+                    // replace dead code with empty strings.
+                    let linesThatProducesTokens =
+                        TokenParser.tokenize defines [] endLineFirst originalSource
+                        |> List.map (fun t -> t.LineNumber)
+                        |> List.distinct
+
+                    originalSource
+                    |> Array.mapi
+                        (fun idx line ->
+                            let lineNumber = idx + endLineFirst
+
+                            if List.contains lineNumber linesThatProducesTokens then
+                                line
+                            else
+                                System.String.Empty)
+                    |> String.concat newline
+                    |> Some
+                else
+                    originalSource |> String.concat newline |> Some
             else
                 None
 
@@ -553,10 +578,10 @@ let formatWith
                                 let startOfFile =
                                     mkRange formatContext.FileName (mkPos 1 0) (mkPos 1 0)
 
-                                getContentBetweenExpressions startOfFile r
+                                getContentBetweenExpressions defines startOfFile r
                             else
                                 let (_, lastDeclRange, _) = decls.[idx - 1]
-                                getContentBetweenExpressions lastDeclRange r
+                                getContentBetweenExpressions defines lastDeclRange r
 
                         if idx = 0 then
                             // print content before the first module expression
@@ -572,7 +597,7 @@ let formatWith
 
                         let firstDeclWithoutContentBetweenModuleName =
                             idx = 1
-                            && let (_, _, isModule) = decls.[idx - 1] in
+                            && let _, _, isModule = decls.[idx - 1] in
 
                                isModule
                                && Option.isNone contentBetweenExpressions

@@ -455,7 +455,7 @@ type Person = { Name: string; Age: int }
 """
 
 [<Test>]
-let ``hash directive block above let binding`` () =
+let ``hash directive block above let binding, no defines`` () =
     formatSourceStringWithDefines
         []
         """
@@ -476,7 +476,67 @@ let e2e value =
 module MyApp
 
 #if DEBUG
-printfn "DEBUG"
+
+#endif
+
+let e2e value = Props.Data("e2e", value)
+"""
+
+[<Test>]
+let ``non active code should not be used between bindings, DEBUG`` () =
+    formatSourceStringWithDefines
+        [ "DEBUG" ]
+        """
+module MyApp
+
+#if DEBUG
+[<Emit("console.log('%c' +  $1, 'color: ' + $0)")>]
+let printInColor (color:string) (msg:string):unit = jsNative
+#endif
+
+let e2e value =
+    Props.Data("e2e", value)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module MyApp
+
+#if DEBUG
+[<Emit("console.log('%c' +  $1, 'color: ' + $0)")>]
+let printInColor (color: string) (msg: string) : unit = jsNative
+#endif
+
+let e2e value = Props.Data("e2e", value)
+"""
+
+[<Test>]
+let ``non active code should not be used between bindings`` () =
+    formatSourceString
+        false
+        """
+module MyApp
+
+#if DEBUG
+[<Emit("console.log('%c' +  $1, 'color: ' + $0)")>]
+let printInColor (color:string) (msg:string):unit = jsNative
+#endif
+
+let e2e value =
+    Props.Data("e2e", value)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module MyApp
+
+#if DEBUG
+[<Emit("console.log('%c' +  $1, 'color: ' + $0)")>]
+let printInColor (color: string) (msg: string) : unit = jsNative
 #endif
 
 let e2e value = Props.Data("e2e", value)
