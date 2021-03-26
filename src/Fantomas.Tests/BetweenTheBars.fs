@@ -542,6 +542,71 @@ let printInColor (color: string) (msg: string) : unit = jsNative
 let e2e value = Props.Data("e2e", value)
 """
 
+[<Test>]
+let ``comments after anon module`` () =
+    formatSourceString
+        false
+        """
+printfn "%s"   @"c:\def\ghi\jkl"
+printfn "%s"    "c:\\def\\ghi\\jkl"
+
+(*
+xyz
+*)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+printfn "%s" @"c:\def\ghi\jkl"
+printfn "%s" "c:\\def\\ghi\\jkl"
+
+(*
+xyz
+*)
+"""
+
+[<Test>]
+[<Ignore("Fix with next version of FCS")>]
+let ``comments between SynModuleOrNamespaces`` () =
+    formatSourceString
+        false
+        """
+// Leading comment
+
+namespace Foo
+
+let x =    7
+
+(* comment between Foo and Bar *)
+
+namespace Bar
+
+let y =         8
+
+// Closing comment
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+// Leading comment
+
+namespace Foo
+
+let x = 7
+
+(* comment between Foo and Bar *)
+
+namespace Bar
+
+let y = 8
+
+// Closing comment
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

@@ -452,6 +452,41 @@ let formatWith
             return (fragment, sigDecl.Range, false)
         }
 
+    let getContentBetweenExpressions (defines: string list) (r1: Range) (r2: Range) : string option =
+        let endLineFirst = r1.EndLine
+        let startLineLast = r2.StartLine
+        let distance = Math.Abs(endLineFirst - startLineLast)
+
+        if distance > 1 then
+            let originalSource =
+                sourceCodeLines.[endLineFirst..(startLineLast - 2)]
+
+            let containsIfHash =
+                Array.exists hashTokenRegex.IsMatch originalSource
+
+            if containsIfHash then
+                // replace dead code with empty strings.
+                let linesThatProducesTokens =
+                    TokenParser.tokenize defines [] endLineFirst originalSource
+                    |> List.map (fun t -> t.LineNumber)
+                    |> List.distinct
+
+                originalSource
+                |> Array.mapi
+                    (fun idx line ->
+                        let lineNumber = idx + endLineFirst
+
+                        if List.contains lineNumber linesThatProducesTokens then
+                            line
+                        else
+                            System.String.Empty)
+                |> String.concat newline
+                |> Some
+            else
+                originalSource |> String.concat newline |> Some
+        else
+            None
+
     let formatModule
         (kind: SynModuleOrNamespaceKind)
         (longId: LongIdent)
@@ -524,41 +559,6 @@ let formatWith
                 |> Some
             | _ -> None
 
-        let getContentBetweenExpressions (defines: string list) (r1: Range) (r2: Range) : string option =
-            let endLineFirst = r1.EndLine
-            let startLineLast = r2.StartLine
-            let distance = Math.Abs(endLineFirst - startLineLast)
-
-            if distance > 1 then
-                let originalSource =
-                    sourceCodeLines.[endLineFirst..(startLineLast - 2)]
-
-                let containsIfHash =
-                    Array.exists hashTokenRegex.IsMatch originalSource
-
-                if containsIfHash then
-                    // replace dead code with empty strings.
-                    let linesThatProducesTokens =
-                        TokenParser.tokenize defines [] endLineFirst originalSource
-                        |> List.map (fun t -> t.LineNumber)
-                        |> List.distinct
-
-                    originalSource
-                    |> Array.mapi
-                        (fun idx line ->
-                            let lineNumber = idx + endLineFirst
-
-                            if List.contains lineNumber linesThatProducesTokens then
-                                line
-                            else
-                                System.String.Empty)
-                    |> String.concat newline
-                    |> Some
-                else
-                    originalSource |> String.concat newline |> Some
-            else
-                None
-
         let topLevelExpressions =
             match moduleName with
             | Some mn -> mn :: declExpressions
@@ -623,17 +623,19 @@ let formatWith
     match ast with
     | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput (modules = modules)) ->
         List.map
-            (fun (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, _)) ->
+            (fun (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, range)) ->
                 let firstDeclRange =
                     List.tryHead decls
                     |> Option.map (fun d -> d.Range)
 
                 let declExprs = List.map formatModuleDeclaration decls
-                formatModule kind longIdent ao isRecursive attrs firstDeclRange declExprs)
+
+                formatModule kind longIdent ao isRecursive attrs firstDeclRange declExprs
+                |> Async.map (fun formattedModule -> formattedModule, range))
             modules
     | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
         List.map
-            (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, _)) ->
+            (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
                 let firstSigDecl =
                     List.tryHead sigDecls
                     |> Option.map (fun sd -> sd.Range)
@@ -641,19 +643,39 @@ let formatWith
                 let sigDeclExprs =
                     List.map formatSignatureDeclaration sigDecls
 
-                formatModule kind longIdent ao isRecursive attrs firstSigDecl sigDeclExprs)
+                formatModule kind longIdent ao isRecursive attrs firstSigDecl sigDeclExprs
+                |> Async.map (fun formattedModule -> formattedModule, range))
             modules
     |> Async.Parallel
     |> Async.map
         (fun formattedModules ->
-            let combine () = String.concat newline formattedModules
+            let combine () =
+                Array.map fst formattedModules
+                |> String.concat newline
 
             match Array.tryLast formattedModules with
-            | Some lm ->
-                if not (lm.EndsWith(newline)) then
-                    String.Concat(combine (), newline)
-                else
-                    combine ()
+            | Some (lm, r) ->
+                let contentAfterLastModule =
+                    let lastPosition = mkPos (sourceCodeLines.Length + 1) 0
+
+                    let endOfFileRange =
+                        mkRange r.FileName lastPosition lastPosition
+
+                    getContentBetweenExpressions defines r endOfFileRange
+                    |> Option.bind
+                        (fun content ->
+                            if not (String.IsNullOrWhiteSpace(content)) then
+                                String.Concat(newline, content.TrimEnd()) |> Some
+                            else
+                                None)
+
+                match contentAfterLastModule with
+                | Some content -> String.Concat(combine (), content, newline)
+                | None ->
+                    if not (lm.EndsWith(newline)) then
+                        String.Concat(combine (), newline)
+                    else
+                        combine ()
             | None -> combine ())
 
 let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
