@@ -204,32 +204,6 @@ let private formatModule
     // TODO: move correctedRange workaround in next FCS version
     let (correctedRange: Range, moduleName: Async<FormattedSourceCodeUnit> option) =
         match kind with
-        | SynModuleOrNamespaceKind.DeclaredNamespace when (Option.isNone firstDeclRange) ->
-            // Temporary workaround
-            // If there are no decls, then the range of the namespace is correct
-
-            let source =
-                codePrinterInfo.SourceCodeLines.[(moduleRange.StartLine - 1)..(moduleRange.EndLine - 1)]
-
-            let ctx =
-                Context.Context.Create
-                    codePrinterInfo.Config
-                    codePrinterInfo.Defines
-                    codePrinterInfo.FileName
-                    codePrinterInfo.HashTokens
-                    source
-                    (TriviaCollectionStartInfo.NamespaceOrModule(longId, moduleRange, []))
-
-            let fragment =
-                genModuleName ASTContext.Default kind isRecursive ao longId attrs ctx
-                |> Context.dump
-
-            let formatTask =
-                FormattedSourceCodeUnit.Create fragment moduleRange true
-                |> async.Return
-                |> Some
-
-            moduleRange, formatTask
         | SynModuleOrNamespaceKind.NamedModule
         | SynModuleOrNamespaceKind.DeclaredNamespace
         | SynModuleOrNamespaceKind.GlobalNamespace ->
@@ -271,7 +245,11 @@ let private formatModule
                 mkRange codePrinterInfo.FileName startPos endPos
 
             let correctedModuleRange =
-                mkRange codePrinterInfo.FileName range.Start moduleRange.End
+                match lastDeclRange with
+                | Some ldr ->
+                    mkRange codePrinterInfo.FileName range.Start ldr.End
+                | None ->
+                    range
 
             let source =
                 codePrinterInfo.SourceCodeLines.[(range.StartLine - 1)..(range.EndLine - 1)]
