@@ -13,9 +13,7 @@ open Fantomas
 open Fantomas.FormatConfig
 open Fantomas.SourceOrigin
 open Fantomas.SourceParser
-open Fantomas.CodePrinter
-open Fantomas.TriviaTypes
-open Fantomas.AstExtensions
+open Fantomas.SourceTransformer
 
 let private getSourceString (source: SourceOrigin) =
     match source with
@@ -34,11 +32,6 @@ let private getSourceText (source: SourceOrigin) =
 
 let getSourceTextAndCode source =
     (getSourceText source, getSourceString source)
-
-type FormatContext =
-    { FileName: string
-      Source: string
-      SourceText: ISourceText }
 
 // Some file names have a special meaning for the F# compiler and the AST cannot be parsed.
 let safeFileName (file: string) =
@@ -396,299 +389,9 @@ let isValidFSharpCode (checker: FSharpChecker) (parsingOptions: FSharpParsingOpt
 //
 //    formattedSourceCode
 
-let private hashTokenRegex = Regex("^ *#if\s\w+")
 
-let formatWith
-    (ast: ParsedInput)
-    (defines: string list)
-    (hashTokens: Token list)
-    (formatContext: FormatContext)
-    (config: FormatConfig)
-    : Async<string> =
-    let newline = config.EndOfLine.NewLineString
-    // TODO: strict mode has not source
-    let sourceCodeLines =
-        String.normalizeThenSplitNewLine formatContext.Source
 
-    let formatModuleDeclaration (decl: SynModuleDecl) : Async<string * Range * bool> =
-        async {
-            let source =
-                sourceCodeLines.[(decl.FullRange.StartLine - 1)..(decl.Range.EndLine - 1)]
 
-            let ctx =
-                Context.Context.Create
-                    config
-                    defines
-                    formatContext.FileName
-                    hashTokens
-                    source
-                    (TriviaCollectionStartInfo.ModuleDeclaration decl)
-
-            let fragment =
-                genModuleDecl ASTContext.Default decl ctx
-                |> Context.dump
-
-            return (fragment, decl.FullRange, false)
-        }
-
-    let formatSignatureDeclaration (sigDecl: SynModuleSigDecl) : Async<string * Range * bool> =
-        async {
-            let source =
-                sourceCodeLines.[(sigDecl.Range.StartLine - 1)..(sigDecl.Range.EndLine - 1)]
-
-            let ctx =
-                Context.Context.Create
-                    config
-                    defines
-                    formatContext.FileName
-                    hashTokens
-                    source
-                    (TriviaCollectionStartInfo.SignatureDeclaration sigDecl)
-
-            let fragment =
-                genSigModuleDecl ASTContext.Default sigDecl ctx
-                |> Context.dump
-
-            return (fragment, sigDecl.Range, false)
-        }
-
-    let getContentBetweenExpressions (defines: string list) (r1: Range) (r2: Range) : string option =
-        let endLineFirst = r1.EndLine
-        let startLineLast = r2.StartLine
-        let distance = Math.Abs(endLineFirst - startLineLast)
-
-        if distance > 1 then
-            let originalSource =
-                sourceCodeLines.[endLineFirst..(startLineLast - 2)]
-
-            let containsIfHash =
-                Array.exists hashTokenRegex.IsMatch originalSource
-
-            if containsIfHash then
-                // replace dead code with empty strings.
-                let linesThatProducesTokens =
-                    TokenParser.tokenize defines [] endLineFirst originalSource
-                    |> List.map (fun t -> t.LineNumber)
-                    |> List.distinct
-
-                originalSource
-                |> Array.mapi
-                    (fun idx line ->
-                        let lineNumber = idx + endLineFirst
-
-                        if List.contains lineNumber linesThatProducesTokens then
-                            line
-                        else
-                            System.String.Empty)
-                |> String.concat newline
-                |> Some
-            else
-                originalSource |> String.concat newline |> Some
-        else
-            None
-
-    let formatModule
-        (kind: SynModuleOrNamespaceKind)
-        (longId: LongIdent)
-        (ao: SynAccess option)
-        (isRecursive: bool)
-        (attrs: SynAttributes)
-        (firstDeclRange: Range option)
-        (declExpressions: Async<string * Range * bool> list)
-        : Async<string> =
-        let moduleName =
-            match kind with
-            | SynModuleOrNamespaceKind.NamedModule
-            | SynModuleOrNamespaceKind.DeclaredNamespace
-            | SynModuleOrNamespaceKind.GlobalNamespace ->
-                async {
-                    let tokens =
-                        let firstDeclHeadLine =
-                            firstDeclRange
-                            |> Option.map (fun r -> r.StartLine)
-                            |> Option.defaultValue (sourceCodeLines.Length)
-                            |> (+) -2 // -1 for sourceCodeLines zero based, -1 to get line before decl
-
-                        let source = sourceCodeLines.[0..firstDeclHeadLine]
-
-                        TokenParser.tokenize defines hashTokens 1 source
-
-                    let range =
-                        let startPos =
-                            let namespaceOrModuleToken =
-                                tokens
-                                |> List.skipWhile
-                                    (fun t ->
-                                        t.TokenInfo.TokenName <> "NAMESPACE"
-                                        && t.TokenInfo.TokenName <> "MODULE"
-                                        && t.TokenInfo.TokenName <> "LBRACK_LESS") // start of attribute
-                                |> List.head
-
-                            mkPos namespaceOrModuleToken.LineNumber namespaceOrModuleToken.TokenInfo.LeftColumn
-
-                        let endPos =
-                            List.tryLast longId
-                            |> Option.map (fun l -> l.idRange.End)
-                            |> Option.defaultWith
-                                (fun () ->
-                                    tokens
-                                    |> List.skipWhile (fun t -> t.TokenInfo.TokenName <> "GLOBAL")
-                                    |> List.head
-                                    |> fun t -> mkPos t.LineNumber t.TokenInfo.RightColumn)
-
-                        mkRange formatContext.FileName startPos endPos
-
-                    let source =
-                        sourceCodeLines.[(range.StartLine - 1)..(range.EndLine - 1)]
-
-                    let ctx =
-                        Context.Context.Create
-                            config
-                            defines
-                            formatContext.FileName
-                            hashTokens
-                            source
-                            (TriviaCollectionStartInfo.NamespaceOrModule(longId, range, tokens))
-
-                    let fragment =
-                        genModuleName ASTContext.Default kind isRecursive ao longId attrs ctx
-                        |> Context.dump
-
-                    return (fragment, range, true)
-                }
-                |> Some
-            | _ -> None
-
-        let topLevelExpressions =
-            match moduleName with
-            | Some mn -> mn :: declExpressions
-            | None -> declExpressions
-
-        topLevelExpressions
-        |> Async.Parallel
-        |> Async.map
-            (fun decls ->
-                let file =
-                    ResizeArray<string>(decls.Length * 2 + 1)
-
-                let declIsMultiline index =
-                    let (source, _, _) = decls.[index]
-                    source.Contains(newline)
-
-                Array.iteri
-                    (fun idx (decl: string, r: Range, isModule: bool) ->
-                        let contentBetweenExpressions =
-                            if idx = 0 then
-                                let startOfFile =
-                                    mkRange formatContext.FileName (mkPos 1 0) (mkPos 1 0)
-
-                                getContentBetweenExpressions defines startOfFile r
-                            else
-                                let (_, lastDeclRange, _) = decls.[idx - 1]
-                                getContentBetweenExpressions defines lastDeclRange r
-
-                        if idx = 0 then
-                            // print content before the first module expression
-                            // trimming out newlines
-                            contentBetweenExpressions
-                            |> Option.iter
-                                (fun leading ->
-                                    if not (String.IsNullOrWhiteSpace(leading)) then
-                                        file.Add(leading.TrimStart()))
-                        else
-                            // print content between last and current decl
-                            Option.iter file.Add contentBetweenExpressions
-
-                        let firstDeclWithoutContentBetweenModuleName =
-                            idx = 1
-                            && let _, _, isModule = decls.[idx - 1] in
-
-                               isModule
-                               && Option.isNone contentBetweenExpressions
-
-                        let noContentBetweenExpressions = Option.isNone contentBetweenExpressions
-
-                        let multilineDeclWithoutContentBetweenPreviousDecl () =
-                            idx > 0
-                            && noContentBetweenExpressions
-                            && not isModule
-                            && declIsMultiline idx
-
-                        let previousDeclIsMultilineAndNoContentBetweenPreviousDecl () =
-                            idx > 0
-                            && noContentBetweenExpressions
-                            && declIsMultiline (idx - 1)
-
-                        if firstDeclWithoutContentBetweenModuleName then
-                            // add an extra newline between the module name and the first decl
-                            file.Add(String.Concat(newline, decl))
-                        elif multilineDeclWithoutContentBetweenPreviousDecl ()
-                             || previousDeclIsMultilineAndNoContentBetweenPreviousDecl () then
-                            // current decl is multiline or previous is multiline and there is no content in between with the last one
-                            file.Add(String.Concat(newline, decl))
-                        else
-                            file.Add(decl))
-                    decls
-
-                String.concat newline file)
-
-    match ast with
-    | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput (modules = modules)) ->
-        List.map
-            (fun (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, range)) ->
-                let firstDeclRange =
-                    List.tryHead decls
-                    |> Option.map (fun d -> d.Range)
-
-                let declExprs = List.map formatModuleDeclaration decls
-
-                formatModule kind longIdent ao isRecursive attrs firstDeclRange declExprs
-                |> Async.map (fun formattedModule -> formattedModule, range))
-            modules
-    | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
-        List.map
-            (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
-                let firstSigDecl =
-                    List.tryHead sigDecls
-                    |> Option.map (fun sd -> sd.Range)
-
-                let sigDeclExprs =
-                    List.map formatSignatureDeclaration sigDecls
-
-                formatModule kind longIdent ao isRecursive attrs firstSigDecl sigDeclExprs
-                |> Async.map (fun formattedModule -> formattedModule, range))
-            modules
-    |> Async.Parallel
-    |> Async.map
-        (fun formattedModules ->
-            let combine () =
-                Array.map fst formattedModules
-                |> String.concat newline
-
-            match Array.tryLast formattedModules with
-            | Some (lm, r) ->
-                let contentAfterLastModule =
-                    let lastPosition = mkPos (sourceCodeLines.Length + 1) 0
-
-                    let endOfFileRange =
-                        mkRange r.FileName lastPosition lastPosition
-
-                    getContentBetweenExpressions defines r endOfFileRange
-                    |> Option.bind
-                        (fun content ->
-                            if not (String.IsNullOrWhiteSpace(content)) then
-                                String.Concat(newline, content.TrimEnd()) |> Some
-                            else
-                                None)
-
-                match contentAfterLastModule with
-                | Some content -> String.Concat(combine (), content, newline)
-                | None ->
-                    if not (lm.EndsWith(newline)) then
-                        String.Concat(combine (), newline)
-                    else
-                        combine ()
-            | None -> combine ())
 
 let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
     async {
@@ -696,7 +399,9 @@ let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) confi
 
         let! results =
             asts
-            |> Array.map (fun (ast', defines, hashTokens) -> formatWith ast' defines hashTokens formatContext config)
+            |> Array.map
+                (fun (ast', defines, hashTokens) ->
+                    CodePrinter2.formatWith ast' defines hashTokens formatContext config)
             |> Async.Parallel
             |> Async.map (Array.toList)
 
@@ -715,7 +420,7 @@ let formatDocument (checker: FSharpChecker) (parsingOptions: FSharpParsingOption
 
 /// Format an abstract syntax tree using given config
 let formatAST ast defines formatContext config =
-    formatWith ast defines [] formatContext config
+    CodePrinter2.formatWith ast defines [] formatContext config
 
 /// Make a range from (startLine, startCol) to (endLine, endCol) to select some text
 let makeRange fileName startLine startCol endLine endCol =

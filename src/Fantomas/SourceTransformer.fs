@@ -34,12 +34,9 @@ let hasParenInPat =
 
 // A few active patterns for printing purpose
 
-let rec (|DoExprAttributesL|_|) =
+let (|AttributesLDoExprUnit|_|) =
     function
-    | DoExpr _
-    | Attributes _ as x :: DoExprAttributesL (xs, ys) -> Some(x :: xs, ys)
-    | DoExpr _
-    | Attributes _ as x :: ys -> Some([ x ], ys)
+    | Attributes _ as ats :: (DoExpr (ConstExpr (SynConst.Unit, _)) as de) :: ys -> Some([ ats; de ], ys)
     | _ -> None
 
 let rec (|HashDirectiveL|_|) =

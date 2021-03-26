@@ -627,6 +627,97 @@ type T() =
 let longNamedFunlongNamedFunlongNamedFunlongNamedFunlongNamedFun (x: T) = x
 """
 
+[<Test>]
+let ``combine Attributes and DoExpr (unit) as single expression`` () =
+    formatSourceString
+        false
+        """
+[<assembly: CLSCompliant(true)>]
+[<assembly: ComVisible(false)>]
+[<assembly: AssemblyTitle("AltCover.Visualizer")>]
+[<assembly: AssemblyDescription("Coverage and static analysis visualizer for NCover (possibly extended) and OpenCover")>]
+[<assembly: System.Resources.NeutralResourcesLanguageAttribute("en-GB")>]
+()
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[<assembly: CLSCompliant(true)>]
+[<assembly: ComVisible(false)>]
+[<assembly: AssemblyTitle("AltCover.Visualizer")>]
+[<assembly: AssemblyDescription("Coverage and static analysis visualizer for NCover (possibly extended) and OpenCover")>]
+[<assembly: System.Resources.NeutralResourcesLanguageAttribute("en-GB")>]
+()
+"""
+
+[<Test>]
+let ``multiple open statements should be separated with blank lines`` () =
+    formatSourceString
+        false
+        """
+module Foobar
+open System
+open System.IO
+let x =   8
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module Foobar
+
+open System
+open System.IO
+
+let x = 8
+"""
+
+[<Test>]
+let ``add newlines between #r and next let binding`` () =
+    formatSourceString
+        false
+        """
+#r @"C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App\5.0.2\Microsoft.Extensions.Hosting.dll"
+#r @"C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App\5.0.2\Microsoft.Extensions.ObjectPool.dll"
+let foo = "bar"
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+#r @"C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App\5.0.2\Microsoft.Extensions.Hosting.dll"
+#r @"C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App\5.0.2\Microsoft.Extensions.ObjectPool.dll"
+
+let foo = "bar"
+"""
+
+[<Test>]
+let ``comment between open statements`` () =
+    formatSourceString
+        false
+        """
+open Foo
+// open Bar
+open FooBar
+
+let x = 90
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+open Foo
+// open Bar
+open FooBar
+
+let x = 90
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?
