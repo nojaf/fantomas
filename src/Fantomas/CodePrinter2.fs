@@ -438,7 +438,7 @@ let formatWith
             match Array.tryHead formattedModules with
             | Some { OriginalRange = range } ->
                 let startOfFile =
-                    mkRange codePrinterInfo.FileName (mkPos 1 0) (mkPos 1 0)
+                    mkRange codePrinterInfo.FileName (mkPos 0 0) (mkPos 0 0)
 
                 getContentBetweenExpressions codePrinterInfo startOfFile range
                 |> Option.iter
