@@ -197,13 +197,14 @@ let private formatModule
     (isRecursive: bool)
     (attrs: SynAttributes)
     (firstDeclRange: Range option)
+    (lastDeclRange: Range option)
     (declExpressions: Async<FormattedSourceCodeUnit> list)
     (moduleRange: Range)
     : Async<FormattedSourceCodeUnit> =
     // TODO: move correctedRange workaround in next FCS version
     let (correctedRange: Range, moduleName: Async<FormattedSourceCodeUnit> option) =
         match kind with
-        | SynModuleOrNamespaceKind.DeclaredNamespace when (List.isEmpty declExpressions) ->
+        | SynModuleOrNamespaceKind.DeclaredNamespace when (Option.isNone firstDeclRange) ->
             // Temporary workaround
             // If there are no decls, then the range of the namespace is correct
 
@@ -294,7 +295,13 @@ let private formatModule
                 |> Some
 
             correctedModuleRange, formatTask
-        | _ -> moduleRange, None
+        | SynModuleOrNamespaceKind.AnonModule ->
+            let correctedRange =
+                match firstDeclRange, lastDeclRange with
+                | Some rf, Some rl -> mkRange codePrinterInfo.FileName rf.Start rl.End
+                | _ -> moduleRange
+
+            correctedRange, None
 
     let topLevelExpressions =
         match moduleName with
@@ -373,24 +380,52 @@ let formatWith
             (fun (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, range)) ->
                 let firstDeclRange =
                     List.tryHead decls
+                    |> Option.map (fun d -> d.FullRange)
+
+                let lastDeclRange =
+                    List.tryLast decls
                     |> Option.map (fun d -> d.Range)
 
-                let declExprs =
+                let declExpressions =
                     collectSynModuleDeclGroups codePrinterInfo decls id
 
-                formatModule codePrinterInfo kind longIdent ao isRecursive attrs firstDeclRange declExprs range)
+                formatModule
+                    codePrinterInfo
+                    kind
+                    longIdent
+                    ao
+                    isRecursive
+                    attrs
+                    firstDeclRange
+                    lastDeclRange
+                    declExpressions
+                    range)
             modules
     | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
         List.map
             (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
-                let firstSigDecl =
+                let firstSigDeclRange =
                     List.tryHead sigDecls
                     |> Option.map (fun sd -> sd.Range)
 
-                let sigDeclExprs =
+                let lastSigDeclRange =
+                    List.tryLast sigDecls
+                    |> Option.map (fun d -> d.Range)
+
+                let sigDeclExpressions =
                     List.map (formatSignatureDeclaration codePrinterInfo) sigDecls
 
-                formatModule codePrinterInfo kind longIdent ao isRecursive attrs firstSigDecl sigDeclExprs range)
+                formatModule
+                    codePrinterInfo
+                    kind
+                    longIdent
+                    ao
+                    isRecursive
+                    attrs
+                    firstSigDeclRange
+                    lastSigDeclRange
+                    sigDeclExpressions
+                    range)
             modules
     |> Async.Parallel
     |> Async.map
