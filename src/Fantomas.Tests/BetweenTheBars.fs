@@ -607,6 +607,26 @@ let y = 8
 // Closing comment
 """
 
+[<Test>]
+let ``add blank line between multiline type and let binding`` () =
+    formatSourceString
+        false
+        """
+type T() =
+    member __.Property = "hello"
+let longNamedFunlongNamedFunlongNamedFunlongNamedFunlongNamedFun (x:T) = x
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type T() =
+    member __.Property = "hello"
+
+let longNamedFunlongNamedFunlongNamedFunlongNamedFunlongNamedFun (x: T) = x
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

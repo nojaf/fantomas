@@ -571,6 +571,10 @@ let formatWith
                 let file =
                     ResizeArray<string>(decls.Length * 2 + 1)
 
+                let declIsMultiline index =
+                    let (source, _, _) = decls.[index]
+                    source.Contains(newline)
+
                 Array.iteri
                     (fun idx (decl: string, r: Range, isModule: bool) ->
                         let contentBetweenExpressions =
@@ -602,17 +606,25 @@ let formatWith
                                isModule
                                && Option.isNone contentBetweenExpressions
 
+                        let noContentBetweenExpressions = Option.isNone contentBetweenExpressions
+
                         let multilineDeclWithoutContentBetweenPreviousDecl () =
                             idx > 0
-                            && Option.isNone contentBetweenExpressions
+                            && noContentBetweenExpressions
                             && not isModule
-                            && decl.Contains(newline)
+                            && declIsMultiline idx
+
+                        let previousDeclIsMultilineAndNoContentBetweenPreviousDecl () =
+                            idx > 0
+                            && noContentBetweenExpressions
+                            && declIsMultiline (idx - 1)
 
                         if firstDeclWithoutContentBetweenModuleName then
                             // add an extra newline between the module name and the first decl
                             file.Add(String.Concat(newline, decl))
-                        elif multilineDeclWithoutContentBetweenPreviousDecl () then
-                            // current decl is multiline and there is no content in between with the last one
+                        elif multilineDeclWithoutContentBetweenPreviousDecl ()
+                             || previousDeclIsMultilineAndNoContentBetweenPreviousDecl () then
+                            // current decl is multiline or previous is multiline and there is no content in between with the last one
                             file.Add(String.Concat(newline, decl))
                         else
                             file.Add(decl))
