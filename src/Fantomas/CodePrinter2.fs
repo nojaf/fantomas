@@ -246,10 +246,8 @@ let private formatModule
 
             let correctedModuleRange =
                 match lastDeclRange with
-                | Some ldr ->
-                    mkRange codePrinterInfo.FileName range.Start ldr.End
-                | None ->
-                    range
+                | Some ldr -> mkRange codePrinterInfo.FileName range.Start ldr.End
+                | None -> range
 
             let source =
                 codePrinterInfo.SourceCodeLines.[(range.StartLine - 1)..(range.EndLine - 1)]
@@ -422,7 +420,7 @@ let formatWith
                 |> Option.iter
                     (fun leading ->
                         if not (String.IsNullOrWhiteSpace(leading)) then
-                            appendToFile (leading.TrimStart()))
+                            appendToFile (leading.TrimStart('\r', '\n')))
             | _ -> ()
 
             combineFormattedResults prependNewline codePrinterInfo formattedModules
@@ -440,7 +438,7 @@ let formatWith
                 |> Option.iter
                     (fun content ->
                         if not (String.IsNullOrWhiteSpace(content)) then
-                            content.TrimEnd() |> appendToFile)
+                            content.TrimEnd('\r', '\n') |> appendToFile)
             | _ -> ()
 
             // always end with a blank line
