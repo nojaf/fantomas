@@ -68,7 +68,7 @@ let private formatSignatureDeclaration
     : Async<FormattedSourceCodeUnit> =
     async {
         let source =
-            codePrinterInfo.SourceCodeLines.[(sigDecl.Range.StartLine - 1)..(sigDecl.Range.EndLine - 1)]
+            codePrinterInfo.SourceCodeLines.[(sigDecl.FullRange.StartLine - 1)..(sigDecl.FullRange.EndLine - 1)]
 
         let ctx =
             Context.Context.Create
@@ -382,11 +382,11 @@ let formatWith
             (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
                 let firstSigDeclRange =
                     List.tryHead sigDecls
-                    |> Option.map (fun sd -> sd.Range)
+                    |> Option.map (fun sd -> sd.FullRange)
 
                 let lastSigDeclRange =
                     List.tryLast sigDecls
-                    |> Option.map (fun d -> d.Range)
+                    |> Option.map (fun d -> d.FullRange)
 
                 let sigDeclExpressions =
                     List.map (formatSignatureDeclaration codePrinterInfo) sigDecls

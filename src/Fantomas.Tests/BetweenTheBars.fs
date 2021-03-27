@@ -769,6 +769,39 @@ type CodeFormatter =
         Async<string>
 """
 
+[<Test>]
+let ``hash token in signature file`` () =
+    formatSourceString
+        true
+        """
+namespace GreatProjectThing
+
+#if DEBUG
+type Meh =
+        class
+        end
+#endif
+
+type Foo =
+    member Engage : string ->    int
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace GreatProjectThing
+
+#if DEBUG
+type Meh =
+    class
+    end
+#endif
+
+type Foo =
+    member Engage : string -> int
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

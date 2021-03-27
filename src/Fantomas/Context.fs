@@ -196,6 +196,13 @@ type internal Context =
 
                 TokenParser.tokenize defines hashTokens decl.FullRange.StartLine content
             | TriviaCollectionStartInfo.SignatureDeclaration (decl) ->
+                let hashTokens =
+                    hashTokens
+                    |> List.filter
+                        (fun ht ->
+                            ht.LineNumber >= decl.FullRange.StartLine
+                            && ht.LineNumber <= decl.FullRange.EndLine)
+
                 TokenParser.tokenize defines hashTokens decl.FullRange.StartLine content
 
         let trivia =
