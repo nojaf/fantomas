@@ -201,7 +201,7 @@ let private formatModule
     (declExpressions: Async<FormattedSourceCodeUnit> list)
     (moduleRange: Range)
     : Async<FormattedSourceCodeUnit> =
-    // TODO: move correctedRange workaround in next FCS version
+    // TODO: remove correctedRange workaround in next FCS version
     let (correctedRange: Range, moduleName: Async<FormattedSourceCodeUnit> option) =
         match kind with
         | SynModuleOrNamespaceKind.NamedModule
@@ -209,10 +209,9 @@ let private formatModule
         | SynModuleOrNamespaceKind.GlobalNamespace ->
             let tokens =
                 let firstDeclHeadLine =
-                    firstDeclRange
-                    |> Option.map (fun r -> r.StartLine)
-                    |> Option.defaultValue (codePrinterInfo.SourceCodeLines.Length)
-                    |> (+) -2 // -1 for sourceCodeLines zero based, -1 to get line before decl
+                    match firstDeclRange with
+                    | Some r -> r.StartLine - 2 // -1 for sourceCodeLines zero based, -1 to get line before decl
+                    | None -> codePrinterInfo.SourceCodeLines.Length - 1
 
                 let source =
                     codePrinterInfo.SourceCodeLines.[0..firstDeclHeadLine]
