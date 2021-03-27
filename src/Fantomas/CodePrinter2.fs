@@ -83,7 +83,7 @@ let private formatSignatureDeclaration
             genSigModuleDecl ASTContext.Default sigDecl ctx
             |> Context.dump
 
-        return FormattedSourceCodeUnit.Create fragment sigDecl.Range false
+        return FormattedSourceCodeUnit.Create fragment sigDecl.FullRange false
     }
 
 let private getContentBetweenExpressions (codePrinterInfo: CodePrinterInfo) (r1: Range) (r2: Range) : string option =

@@ -196,7 +196,7 @@ type internal Context =
 
                 TokenParser.tokenize defines hashTokens decl.FullRange.StartLine content
             | TriviaCollectionStartInfo.SignatureDeclaration (decl) ->
-                TokenParser.tokenize defines hashTokens decl.Range.StartLine content
+                TokenParser.tokenize defines hashTokens decl.FullRange.StartLine content
 
         let trivia =
             if config.StrictMode then

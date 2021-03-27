@@ -23,3 +23,10 @@ type SynSimplePats with
         match pat with
         | SynSimplePats.SimplePats (_, r)
         | SynSimplePats.Typed (_, _, r) -> r
+
+type SynModuleSigDecl with
+    member decl.FullRange : Range =
+        match decl with
+        | SynModuleSigDecl.Types (types = (TypeDefnSig(typeInfo = ComponentInfo(attributes = ha :: _)) :: _)) ->
+            Range.mkRange decl.Range.FileName ha.Range.Start decl.Range.End
+        | _ -> decl.Range

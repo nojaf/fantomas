@@ -718,6 +718,57 @@ open FooBar
 let x = 90
 """
 
+[<Test>]
+let ``attribute above type in signature file`` () =
+    formatSourceString
+        true
+        """
+namespace Fantomas
+
+open Fantomas.FormatConfig
+open Fantomas.SourceOrigin
+open FSharp.Compiler.Text
+open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.SyntaxTree
+
+[<Sealed>]
+type CodeFormatter =
+    /// Parse a source string using given config
+    static member ParseAsync :
+        fileName: string * source: SourceOrigin * parsingOptions: FSharpParsingOptions * checker: FSharpChecker ->
+        Async<(ParsedInput * string list) array>
+
+    /// Format an abstract syntax tree using an optional source for trivia processing
+    static member FormatASTAsync :
+        ast: ParsedInput * fileName: string * defines: string list * source: SourceOrigin option * config: FormatConfig ->
+        Async<string>
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace Fantomas
+
+open Fantomas.FormatConfig
+open Fantomas.SourceOrigin
+open FSharp.Compiler.Text
+open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.SyntaxTree
+
+[<Sealed>]
+type CodeFormatter =
+    /// Parse a source string using given config
+    static member ParseAsync :
+        fileName: string * source: SourceOrigin * parsingOptions: FSharpParsingOptions * checker: FSharpChecker ->
+        Async<(ParsedInput * string list) array>
+
+    /// Format an abstract syntax tree using an optional source for trivia processing
+    static member FormatASTAsync :
+        ast: ParsedInput * fileName: string * defines: string list * source: SourceOrigin option * config: FormatConfig ->
+        Async<string>
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?
