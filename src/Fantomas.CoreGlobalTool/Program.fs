@@ -397,7 +397,8 @@ let main argv =
             new FantomasLSPServer((Console.OpenStandardOutput()), (Console.OpenStandardInput()))
         AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> (daemon :> IDisposable).Dispose())
         
-        while true do () // keep process alive
+        daemon.WaitForClose.GetAwaiter().GetResult()
+        exit 0
     else
         try
             match inputPath, outputPath with

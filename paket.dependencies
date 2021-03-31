@@ -16,7 +16,12 @@ nuget BenchmarkDotNet
 nuget editorconfig
 nuget MAB.DotIgnore 3.0.2
 nuget LspTypes
-nuget Tmds.ExecFunction
+nuget Serilog
+nuget Serilog.Sinks.File
+nuget Serilog.Sinks.Console
+nuget Serilog.Sinks.Async
+nuget Serilog.Sinks.Debug
+nuget SerilogTraceListener
 
 github: fsprojects/fantomas:829faa6ba834f99afed9b4434b3a1680536474b2 src/Fantomas/CodePrinter.fs
 

@@ -2,3 +2,8 @@ FSharp.Core
 FSharp.Compiler.Service
 Argu
 LspTypes
+Serilog
+Serilog.Sinks.File
+Serilog.Sinks.Console
+Serilog.Sinks.Async
+SerilogTraceListener
