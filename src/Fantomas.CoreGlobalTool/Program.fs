@@ -1,10 +1,11 @@
 open System
 open System.IO
+open System.Text
+open Argu
 open Fantomas
 open Fantomas.FormatConfig
 open Fantomas.Extras
-open Argu
-open System.Text
+open Fantomas.CoreGlobalTool.Daemon
 
 let extensions =
     set [| ".fs"
@@ -23,6 +24,7 @@ type Arguments =
     | [<Unique>] Out of string
     | [<Unique>] Check
     | [<Unique; AltCommandLine("-v")>] Version
+    | [<Unique>] Daemon
     | [<MainCommand>] Input of string
     interface IArgParserTemplate with
         member s.Usage =
@@ -38,6 +40,7 @@ type Arguments =
             | Check ->
                 "Don't format files, just check if they have changed. Exits with 0 if it's formatted correctly, with 1 if some files need formatting and 99 if there was an internal error"
             | Version -> "Displays the version of Fantomas"
+            | Daemon -> "Starts Fantomas in daemon mode. Used by editors to format out of process."
             | Input _ ->
                 sprintf
                     "Input path: can be a folder or file with %s extension."
@@ -387,29 +390,32 @@ let main argv =
     if Option.isSome version then
         let version = CodeFormatter.GetVersion()
         printfn "Fantomas v%s" version
+    elif (results.Contains <@ Arguments.Check @>) then
+        inputPath |> runCheckCommand recurse |> exit
+    elif (results.Contains <@ Arguments.Daemon @>) then
+        let daemon =
+            new FantomasLSPServer((Console.OpenStandardOutput()), (Console.OpenStandardInput()))
+        AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> (daemon :> IDisposable).Dispose())
+        
+        while true do () // keep process alive
     else
-        let check = results.Contains <@ Arguments.Check @>
-
-        if check then
-            inputPath |> runCheckCommand recurse |> exit
-        else
-            try
-                match inputPath, outputPath with
-                | InputPath.Unspecified, _ ->
-                    eprintfn "Input path is missing..."
-                    exit 1
-                | InputPath.File f, _ when (IgnoreFile.isIgnoredFile f) -> printfn "'%s' was ignored" f
-                | InputPath.Folder p1, OutputPath.Notknown -> processFolder p1 p1
-                | InputPath.File p1, OutputPath.Notknown -> processFile p1 p1
-                | InputPath.File p1, OutputPath.IO p2 -> processFile p1 p2
-                | InputPath.Folder p1, OutputPath.IO p2 -> processFolder p1 p2
-                | InputPath.StdIn s, OutputPath.IO p -> stringToFile s p FormatConfig.Default
-                | InputPath.StdIn s, OutputPath.Notknown
-                | InputPath.StdIn s, OutputPath.StdOut -> stringToStdOut s FormatConfig.Default
-                | InputPath.File p, OutputPath.StdOut -> fileToStdOut p
-                | InputPath.Folder p, OutputPath.StdOut -> allFiles recurse p |> Seq.iter fileToStdOut
-            with exn ->
-                printfn "%s" exn.Message
+        try
+            match inputPath, outputPath with
+            | InputPath.Unspecified, _ ->
+                eprintfn "Input path is missing..."
                 exit 1
+            | InputPath.File f, _ when (IgnoreFile.isIgnoredFile f) -> printfn "'%s' was ignored" f
+            | InputPath.Folder p1, OutputPath.Notknown -> processFolder p1 p1
+            | InputPath.File p1, OutputPath.Notknown -> processFile p1 p1
+            | InputPath.File p1, OutputPath.IO p2 -> processFile p1 p2
+            | InputPath.Folder p1, OutputPath.IO p2 -> processFolder p1 p2
+            | InputPath.StdIn s, OutputPath.IO p -> stringToFile s p FormatConfig.Default
+            | InputPath.StdIn s, OutputPath.Notknown
+            | InputPath.StdIn s, OutputPath.StdOut -> stringToStdOut s FormatConfig.Default
+            | InputPath.File p, OutputPath.StdOut -> fileToStdOut p
+            | InputPath.Folder p, OutputPath.StdOut -> allFiles recurse p |> Seq.iter fileToStdOut
+        with exn ->
+            printfn "%s" exn.Message
+            exit 1
 
     0
