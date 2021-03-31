@@ -802,6 +802,189 @@ type Foo =
     member Engage : string -> int
 """
 
+[<Test>]
+let ``#else block after source code`` () =
+    formatSourceString
+        false
+        """
+namespace ExtCore
+
+type substring =
+    static member CompareOrdinal (strA : substring, strB : substring) =
+        if strA.Length = 0 && strB.Length = 0 then 0
+        elif strA.String == strB.String && strA.Offset = strB.Offset then
+            compare strA.Length strB.Length
+        else
+#if INVARIANT_CULTURE_STRING_COMPARISON
+            System.String.Compare (
+                strA.String, strA.Offset,
+                strB.String, strB.Offset,
+                min strA.Length strB.Length,
+                false,
+                CultureInfo.InvariantCulture)
+#else
+            System.String.CompareOrdinal (
+                strA.String, strA.Offset,
+                strB.String, strB.Offset,
+                min strA.Length strB.Length)
+#endif
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace ExtCore
+
+type substring =
+    static member CompareOrdinal(strA: substring, strB: substring) =
+        if strA.Length = 0 && strB.Length = 0 then
+            0
+        elif strA.String == strB.String
+             && strA.Offset = strB.Offset then
+            compare strA.Length strB.Length
+        else
+#if INVARIANT_CULTURE_STRING_COMPARISON
+            System.String.Compare(
+                strA.String,
+                strA.Offset,
+                strB.String,
+                strB.Offset,
+                min strA.Length strB.Length,
+                false,
+                CultureInfo.InvariantCulture
+            )
+#else
+            System.String.CompareOrdinal(
+                strA.String,
+                strA.Offset,
+                strB.String,
+                strB.Offset,
+                min strA.Length strB.Length
+            )
+#endif
+"""
+
+[<Test>]
+let ``#else block after source code, no defines`` () =
+    formatSourceStringWithDefines
+        []
+        """
+namespace ExtCore
+
+type substring =
+    static member CompareOrdinal (strA : substring, strB : substring) =
+        if strA.Length = 0 && strB.Length = 0 then 0
+        elif strA.String == strB.String && strA.Offset = strB.Offset then
+            compare strA.Length strB.Length
+        else
+#if INVARIANT_CULTURE_STRING_COMPARISON
+            System.String.Compare (
+                strA.String, strA.Offset,
+                strB.String, strB.Offset,
+                min strA.Length strB.Length,
+                false,
+                CultureInfo.InvariantCulture)
+#else
+            System.String.CompareOrdinal (
+                strA.String, strA.Offset,
+                strB.String, strB.Offset,
+                min strA.Length strB.Length)
+#endif
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace ExtCore
+
+type substring =
+    static member CompareOrdinal(strA: substring, strB: substring) =
+        if strA.Length = 0 && strB.Length = 0 then
+            0
+        elif strA.String == strB.String
+             && strA.Offset = strB.Offset then
+            compare strA.Length strB.Length
+        else
+#if INVARIANT_CULTURE_STRING_COMPARISON
+
+
+
+
+
+
+#else
+            System.String.CompareOrdinal(
+                strA.String,
+                strA.Offset,
+                strB.String,
+                strB.Offset,
+                min strA.Length strB.Length
+            )
+#endif
+"""
+
+[<Test>]
+let ``#else block after source code, INVARIANT_CULTURE_STRING_COMPARISON`` () =
+    formatSourceStringWithDefines
+        [ "INVARIANT_CULTURE_STRING_COMPARISON" ]
+        """
+namespace ExtCore
+
+type substring =
+    static member CompareOrdinal (strA : substring, strB : substring) =
+        if strA.Length = 0 && strB.Length = 0 then 0
+        elif strA.String == strB.String && strA.Offset = strB.Offset then
+            compare strA.Length strB.Length
+        else
+#if INVARIANT_CULTURE_STRING_COMPARISON
+            System.String.Compare (
+                strA.String, strA.Offset,
+                strB.String, strB.Offset,
+                min strA.Length strB.Length,
+                false,
+                CultureInfo.InvariantCulture)
+#else
+            System.String.CompareOrdinal (
+                strA.String, strA.Offset,
+                strB.String, strB.Offset,
+                min strA.Length strB.Length)
+#endif
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+namespace ExtCore
+
+type substring =
+    static member CompareOrdinal(strA: substring, strB: substring) =
+        if strA.Length = 0 && strB.Length = 0 then
+            0
+        elif strA.String == strB.String
+             && strA.Offset = strB.Offset then
+            compare strA.Length strB.Length
+        else
+#if INVARIANT_CULTURE_STRING_COMPARISON
+            System.String.Compare(
+                strA.String,
+                strA.Offset,
+                strB.String,
+                strB.Offset,
+                min strA.Length strB.Length,
+                false,
+                CultureInfo.InvariantCulture
+            )
+#else
+
+
+
+
+#endif
+"""
+
 (* TODO:
 - other attibutes from module: LongIdent * bool * SynModuleOrNamespaceKind * PreXmlDoc * SynAttributes * range
 - Attributes are not part of the range of an SynModuleDecl, consider custom range?

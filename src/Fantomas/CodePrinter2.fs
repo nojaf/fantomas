@@ -33,7 +33,8 @@ type FormattedSourceCodeUnit =
           OriginalRange = originalRange
           IsModuleName = isModule }
 
-let private hashTokenRegex = Regex("^ *#if\s\w+")
+let private hashIfTokensRegex = Regex("^ *#if\s\w+")
+let private hashElseTokensRegex = Regex("^ *#(else)\w*")
 
 let private prependNewline (codePrinterInfo: CodePrinterInfo) (v: string) : string =
     String.Concat(codePrinterInfo.Newline, v)
@@ -96,7 +97,11 @@ let private getContentBetweenExpressions (codePrinterInfo: CodePrinterInfo) (r1:
             codePrinterInfo.SourceCodeLines.[endLineFirst..(startLineLast - 2)]
 
         let containsIfHash =
-            Array.exists hashTokenRegex.IsMatch originalSource
+            Array.exists hashIfTokensRegex.IsMatch originalSource
+
+        let containsElseHash () =
+            originalSource.Length > 0
+            && hashElseTokensRegex.IsMatch originalSource.[0]
 
         if containsIfHash then
             // replace dead code with empty strings.
@@ -111,6 +116,24 @@ let private getContentBetweenExpressions (codePrinterInfo: CodePrinterInfo) (r1:
                     let lineNumber = idx + endLineFirst
 
                     if List.contains lineNumber linesThatProducesTokens then
+                        line
+                    else
+                        String.Empty)
+            |> String.concat codePrinterInfo.Newline
+            |> Some
+        elif containsElseHash ()
+             && List.isNotEmpty codePrinterInfo.Defines then
+            // the original source block starts with `#else`
+            // so we need to detect if it is dead code or not
+            originalSource
+            |> Array.map
+                (fun line ->
+                    let trimmed = line.TrimStart()
+
+                    if
+                        trimmed.StartsWith("#else")
+                        || trimmed.StartsWith("#endif")
+                    then
                         line
                     else
                         String.Empty)
