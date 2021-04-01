@@ -211,7 +211,7 @@ let f () =
 """
 
 [<Test>]
-let ``should align mis-aligned comments`` () =
+let ``should not align mis-aligned comments`` () =
     formatSourceString
         false
         """
@@ -231,8 +231,8 @@ let f() =
     |> should
         equal
         """
-/// XML COMMENT A
-// Other comment
+   /// XML COMMENT A
+     // Other comment
 let f () =
     // COMMENT A
     let y = 1

@@ -466,7 +466,13 @@ let formatWith
             // always end with a blank line
             let lastIndex = file.Count - 1
 
-            if not (file.[lastIndex].EndsWith(codePrinterInfo.Newline)) then
+            if
+                not
+                    (
+                        file.[lastIndex].EndsWith(codePrinterInfo.Newline)
+                        || String.IsNullOrWhiteSpace(file.[lastIndex])
+                    )
+            then
                 file.[lastIndex] <- String.Concat(file.[lastIndex], codePrinterInfo.Newline)
 
             String.concat codePrinterInfo.Newline file)
