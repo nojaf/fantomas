@@ -4,6 +4,7 @@ open System
 open FSharp.Compiler.Syntax.PrettyNaming
 open FSharp.Compiler.Text
 open FSharp.Compiler.Syntax
+open FSharp.Compiler.Tokenization.FSharpKeywords
 open Fantomas
 open Fantomas.Context
 open Fantomas.AstExtensions
@@ -25,7 +26,7 @@ let (|Ident|) (s: Ident) =
     match ident with
     | "`global`" -> "global"
     | "_" -> "_" // workaround for https://github.com/dotnet/fsharp/issues/7681
-    | _ -> ident // TODO: is correct replacement for QuoteIdentifierIfNeeded ident
+    | _ -> QuoteIdentifierIfNeeded ident
 
 let (|LongIdent|) (li: LongIdent) =
     li
