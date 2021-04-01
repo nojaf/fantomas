@@ -1,8 +1,8 @@
 module Fantomas.TriviaTypes
 
-open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Text
-open FSharp.Compiler.SyntaxTree
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.Tokenization
 
 type FsTokenType =
     | AMP
@@ -191,11 +191,11 @@ type FsAstType =
     | SynMemberSig_NestedType
     | SynIndexerArg_One
     | SynIndexerArg_Two
-    | SynMatchClause_Clause
+    | SynMatchClause_
     | ArgOptions_
-    | InterfaceImpl_
-    | TypeDefn_
-    | TypeDefnSig_
+    | SynInterfaceImpl_
+    | SynTypeDefn_
+    | SynTypeDefnSig_
     // | SynTypeDefnSigRepr_ObjectModel use first nested node
     | SynTypeDefnSigRepr_Exception
     | SynMemberDefn_Open
@@ -215,14 +215,14 @@ type FsAstType =
     | SynSimplePat_Attrib
     | SynSimplePats_SimplePats
     | SynSimplePats_Typed
-    | StandaloneExpression_
-    | NormalBinding_
-    | DoBinding_
+    | SynBinding_StandaloneExpression
+    | SynBinding_Normal
+    | SynBinding_Do
     | SynBindingReturnInfo_
     | SynValTyparDecls_
     | TyparDecl_
     | Typar_
-    | ValSpfn_
+    | SynValSig_
     // | SynPat_Const, use SynConst instead
     | SynPat_Wild
     | SynPat_Named
@@ -263,9 +263,9 @@ type FsAstType =
     | SynConst_Bytes
     | SynConst_UInt16s
     | SynConst_Measure
-    | Pats_
-    | NamePatPairs_
-    | ComponentInfo_
+    | SynArgPats_Pats
+    | SynArgPats_NamePatPairs
+    | SynComponentInfo_
     // | SynTypeDefnRepr_ObjectModel use first nested node
     // | SynTypeDefnRepr_Simple use first nested node
     | SynTypeDefnRepr_Exception
@@ -292,11 +292,11 @@ type FsAstType =
     | SynExceptionDefnRepr_
     | SynAttribute_
     | SynAttributeList_
-    | UnionCase_
+    | SynUnionCase_
     | UnionCaseFields_
     | UnionCaseFullType_
-    | EnumCase_
-    | Field_
+    | SynEnumCase_
+    | SynField_
     | SynType_LongIdent
     | SynType_App
     | SynType_LongIdentApp

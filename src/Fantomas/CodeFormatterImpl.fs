@@ -4,11 +4,13 @@ module Fantomas.CodeFormatterImpl
 open System
 open System.Diagnostics
 open System.Text.RegularExpressions
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Text.Range
-open FSharp.Compiler.Text.Pos
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.SyntaxTree
+open FSharp.Compiler.Text.Position
+open FSharp.Compiler.Syntax
 open FSharp.Compiler.Text
+open FSharp.Compiler.Tokenization
 open Fantomas
 open Fantomas.FormatConfig
 open Fantomas.SourceOrigin
@@ -69,7 +71,7 @@ let parse (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) { File
 
                 if untypedRes.ParseHadErrors then
                     let errors =
-                        untypedRes.Errors
+                        untypedRes.Diagnostics
                         |> Array.filter (fun e -> e.Severity = FSharpDiagnosticSeverity.Error)
 
                     if not <| Array.isEmpty errors then
@@ -78,14 +80,7 @@ let parse (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) { File
                             sprintf "Parsing failed with errors: %A\nAnd options: %A" errors parsingOptionsWithDefines
                         )
 
-                let tree =
-                    match untypedRes.ParseTree with
-                    | Some tree -> tree
-                    | None ->
-                        raise
-                        <| FormatException "Parsing failed. Please select a complete code fragment to format."
-
-                return (tree, conditionalCompilationDefines, defineHashTokens)
+                return (untypedRes.ParseTree, conditionalCompilationDefines, defineHashTokens)
             })
     |> Async.Parallel
 
@@ -118,7 +113,7 @@ let isValidAST ast =
         | SynModuleDecl.HashDirective _
         | SynModuleDecl.Open _ -> true
 
-    and validateTypeDefn (TypeDefn (_componentInfo, representation, members, _range)) =
+    and validateTypeDefn (SynTypeDefn (_componentInfo, representation, members, _, _range)) =
         validateTypeDefnRepr representation
         && List.forall validateMemberDefn members
 
@@ -163,18 +158,18 @@ let isValidAST ast =
         | SynMemberDefn.ImplicitInherit (_, expr, _, _) -> validateExpr expr
 
     and validateBinding
-        (Binding (_access,
-                  _bindingKind,
-                  _isInline,
-                  _isMutable,
-                  _attrs,
-                  _xmldoc,
-                  _valData,
-                  headPat,
-                  _retTy,
-                  expr,
-                  _bindingRange,
-                  _seqPoint))
+        (SynBinding (_access,
+                     _bindingKind,
+                     _isInline,
+                     _isMutable,
+                     _attrs,
+                     _xmldoc,
+                     _valData,
+                     headPat,
+                     _retTy,
+                     expr,
+                     _bindingRange,
+                     _seqPoint))
         =
         validateExpr expr && validatePattern headPat
 
@@ -316,7 +311,7 @@ let isValidAST ast =
         | SynExpr.FromParseError (_synExpr, _range)
         | SynExpr.DiscardAfterMissingQualificationAfterDot (_synExpr, _range) -> false
         | SynExpr.Fixed _ -> true
-        | SynExpr.InterpolatedString (parts, _) ->
+        | SynExpr.InterpolatedString (parts, _, _) ->
             parts
             |> List.forall
                 (function

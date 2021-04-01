@@ -3,9 +3,8 @@
 open System
 open System.Text.RegularExpressions
 open FSharp.Compiler.Text.Range
-open FSharp.Compiler.Text.Pos
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.SyntaxTree
+open FSharp.Compiler.Text.Position
+open FSharp.Compiler.Syntax
 open FSharp.Compiler.Text
 open Fantomas
 open Fantomas.FormatConfig

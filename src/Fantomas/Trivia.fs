@@ -1,6 +1,6 @@
 module internal Fantomas.Trivia
 
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.Tokenization
 open Fantomas
 open Fantomas.AstTransformer
 open Fantomas.TriviaTypes
@@ -175,7 +175,7 @@ let private findConstNumberNodeOnLineAndColumn (nodes: TriviaNodeAssigner list) 
             | MainNode SynConst_UserNum ->
                 constantRange.StartLine = tn.Range.StartLine
                 && constantRange.StartColumn = tn.Range.StartColumn
-            | MainNode EnumCase_ ->
+            | MainNode SynEnumCase_ ->
                 tn.Range.EndLine = constantRange.EndLine
                 && tn.Range.EndColumn = constantRange.EndColumn
             | _ -> false)

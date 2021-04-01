@@ -13,7 +13,7 @@
     <Compile Include="QueueTests.fs" />
     <Compile Include="TokenParserTests.fs" />
     <Compile Include="TokenParserBoolExprTests.fs" />
-    <Compile Include="TriviaTests.fs" />
+<!--    <Compile Include="TriviaTests.fs" />-->
     <Compile Include="StringTests.fs" />
     <Compile Include="CommentTests.fs" />
     <Compile Include="OperatorTests.fs" />
@@ -86,7 +86,7 @@
     <Compile Include="MultilineFunctionApplicationsInConditionExpressionsTests.fs" />
     <Compile Include="KeepIndentInBranchTests.fs" />
     <Compile Include="BlankLinesAroundNestedMultilineExpressions.fs" />
-    <Compile Include="KeepIndentInBranch.fs" />
+    <Compile Include="KeepIndentInBranchTests.fs" />
     <Compile Include="BetweenTheBars.fs" />
   </ItemGroup>
   <ItemGroup>

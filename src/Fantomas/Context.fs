@@ -3,7 +3,7 @@ module Fantomas.Context
 open System
 open FSharp.Compiler.Text
 open FSharp.Compiler.Text.Range
-open FSharp.Compiler.Text.Pos
+open FSharp.Compiler.Text.Position
 open Fantomas
 open Fantomas.FormatConfig
 open Fantomas.TriviaTypes
@@ -1410,7 +1410,7 @@ let internal sepNlnForEmptyNamespace (namespaceRange: Range) ctx =
     | _ -> sepNln ctx
 
 let internal sepNlnTypeAndMembers
-    (lastPositionBeforeMembers: Pos)
+    (lastPositionBeforeMembers: Position)
     (firstMemberRange: Range)
     (mainNodeType: FsAstType)
     (ctx: Context)
