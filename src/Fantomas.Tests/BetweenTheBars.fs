@@ -568,7 +568,6 @@ xyz
 """
 
 [<Test>]
-[<Ignore("Fix with next version of FCS")>]
 let ``comments between SynModuleOrNamespaces`` () =
     formatSourceString
         false

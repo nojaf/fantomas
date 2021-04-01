@@ -218,6 +218,7 @@ let private formatModule
     (ao: SynAccess option)
     (isRecursive: bool)
     (attrs: SynAttributes)
+    (previousModuleRange: Range option)
     (firstDeclRange: Range option)
     (lastDeclRange: Range option)
     (declExpressions: Async<FormattedSourceCodeUnit> list)
@@ -230,13 +231,15 @@ let private formatModule
         | SynModuleOrNamespaceKind.DeclaredNamespace
         | SynModuleOrNamespaceKind.GlobalNamespace ->
             let tokens =
+                let startLineOfModuleOrNamespace = moduleRange.StartLine - 1
+                
                 let firstDeclHeadLine =
                     match firstDeclRange with
                     | Some r -> r.StartLine - 2 // -1 for sourceCodeLines zero based, -1 to get line before decl
                     | None -> codePrinterInfo.SourceCodeLines.Length - 1
 
                 let source =
-                    codePrinterInfo.SourceCodeLines.[0..firstDeclHeadLine]
+                    codePrinterInfo.SourceCodeLines.[startLineOfModuleOrNamespace..firstDeclHeadLine]
 
                 TokenParser.tokenize codePrinterInfo.Defines codePrinterInfo.HashTokens 1 source
 
@@ -373,8 +376,8 @@ let formatWith
 
     match ast with
     | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput (modules = modules)) ->
-        List.map
-            (fun (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, range)) ->
+        List.mapi
+            (fun mIdx (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, range)) ->
                 let firstDeclRange =
                     List.tryHead decls
                     |> Option.map (fun d -> d.FullRange)
@@ -386,6 +389,12 @@ let formatWith
                 let declExpressions =
                     collectSynModuleDeclGroups codePrinterInfo decls id
 
+                let previousModuleRange =
+                    if mIdx > 0 then
+                        Some modules.[mIdx - 1].Range
+                    else
+                        None
+                
                 formatModule
                     codePrinterInfo
                     kind
@@ -393,14 +402,15 @@ let formatWith
                     ao
                     isRecursive
                     attrs
+                    previousModuleRange
                     firstDeclRange
                     lastDeclRange
                     declExpressions
                     range)
             modules
     | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
-        List.map
-            (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
+        List.mapi
+            (fun mIdx (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
                 let firstSigDeclRange =
                     List.tryHead sigDecls
                     |> Option.map (fun sd -> sd.FullRange)
@@ -409,6 +419,13 @@ let formatWith
                     List.tryLast sigDecls
                     |> Option.map (fun d -> d.FullRange)
 
+                let previousModuleRange =
+                    if mIdx > 0 then
+                        let (SynModuleOrNamespaceSig(_,_,_,_,_,_,_,range)) = modules.[mIdx - 1]
+                        Some range
+                    else
+                        None
+                
                 let sigDeclExpressions =
                     List.map (formatSignatureDeclaration codePrinterInfo) sigDecls
 
@@ -419,6 +436,7 @@ let formatWith
                     ao
                     isRecursive
                     attrs
+                    previousModuleRange
                     firstSigDeclRange
                     lastSigDeclRange
                     sigDeclExpressions
