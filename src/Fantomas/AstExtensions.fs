@@ -36,3 +36,9 @@ type SynModuleSigDecl with
             | Some (SynTypeDefnSig (range = rEnd)) -> mkRange decl.Range.FileName decl.Range.Start rEnd.End
             | _ -> decl.Range
         | _ -> decl.Range
+
+type SynModuleOrNamespace with
+    member mn.FullRange : Range =
+        match mn with
+        | SynModuleOrNamespace(attribs = h :: _) -> mkRange mn.Range.FileName h.Range.Start mn.Range.End
+        | _ -> mn.Range

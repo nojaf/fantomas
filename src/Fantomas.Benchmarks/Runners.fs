@@ -2,11 +2,10 @@ module Fantomas.Benchmarks.Runners
 
 open BenchmarkDotNet.Attributes
 open System.IO
-open FSharp.Compiler.SourceCodeServices
 open Fantomas
 open Fantomas.Extras
 
-let sharedChecker = lazy (FSharpChecker.Create())
+let sharedChecker = FakeHelpers.sharedChecker
 let config = FormatConfig.FormatConfig.Default
 
 [<MemoryDiagnoser>]

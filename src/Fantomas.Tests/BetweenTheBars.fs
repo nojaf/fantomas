@@ -331,6 +331,28 @@ module Bar
 let s = "meh"
 """
 
+// See: https://github.com/dotnet/fsharp/issues/11381
+[<Test>]
+let ``signature module with attribute`` () =
+    formatSourceString
+        true
+        """
+[<  Foo  >]
+module Bar
+
+val s : string
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[<Foo>]
+module Bar
+
+val s : string
+"""
+
 [<Test>]
 let ``signature file module with multiple attribute and comment`` () =
     formatSourceString

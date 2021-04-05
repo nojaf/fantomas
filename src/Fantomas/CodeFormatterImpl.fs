@@ -396,7 +396,7 @@ let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) confi
             asts
             |> Array.map
                 (fun (ast', defines, hashTokens) ->
-                    CodePrinter2.formatWith ast' defines hashTokens formatContext config)
+                    CodePrinterScheduler.formatWith ast' defines hashTokens formatContext config)
             |> Async.Parallel
             |> Async.map (Array.toList)
 
@@ -415,7 +415,7 @@ let formatDocument (checker: FSharpChecker) (parsingOptions: FSharpParsingOption
 
 /// Format an abstract syntax tree using given config
 let formatAST ast defines formatContext config =
-    CodePrinter2.formatWith ast defines [] formatContext config
+    CodePrinterScheduler.formatWith ast defines [] formatContext config
 
 /// Make a range from (startLine, startCol) to (endLine, endCol) to select some text
 let makeRange fileName startLine startCol endLine endCol =

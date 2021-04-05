@@ -1,4 +1,4 @@
-﻿module Fantomas.CodePrinter2
+﻿module Fantomas.CodePrinterScheduler
 
 open System
 open System.Text.RegularExpressions
@@ -218,11 +218,10 @@ let private formatModule
     (ao: SynAccess option)
     (isRecursive: bool)
     (attrs: SynAttributes)
-    (previousModuleRange: Range option)
     (firstDeclRange: Range option)
     (lastDeclRange: Range option)
     (declExpressions: Async<FormattedSourceCodeUnit> list)
-    (moduleRange: Range)
+    (fullModuleRange: Range)
     : Async<FormattedSourceCodeUnit> =
     // TODO: remove correctedRange workaround in next FCS version
     let (correctedRange: Range, moduleName: Async<FormattedSourceCodeUnit> option) =
@@ -231,31 +230,23 @@ let private formatModule
         | SynModuleOrNamespaceKind.DeclaredNamespace
         | SynModuleOrNamespaceKind.GlobalNamespace ->
             let tokens =
-                let startLineOfModuleOrNamespace = moduleRange.StartLine - 1
-                
+                let startLineOfModuleOrNamespace = fullModuleRange.StartLine - 1
                 let firstDeclHeadLine =
                     match firstDeclRange with
                     | Some r -> r.StartLine - 2 // -1 for sourceCodeLines zero based, -1 to get line before decl
-                    | None -> codePrinterInfo.SourceCodeLines.Length - 1
+                    | None ->
+                        match List.tryLast longId with
+                        | Some lid ->
+                            lid.idRange.EndLine - 1
+                        | None ->
+                            codePrinterInfo.SourceCodeLines.Length - 1
 
                 let source =
                     codePrinterInfo.SourceCodeLines.[startLineOfModuleOrNamespace..firstDeclHeadLine]
 
                 TokenParser.tokenize codePrinterInfo.Defines codePrinterInfo.HashTokens 1 source
 
-            let range =
-                let startPos =
-                    let namespaceOrModuleToken =
-                        tokens
-                        |> List.skipWhile
-                            (fun t ->
-                                t.TokenInfo.TokenName <> "NAMESPACE"
-                                && t.TokenInfo.TokenName <> "MODULE"
-                                && t.TokenInfo.TokenName <> "LBRACK_LESS") // start of attribute
-                        |> List.head
-
-                    mkPos namespaceOrModuleToken.LineNumber namespaceOrModuleToken.TokenInfo.LeftColumn
-
+            let rangeOfModuleOrNamespaceName =
                 let endPos =
                     List.tryLast longId
                     |> Option.map (fun l -> l.idRange.End)
@@ -266,15 +257,10 @@ let private formatModule
                             |> List.head
                             |> fun t -> mkPos t.LineNumber t.TokenInfo.RightColumn)
 
-                mkRange codePrinterInfo.FileName startPos endPos
-
-            let correctedModuleRange =
-                match lastDeclRange with
-                | Some ldr -> mkRange codePrinterInfo.FileName range.Start ldr.End
-                | None -> range
+                mkRange codePrinterInfo.FileName fullModuleRange.Start endPos
 
             let source =
-                codePrinterInfo.SourceCodeLines.[(range.StartLine - 1)..(range.EndLine - 1)]
+                codePrinterInfo.SourceCodeLines.[(fullModuleRange.StartLine - 1)..(rangeOfModuleOrNamespaceName.EndLine - 1)]
 
             let ctx =
                 Context.Context.Create
@@ -283,23 +269,30 @@ let private formatModule
                     codePrinterInfo.FileName
                     codePrinterInfo.HashTokens
                     source
-                    (TriviaCollectionStartInfo.NamespaceOrModule(longId, range, tokens))
+                    (TriviaCollectionStartInfo.NamespaceOrModule(longId, rangeOfModuleOrNamespaceName, tokens))
 
             let fragment =
                 genModuleName ASTContext.Default kind isRecursive ao longId attrs ctx
                 |> Context.dump
 
             let formatTask =
-                FormattedSourceCodeUnit.Create fragment range true
+                FormattedSourceCodeUnit.Create fragment rangeOfModuleOrNamespaceName true
                 |> async.Return
                 |> Some
+
+            // See https://github.com/dotnet/fsharp/issues/11382
+            let correctedModuleRange =
+                match lastDeclRange with
+                | Some _ -> fullModuleRange
+                | None ->
+                    mkRange fullModuleRange.FileName fullModuleRange.Start rangeOfModuleOrNamespaceName.End
 
             correctedModuleRange, formatTask
         | SynModuleOrNamespaceKind.AnonModule ->
             let correctedRange =
                 match firstDeclRange, lastDeclRange with
                 | Some rf, Some rl -> mkRange codePrinterInfo.FileName rf.Start rl.End
-                | _ -> moduleRange
+                | _ -> fullModuleRange
 
             correctedRange, None
 
@@ -376,8 +369,8 @@ let formatWith
 
     match ast with
     | ParsedInput.ImplFile (ParsedImplFileInput.ParsedImplFileInput (modules = modules)) ->
-        List.mapi
-            (fun mIdx (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, range)) ->
+        List.map
+            (fun (SynModuleOrNamespace (longIdent, isRecursive, kind, decls, xml, attrs, ao, _range) as mn) ->
                 let firstDeclRange =
                     List.tryHead decls
                     |> Option.map (fun d -> d.FullRange)
@@ -389,12 +382,6 @@ let formatWith
                 let declExpressions =
                     collectSynModuleDeclGroups codePrinterInfo decls id
 
-                let previousModuleRange =
-                    if mIdx > 0 then
-                        Some modules.[mIdx - 1].Range
-                    else
-                        None
-                
                 formatModule
                     codePrinterInfo
                     kind
@@ -402,15 +389,14 @@ let formatWith
                     ao
                     isRecursive
                     attrs
-                    previousModuleRange
                     firstDeclRange
                     lastDeclRange
                     declExpressions
-                    range)
+                    mn.FullRange)
             modules
     | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
-        List.mapi
-            (fun mIdx (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
+        List.map
+            (fun (SynModuleOrNamespaceSig (longIdent, isRecursive, kind, sigDecls, xml, attrs, ao, range)) ->
                 let firstSigDeclRange =
                     List.tryHead sigDecls
                     |> Option.map (fun sd -> sd.FullRange)
@@ -418,13 +404,6 @@ let formatWith
                 let lastSigDeclRange =
                     List.tryLast sigDecls
                     |> Option.map (fun d -> d.FullRange)
-
-                let previousModuleRange =
-                    if mIdx > 0 then
-                        let (SynModuleOrNamespaceSig(_,_,_,_,_,_,_,range)) = modules.[mIdx - 1]
-                        Some range
-                    else
-                        None
                 
                 let sigDeclExpressions =
                     List.map (formatSignatureDeclaration codePrinterInfo) sigDecls
@@ -436,7 +415,6 @@ let formatWith
                     ao
                     isRecursive
                     attrs
-                    previousModuleRange
                     firstSigDeclRange
                     lastSigDeclRange
                     sigDeclExpressions

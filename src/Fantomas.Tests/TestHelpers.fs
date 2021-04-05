@@ -105,7 +105,7 @@ let formatSourceStringWithDefines defines (s: string) config =
                 |> Array.head
                 |> fun (ast, _, hashTokens) -> ast, hashTokens
 
-            return! CodePrinter2.formatWith ast defines hashTokens formatContext config
+            return! CodePrinterScheduler.formatWith ast defines hashTokens formatContext config
         }
         |> Async.RunSynchronously
 
