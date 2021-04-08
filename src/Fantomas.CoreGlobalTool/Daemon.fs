@@ -1,14 +1,15 @@
 ﻿module Fantomas.CoreGlobalTool.Daemon
 
 open System
+open System.Collections.Generic
 open System.Diagnostics
 open System.IO
+open FSharp.Compiler.SourceCodeServices
+open Fantomas
+open Fantomas.SourceOrigin
 open LspTypes
-open Newtonsoft.Json.Linq
-open Newtonsoft.Json.Serialization
 open StreamJsonRpc
 open System.Threading
-open StreamJsonRpc
 
 type Path with
     /// Stolen from FsAutoComplete
@@ -53,58 +54,77 @@ let private countLines (text: string) : uint =
         else
             count
 
+type FormatSourceOptions =
+    { SourceCode: string
+      Config: Dictionary<string, string>
+      TextDocument: TextDocumentIdentifier }
+
+type FormatSourceRange =
+    class
+    end
+
 type FantomasLSPServer(sender: Stream, reader: Stream) as this =
-    
     let rpc : JsonRpc = JsonRpc.Attach(sender, reader, this)
+
     do
         // hook up request/response logging for debugging
         rpc.TraceSource <- TraceSource(typeof<FantomasLSPServer>.Name, SourceLevels.Verbose)
+
         rpc.TraceSource.Listeners.Add(new SerilogTraceListener.SerilogTraceListener(typeof<FantomasLSPServer>.Name))
         |> ignore<int>
-    
+
     let disconnectEvent = new ManualResetEvent(false)
 
-    let exit () =
-        disconnectEvent.Set() |> ignore
-        Environment.Exit(0)
+    let exit () = disconnectEvent.Set() |> ignore
 
     do rpc.Disconnected.Add(fun _ -> exit ())
 
     interface IDisposable with
-        member this.Dispose() =
-            disconnectEvent.Dispose()
+        member this.Dispose() = disconnectEvent.Dispose()
 
     /// returns a hot task that resolves when the stream has terminated
     member this.WaitForClose = rpc.Completion
 
     [<JsonRpcMethod(Methods.InitializeName)>]
-    member this.Initialize () : obj =
-        Serilog.Log.Logger.Information("Daemon Initialize")
-        
+    member this.Initialize() : InitializeResult =
         let capabilities = ServerCapabilities()
         capabilities.DocumentFormattingProvider <- SumType<_, DocumentFormattingOptions>(DocumentFormattingOptions())
-
-        let initializeResult =
-            InitializeResult(Capabilities = capabilities)
-
-        let json =
-            Newtonsoft.Json.JsonConvert.SerializeObject(initializeResult)
-
-        json :> obj
+        InitializeResult(Capabilities = capabilities)
 
     [<JsonRpcMethod(Methods.InitializedName)>]
-    member this.Initialized(arg: JToken) : unit = ()
+    member this.Initialized() : unit = ()
 
-    [<JsonRpcMethod(Methods.TextDocumentFormattingName, UseSingleObjectParameterDeserialization = true)>]
-    member this.TextDocumentFormatting(options: DocumentFormattingParams, ctx: CancellationToken) : TextEdit =
+    /// Fantomas uses the LSP protocol but does initially not aim to function as fully fledged LSP server.
+    /// Custom RPC methods are introduced to take no dependency on the file system and not required the constant communication of file events.
+    [<JsonRpcMethod("fantomas/formatSource", UseSingleObjectParameterDeserialization = true)>]
+    member this.FormatSource(options: FormatSourceOptions) : TextEdit = // TODO: later Task
         let filePath =
             Path.FileUriToLocalPath options.TextDocument.Uri
 
-        let fileContents = File.ReadAllText(filePath) // TODO, format
+        let response : TextEdit = TextEdit()
         let range = Range()
         range.Start <- (Position(0u, 0u))
-        range.End <- (Position(countLines fileContents, 0u)) // TODO, correct column
-        let response : TextEdit = TextEdit()
+        range.End <- (Position(countLines options.SourceCode, 0u))
         response.Range <- range
-        response.NewText <- fileContents
+
+        let parsingOptions =
+            { FSharpParsingOptions.Default with
+                  SourceFiles = [| filePath |] }
+
+        let checker =
+            Fantomas.Extras.FakeHelpers.sharedChecker.Value
+
+        response.NewText <-
+            CodeFormatter.FormatDocumentAsync(
+                filePath,
+                SourceString options.SourceCode,
+                FormatConfig.FormatConfig.Default,
+                parsingOptions,
+                checker
+            )
+            |> Async.RunSynchronously
+
         response
+
+    [<JsonRpcMethod("fantomas/formatSourceRange")>]
+    member this.FormatSourceRange(options: FormatSourceOptions) : TextEdit = failwith "not yet implemented"

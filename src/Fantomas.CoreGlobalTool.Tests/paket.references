@@ -5,3 +5,4 @@ FSharp.Compiler.Service
 FSharp.Core
 FsUnit
 Serilog.Sinks.Debug
+LspTypes
