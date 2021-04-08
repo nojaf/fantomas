@@ -78,7 +78,7 @@ type FantomasLSPServer(sender: Stream, reader: Stream) as this =
     member this.WaitForClose = rpc.Completion
 
     [<JsonRpcMethod(Methods.InitializeName)>]
-    member this.Initialize(arg: JToken) : obj =
+    member this.Initialize () : obj =
         let capabilities = ServerCapabilities()
         capabilities.DocumentFormattingProvider <- SumType<_, DocumentFormattingOptions>(DocumentFormattingOptions())
 

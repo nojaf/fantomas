@@ -6,6 +6,7 @@ open System.IO
 open Fantomas.CoreGlobalTool.Daemon
 open LspTypes
 open NUnit.Framework
+open Nerdbank.Streams
 open Serilog
 open StreamJsonRpc
 
@@ -14,22 +15,32 @@ let ``client can connect to daemon`` () =
     Log.Logger <-
         LoggerConfiguration().WriteTo.Debug().CreateLogger()
     
-    let input = new MemoryStream()
-    let output = new MemoryStream()
-    let daemon = new FantomasLSPServer(output, input)
-    let client = new JsonRpc(input, output)
+    let struct(serverStream, clientStream) = FullDuplexStream.CreatePair()
+    
+    let daemon = new FantomasLSPServer(serverStream, serverStream)
+    let client = new JsonRpc(clientStream, clientStream)
+    client.StartListening()
+    
     async {
         try
             do!
                 client.InvokeAsync(Methods.InitializeName)
                 |> Async.AwaitTask
+            
+            client.Dispose()
             (daemon :> IDisposable).Dispose()
-            let result = Encoding.UTF8.GetString(output.ToArray())
+
+            let reader = new StreamReader(serverStream)
+            let! result =
+                reader.ReadToEndAsync()
+                |> Async.AwaitTask
+
             printfn "%s" result
             Assert.IsNotEmpty(result)
         with
         | ex ->
-            ()
+            printfn "%A" ex
+            raise ex // reraise ?
     }
     |> Async.RunSynchronously
 //    

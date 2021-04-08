@@ -370,7 +370,7 @@ NUGET
       System.Threading.Overlapped (>= 4.3)
       System.Threading.Tasks (>= 4.3)
     System.IO.Pipes.AccessControl (5.0)
-      Microsoft.NETCore.Platforms (>= 5.0) - restriction: || (== netcoreapp3.1) (&& (== netstandard2.0) (>= netcoreapp2.1))
+      Microsoft.NETCore.Platforms (>= 5.0) - restriction: || (&& (== net50) (== netstandard2.0)) (== netcoreapp3.1) (&& (== netstandard2.0) (>= netcoreapp2.1))
       System.Security.AccessControl (>= 5.0)
       System.Security.Principal.Windows (>= 5.0)
     System.Linq (4.3)
