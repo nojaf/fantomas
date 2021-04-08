@@ -79,6 +79,8 @@ type FantomasLSPServer(sender: Stream, reader: Stream) as this =
 
     [<JsonRpcMethod(Methods.InitializeName)>]
     member this.Initialize () : obj =
+        Serilog.Log.Logger.Information("Daemon Initialize")
+        
         let capabilities = ServerCapabilities()
         capabilities.DocumentFormattingProvider <- SumType<_, DocumentFormattingOptions>(DocumentFormattingOptions())
 
