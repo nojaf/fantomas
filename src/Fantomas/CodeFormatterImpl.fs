@@ -15,6 +15,9 @@ open Fantomas.SourceOrigin
 open Fantomas.SourceParser
 open Fantomas.CodePrinter
 
+// Share an F# checker instance across formatting calls
+let private sharedChecker = lazy (FSharpChecker.Create())
+
 let private getSourceString (source: SourceOrigin) =
     match source with
     | SourceString s -> String.normalizeNewLine s
@@ -40,11 +43,8 @@ type FormatContext =
 
 // Some file names have a special meaning for the F# compiler and the AST cannot be parsed.
 let safeFileName (file: string) =
-    let fileName =
-        file.Split([| '\\'; '/' |]) |> Array.last
-
-    if fileName = "Program.fs" then
-        "tmp.fsx"
+    if System.IO.Path.GetExtension(file) = ".fs" then
+        System.IO.Path.ChangeExtension(file, ".fsx")
     else
         file
 
@@ -55,7 +55,9 @@ let createFormatContext fileName (source: SourceOrigin) =
       Source = sourceCode
       SourceText = sourceText }
 
-let parse (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) { FileName = fileName; Source = source } =
+let parse
+    ({ FileName = fileName; Source = source }: FormatContext)
+    : Async<(ParsedInput * string list * TriviaTypes.Token list) []> =
     let allDefineOptions, defineHashTokens = TokenParser.getDefines source
 
     allDefineOptions
@@ -63,14 +65,14 @@ let parse (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) { File
         (fun conditionalCompilationDefines ->
             async {
                 let parsingOptionsWithDefines =
-                    { parsingOptions with
+                    { FSharpParsingOptions.Default with
                           ConditionalCompilationDefines = conditionalCompilationDefines
-                          SourceFiles = Array.map safeFileName parsingOptions.SourceFiles }
+                          SourceFiles = [| fileName |] }
                 // Run the first phase (untyped parsing) of the compiler
                 let sourceText =
                     FSharp.Compiler.Text.SourceText.ofString source
 
-                let! untypedRes = checker.ParseFile(fileName, sourceText, parsingOptionsWithDefines)
+                let! untypedRes = sharedChecker.Value.ParseFile(fileName, sourceText, parsingOptionsWithDefines)
 
                 if untypedRes.ParseHadErrors then
                     let errors =
@@ -363,10 +365,10 @@ let isValidAST ast =
     | ParsedInput.ImplFile input -> validateImplFileInput input
 
 /// Check whether an input string is invalid in F# by looking for erroneous nodes in ASTs
-let isValidFSharpCode (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) formatContext =
+let isValidFSharpCode (formatContext: FormatContext) : Async<bool> =
     async {
         try
-            let! ast = parse checker parsingOptions formatContext
+            let! ast = parse formatContext
 
             let isValid =
                 ast
@@ -394,9 +396,9 @@ let formatWith ast defines hashTokens formatContext config =
 
     formattedSourceCode
 
-let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
+let format config formatContext =
     async {
-        let! asts = parse checker parsingOptions formatContext
+        let! asts = parse formatContext
 
         let results =
             asts
@@ -413,8 +415,7 @@ let format (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) confi
     }
 
 /// Format a source string using given config
-let formatDocument (checker: FSharpChecker) (parsingOptions: FSharpParsingOptions) config formatContext =
-    format checker parsingOptions config formatContext
+let formatDocument (config: FormatConfig) (formatContext: FormatContext) : Async<string> = format config formatContext
 
 /// Format an abstract syntax tree using given config
 let formatAST ast defines formatContext config =
@@ -532,8 +533,6 @@ let private stringPos (r: Range) (sourceCode: string) =
     (start, finish)
 
 let private formatRange
-    (checker: FSharpChecker)
-    (parsingOptions: FSharpParsingOptions)
     returnFormattedContentOnly
     (range: Range)
     (lines: _ [])
@@ -604,7 +603,7 @@ let private formatRange
                 { formatContext with
                       Source = sourceCode }
 
-            let! formattedSourceCode = format checker parsingOptions config formatContext
+            let! formattedSourceCode = format config formatContext
             // If the input is not inline, the output should not be inline as well
             if
                 sourceCode.EndsWith("\n")
@@ -684,8 +683,6 @@ let private formatRange
 /// Format a part of source string using given config, and return the (formatted) selected part only.
 /// Beware that the range argument is inclusive. If the range has a trailing newline, it will appear in the formatted result.
 let formatSelection
-    (checker: FSharpChecker)
-    (parsingOptions: FSharpParsingOptions)
     (range: Range)
     config
     ({ Source = sourceCode
@@ -747,7 +744,7 @@ let formatSelection
     )
 
     async {
-        let! formatted = formatRange checker parsingOptions true modifiedRange lines config formatContext
+        let! formatted = formatRange true modifiedRange lines config formatContext
 
         let start, finish = stringPos range sourceCode
         let newStart, newFinish = stringPos modifiedRange sourceCode

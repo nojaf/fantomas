@@ -56,7 +56,7 @@ let private countLines (text: string) : uint =
 
 type FormatDocumentOptions =
     { SourceCode: string
-      Config: Dictionary<string, string>
+      Config: IReadOnlyDictionary<string, string>
       TextDocument: TextDocumentIdentifier }
 
 type FormatSourceRange =
@@ -111,21 +111,13 @@ type FantomasLSPServer(sender: Stream, reader: Stream) as this =
         range.End <- (Position(countLines options.SourceCode, 0u))
         response.Range <- range
 
-        let parsingOptions =
-            { FSharpParsingOptions.Default with
-                  SourceFiles = [| filePath |] }
-
-        let checker =
-            Fantomas.Extras.FakeHelpers.sharedChecker.Value
+        let config =
+            match Option.ofObj options.Config with
+            | Some options -> Fantomas.Extras.EditorConfig.parseOptionsFromEditorConfig options
+            | None -> FormatConfig.FormatConfig.Default
 
         response.NewText <-
-            CodeFormatter.FormatDocumentAsync(
-                filePath,
-                SourceString options.SourceCode,
-                FormatConfig.FormatConfig.Default,
-                parsingOptions,
-                checker
-            )
+            CodeFormatter.FormatDocumentAsync(filePath, SourceString options.SourceCode, config)
             |> Async.RunSynchronously
 
         response

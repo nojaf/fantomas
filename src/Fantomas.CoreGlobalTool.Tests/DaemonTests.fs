@@ -68,7 +68,7 @@ let ``client can format full document`` () =
                       TextDocument = TextDocumentIdentifier(Uri = "file:///src/fs.fsx") }
 
                 let! result =
-                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatSource", options)
+                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatDocument", options)
                     |> Async.AwaitTask
 
                 result.NewText
@@ -89,4 +89,56 @@ let ``client ask current version`` () =
 
                 result.Version
                 |> should equal (CodeFormatter.GetVersion())
+            })
+
+[<Test>]
+let ``configuration can be passed to formatDocument`` () =
+    connectToServer
+        (fun client ->
+            async {
+                let source = "let foo (a:int) : int =       42"
+
+                let options : FormatDocumentOptions =
+                    { SourceCode = source
+                      Config = readOnlyDict [ "fsharp_space_before_colon", "true" ]
+                      TextDocument = TextDocumentIdentifier(Uri = "file:///src/MyFile.fs") }
+
+                let! result =
+                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatDocument", options)
+                    |> Async.AwaitTask
+
+                result.NewText
+                |> shouldEqualWithPrependNewline
+                    """
+let foo (a : int) : int = 42
+"""
+            })
+
+[<Test>]
+let ``format signature file with formatDocument`` () =
+    connectToServer
+        (fun client ->
+            async {
+                let source =
+                    """namespace Foobar
+
+val barry :   int
+"""
+
+                let options : FormatDocumentOptions =
+                    { SourceCode = source
+                      Config = null
+                      TextDocument = TextDocumentIdentifier(Uri = "file:///src/MySignatureFile.fsi") }
+
+                let! result =
+                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatDocument", options)
+                    |> Async.AwaitTask
+
+                result.NewText
+                |> shouldEqualWithPrependNewline
+                    """
+namespace Foobar
+
+val barry : int
+"""
             })

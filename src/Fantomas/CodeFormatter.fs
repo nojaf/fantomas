@@ -2,11 +2,11 @@ namespace Fantomas
 
 [<Sealed>]
 type CodeFormatter =
-    static member ParseAsync(fileName, source, parsingOptions, checker) =
+    static member ParseAsync(fileName, source) =
         async {
             let! asts =
                 CodeFormatterImpl.createFormatContext fileName source
-                |> CodeFormatterImpl.parse checker parsingOptions
+                |> CodeFormatterImpl.parse
 
             return (Array.map (fun (a, d, _) -> a, d) asts)
         }
@@ -18,17 +18,17 @@ type CodeFormatter =
         CodeFormatterImpl.formatAST ast defines formatContext config
         |> async.Return
 
-    static member FormatDocumentAsync(fileName, source, config, parsingOptions, checker) =
+    static member FormatDocumentAsync(fileName, source, config) =
         CodeFormatterImpl.createFormatContext fileName source
-        |> CodeFormatterImpl.formatDocument checker parsingOptions config
+        |> CodeFormatterImpl.formatDocument config
 
-    static member FormatSelectionAsync(fileName, selection, source, config, parsingOptions, checker) =
+    static member FormatSelectionAsync(fileName, selection, source, config) =
         CodeFormatterImpl.createFormatContext fileName source
-        |> CodeFormatterImpl.formatSelection checker parsingOptions selection config
+        |> CodeFormatterImpl.formatSelection selection config
 
-    static member IsValidFSharpCodeAsync(fileName, source, parsingOptions, checker) =
+    static member IsValidFSharpCodeAsync(fileName, source) =
         CodeFormatterImpl.createFormatContext fileName source
-        |> CodeFormatterImpl.isValidFSharpCode checker parsingOptions
+        |> CodeFormatterImpl.isValidFSharpCode
 
     static member IsValidASTAsync ast =
         async { return CodeFormatterImpl.isValidAST ast }
