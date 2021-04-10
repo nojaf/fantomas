@@ -6,7 +6,6 @@ open FSharp.Compiler.SourceCodeServices
 open Fantomas
 open Fantomas.Extras
 
-let sharedChecker = lazy (FSharpChecker.Create())
 let config = FormatConfig.FormatConfig.Default
 
 [<MemoryDiagnoser>]
@@ -20,14 +19,11 @@ type CodePrinterTest() =
 
         let fileName = Path.GetFileName(path)
 
-        let parsingOptions =
-            FakeHelpers.createParsingOptionsFromFile fileName
-
         let content =
             File.ReadAllText(path)
             |> SourceOrigin.SourceString
 
-        CodeFormatter.FormatDocumentAsync(fileName, content, config, parsingOptions, sharedChecker.Value)
+        CodeFormatter.FormatDocumentAsync(fileName, content, config)
         |> Async.RunSynchronously
         |> ignore
 
