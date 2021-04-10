@@ -395,8 +395,9 @@ let main argv =
     elif (results.Contains <@ Arguments.Daemon @>) then
         let daemon =
             new FantomasLSPServer((Console.OpenStandardOutput()), (Console.OpenStandardInput()))
+
         AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> (daemon :> IDisposable).Dispose())
-        
+
         daemon.WaitForClose.GetAwaiter().GetResult()
         exit 0
     else
