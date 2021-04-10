@@ -62,7 +62,7 @@ let ``client can format full document`` () =
             async {
                 let source = "let foo =       42"
 
-                let options : FormatSourceOptions =
+                let options : FormatDocumentOptions =
                     { SourceCode = source
                       Config = null
                       TextDocument = TextDocumentIdentifier(Uri = "file:///src/fs.fsx") }
@@ -76,4 +76,17 @@ let ``client can format full document`` () =
                     """
 let foo = 42
 """
+            })
+
+[<Test>]
+let ``client ask current version`` () =
+    connectToServer
+        (fun client ->
+            async {
+                let! result =
+                    client.InvokeAsync<VersionResult>("fantomas/version")
+                    |> Async.AwaitTask
+
+                result.Version
+                |> should equal (CodeFormatter.GetVersion())
             })

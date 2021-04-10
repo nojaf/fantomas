@@ -47,14 +47,14 @@ let private countLines (text: string) : uint =
         let count =
             text.Length
             - text.Replace("\n", String.Empty).Length
-            |> (uint)
+            |> uint
 
         if text.[text.Length - 1] = '\n' then
             count + 1u
         else
             count
 
-type FormatSourceOptions =
+type FormatDocumentOptions =
     { SourceCode: string
       Config: Dictionary<string, string>
       TextDocument: TextDocumentIdentifier }
@@ -62,6 +62,10 @@ type FormatSourceOptions =
 type FormatSourceRange =
     class
     end
+
+type ConfigurationResult = Map<string, string> // TODO: rethink structure
+
+type VersionResult = { Version: string }
 
 type FantomasLSPServer(sender: Stream, reader: Stream) as this =
     let rpc : JsonRpc = JsonRpc.Attach(sender, reader, this)
@@ -96,8 +100,8 @@ type FantomasLSPServer(sender: Stream, reader: Stream) as this =
 
     /// Fantomas uses the LSP protocol but does initially not aim to function as fully fledged LSP server.
     /// Custom RPC methods are introduced to take no dependency on the file system and not required the constant communication of file events.
-    [<JsonRpcMethod("fantomas/formatSource", UseSingleObjectParameterDeserialization = true)>]
-    member this.FormatSource(options: FormatSourceOptions) : TextEdit = // TODO: later Task
+    [<JsonRpcMethod("fantomas/formatDocument", UseSingleObjectParameterDeserialization = true)>]
+    member this.FormatSource(options: FormatDocumentOptions) : TextEdit = // TODO: later Task
         let filePath =
             Path.FileUriToLocalPath options.TextDocument.Uri
 
@@ -126,5 +130,12 @@ type FantomasLSPServer(sender: Stream, reader: Stream) as this =
 
         response
 
-    [<JsonRpcMethod("fantomas/formatSourceRange")>]
-    member this.FormatSourceRange(options: FormatSourceOptions) : TextEdit = failwith "not yet implemented"
+    [<JsonRpcMethod("fantomas/formatSelection")>]
+    member this.FormatSourceRange(options: FormatDocumentOptions) : TextEdit = failwith "not yet implemented"
+
+    [<JsonRpcMethod("fantomas/configuration")>]
+    member this.Configuration() : ConfigurationResult = failwith "not yet implemented"
+
+    [<JsonRpcMethod("fantomas/version")>]
+    member this.Version() : VersionResult =
+        { Version = CodeFormatter.GetVersion() }
