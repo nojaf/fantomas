@@ -11,12 +11,7 @@ let parseAndFormat sourceCode originSource =
     let fileName = "/tmp.fsx"
 
     let ast =
-        CodeFormatter.ParseAsync(
-            fileName,
-            sourceCode,
-            FakeHelpers.createParsingOptionsFromFile fileName,
-            sharedChecker.Value
-        )
+        CodeFormatter.ParseAsync(fileName, sourceCode)
         |> Async.RunSynchronously
         |> Seq.head
         |> fst

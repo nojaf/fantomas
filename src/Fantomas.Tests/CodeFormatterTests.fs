@@ -1,10 +1,8 @@
 module Fantomas.Tests.CodeFormatterTests
 
 open NUnit.Framework
-open FsUnit
 open Fantomas.Tests.TestHelper
 open Fantomas
-open Fantomas.Extras
 
 [<Test>]
 let ``sanitize filename if Program.fs`` () =
@@ -20,16 +18,7 @@ let main argv _ =
     0
 """
 
-    let parsingOptions =
-        FakeHelpers.createParsingOptionsFromFile fileName
-
-    CodeFormatter.FormatDocumentAsync(
-        fileName,
-        SourceOrigin.SourceString source,
-        config,
-        parsingOptions,
-        sharedChecker.Value
-    )
+    CodeFormatter.FormatDocumentAsync(fileName, SourceOrigin.SourceString source, config)
     |> Async.RunSynchronously
     |> ignore
 
@@ -48,15 +37,6 @@ let main _ =
     0
 """
 
-    let parsingOptions =
-        FakeHelpers.createParsingOptionsFromFile fileName
-
-    CodeFormatter.FormatDocumentAsync(
-        fileName,
-        SourceOrigin.SourceString source,
-        config,
-        parsingOptions,
-        sharedChecker.Value
-    )
+    CodeFormatter.FormatDocumentAsync(fileName, SourceOrigin.SourceString source, config)
     |> Async.RunSynchronously
     |> ignore

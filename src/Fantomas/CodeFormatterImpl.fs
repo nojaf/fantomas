@@ -16,7 +16,7 @@ open Fantomas.SourceParser
 open Fantomas.CodePrinter
 
 // Share an F# checker instance across formatting calls
-let private sharedChecker = lazy (FSharpChecker.Create())
+let internal sharedChecker = lazy (FSharpChecker.Create())
 
 let private getSourceString (source: SourceOrigin) =
     match source with

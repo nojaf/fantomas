@@ -2,7 +2,6 @@ module Fantomas.Extras.FakeHelpers
 
 open System
 open System.IO
-open FSharp.Compiler.SourceCodeServices
 open Fantomas
 open Fantomas.FormatConfig
 open Fantomas.Extras
@@ -39,10 +38,6 @@ type FormatResult =
     | Unchanged of filename: string
     | Error of filename: string * formattingError: Exception
     | IgnoredFile of filename: string
-
-let createParsingOptionsFromFile fileName =
-    { FSharpParsingOptions.Default with
-          SourceFiles = [| fileName |] }
 
 let private formatContentInternalAsync
     (compareWithoutLineEndings: bool)

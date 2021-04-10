@@ -4,7 +4,6 @@ open Fantomas
 open NUnit.Framework
 open FsUnit
 open Fantomas.Tests.TestHelper
-open Fantomas.Extras
 
 [<Test>]
 let ``module abbreviation`` () =
@@ -393,13 +392,7 @@ type T() =
     interface IDisposable with
         override x.Dispose() = ()"""
 
-    CodeFormatter.FormatDocumentAsync(
-        fileName,
-        SourceOrigin.SourceString sourceCode,
-        config,
-        FakeHelpers.createParsingOptionsFromFile fileName,
-        sharedChecker.Value
-    )
+    CodeFormatter.FormatDocumentAsync(fileName, SourceOrigin.SourceString sourceCode, config)
     |> Async.RunSynchronously
     |> fun s -> s.Replace("\r\n", "\n")
     |> should

@@ -4,7 +4,6 @@ open FsUnit
 open System
 open Fantomas.FormatConfig
 open Fantomas
-open Fantomas.Extras
 open FSharp.Compiler.Text
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.SyntaxTree
@@ -18,14 +17,13 @@ do ()
 
 let config = FormatConfig.Default
 let newline = "\n"
-
-let sharedChecker = lazy (FSharpChecker.Create())
+let private checker = CodeFormatterImpl.sharedChecker
 
 let private safeToIgnoreWarnings =
     [ "This construct is deprecated: it is only for use in the F# library"
       "Identifiers containing '@' are reserved for use in F# code generation" ]
 
-let private isValidAndHasNoWarnings fileName source parsingOptions =
+let private isValidAndHasNoWarnings fileName source =
     let allDefineOptions, _ = TokenParser.getDefines source
 
     allDefineOptions
@@ -33,12 +31,14 @@ let private isValidAndHasNoWarnings fileName source parsingOptions =
         (fun conditionalCompilationDefines ->
             async {
                 let parsingOptionsWithDefines =
-                    { parsingOptions with
+                    { FSharpParsingOptions.Default with
+                          SourceFiles = [| fileName |]
                           ConditionalCompilationDefines = conditionalCompilationDefines }
                 // Run the first phase (untyped parsing) of the compiler
                 let sourceText = SourceText.ofString source
 
-                let! untypedRes = sharedChecker.Value.ParseFile(fileName, sourceText, parsingOptionsWithDefines)
+                let! untypedRes =
+                    CodeFormatterImpl.sharedChecker.Value.ParseFile(fileName, sourceText, parsingOptionsWithDefines)
 
                 let errors =
                     untypedRes.Errors
@@ -60,20 +60,10 @@ let formatSourceString isFsiFile (s: string) config =
         else
             "/src.fsx"
 
-    let parsingOptions =
-        FakeHelpers.createParsingOptionsFromFile fileName
-
     async {
-        let! formatted =
-            CodeFormatter.FormatDocumentAsync(
-                fileName,
-                SourceOrigin.SourceString s,
-                config,
-                parsingOptions,
-                sharedChecker.Value
-            )
+        let! formatted = CodeFormatter.FormatDocumentAsync(fileName, SourceOrigin.SourceString s, config)
 
-        let! isValid = isValidAndHasNoWarnings fileName formatted parsingOptions
+        let! isValid = isValidAndHasNoWarnings fileName formatted
 
         if not isValid then
             failwithf "The formatted result is not valid F# code or contains warnings\n%s" formatted
@@ -91,15 +81,9 @@ let formatSourceStringWithDefines defines (s: string) config =
     let formatContext =
         CodeFormatterImpl.createFormatContext fileName (SourceOrigin.SourceString s)
 
-    let parsingOptions =
-        FakeHelpers.createParsingOptionsFromFile fileName
-        |> fun p ->
-            { p with
-                  ConditionalCompilationDefines = defines }
-
     let result =
         async {
-            let! asts = CodeFormatterImpl.parse sharedChecker.Value parsingOptions formatContext
+            let! asts = CodeFormatterImpl.parse formatContext
 
             let ast, hashTokens =
                 Array.filter (fun (_, d, _) -> d = defines) asts
@@ -123,14 +107,7 @@ let formatSelectionOnly isFsiFile r (s: string) config =
         else
             "/tmp.fsx"
 
-    CodeFormatter.FormatSelectionAsync(
-        fileName,
-        r,
-        SourceOrigin.SourceString s,
-        config,
-        FakeHelpers.createParsingOptionsFromFile fileName,
-        sharedChecker.Value
-    )
+    CodeFormatter.FormatSelectionAsync(fileName, r, SourceOrigin.SourceString s, config)
     |> Async.RunSynchronously
     |> fun s -> s.Replace("\r\n", "\n")
 
@@ -141,12 +118,7 @@ let isValidFSharpCode isFsiFile s =
         else
             "/tmp.fsx"
 
-    CodeFormatter.IsValidFSharpCodeAsync(
-        fileName,
-        SourceOrigin.SourceString s,
-        FakeHelpers.createParsingOptionsFromFile fileName,
-        sharedChecker.Value
-    )
+    CodeFormatter.IsValidFSharpCodeAsync(fileName, SourceOrigin.SourceString s)
     |> Async.RunSynchronously
 
 let parse isFsiFile s =
@@ -157,7 +129,7 @@ let parse isFsiFile s =
             "/tmp.fsx"
 
     CodeFormatterImpl.createFormatContext fileName (SourceOrigin.SourceString s)
-    |> CodeFormatterImpl.parse sharedChecker.Value (FakeHelpers.createParsingOptionsFromFile fileName)
+    |> CodeFormatterImpl.parse
     |> Async.RunSynchronously
 
 let formatAST a s c =
