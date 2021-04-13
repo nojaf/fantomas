@@ -4,12 +4,13 @@ open System
 open System.Collections.Generic
 open System.Diagnostics
 open System.IO
-open FSharp.Compiler.SourceCodeServices
 open Fantomas
 open Fantomas.SourceOrigin
 open LspTypes
 open StreamJsonRpc
 open System.Threading
+open Fantomas.FormatConfig
+open Fantomas.Extras.EditorConfig
 
 type Path with
     /// Stolen from FsAutoComplete
@@ -63,7 +64,12 @@ type FormatSourceRange =
     class
     end
 
-type ConfigurationResult = Map<string, string> // TODO: rethink structure
+type FantomasOption = { Type: string; DefaultValue: string }
+
+type ConfigurationResult =
+    { Options: IReadOnlyDictionary<string, FantomasOption>
+      MultilineFormatterTypes: string list
+      EndOfLineStyles: string list }
 
 type VersionResult = { Version: string }
 
@@ -126,7 +132,42 @@ type FantomasLSPServer(sender: Stream, reader: Stream) as this =
     member this.FormatSourceRange(options: FormatDocumentOptions) : TextEdit = failwith "not yet implemented"
 
     [<JsonRpcMethod("fantomas/configuration")>]
-    member this.Configuration() : ConfigurationResult = failwith "not yet implemented"
+    member this.Configuration() : ConfigurationResult =
+        let options =
+            Reflection.getRecordFields FormatConfig.FormatConfig.Default
+            |> Array.choose
+                (fun (name, defaultValue) ->
+                    let type' =
+                        match defaultValue with
+                        | :? bool as b ->
+                            Some
+                                { Type = "boolean"
+                                  DefaultValue = if b then "true" else "false" }
+                        | :? int as i ->
+                            Some
+                                { Type = "number"
+                                  DefaultValue = string i }
+                        | :? MultilineFormatterType as m ->
+                            Some
+                                { Type = "multilineFormatterType"
+                                  DefaultValue = MultilineFormatterType.ToConfigString m }
+                        | :? EndOfLineStyle as e ->
+                            Some
+                                { Type = "endOfLineStyle"
+                                  DefaultValue = EndOfLineStyle.ToConfigString e }
+                        | _ -> None
+
+                    type'
+                    |> Option.map (fun t -> toEditorConfigName name, t))
+            |> readOnlyDict
+
+        { Options = options
+          MultilineFormatterTypes =
+              [ MultilineFormatterType.ToConfigString MultilineFormatterType.CharacterWidth
+                MultilineFormatterType.ToConfigString MultilineFormatterType.NumberOfItems ]
+          EndOfLineStyles =
+              [ EndOfLineStyle.ToConfigString EndOfLineStyle.LF
+                EndOfLineStyle.ToConfigString EndOfLineStyle.CRLF ] }
 
     [<JsonRpcMethod("fantomas/version")>]
     member this.Version() : VersionResult =
