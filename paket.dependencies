@@ -16,7 +16,7 @@ nuget MAB.DotIgnore 3.0.2
 
 source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json
 nuget FSharp.Core prerelease
-nuget FSharp.Compiler.Service 39.0.0-preview.21204.6 # FCS 40 prerelease
+nuget FSharp.Compiler.Service 40.0.0-preview.21212.7
 
 github: fsprojects/fantomas:829faa6ba834f99afed9b4434b3a1680536474b2 src/Fantomas/CodePrinter.fs
 

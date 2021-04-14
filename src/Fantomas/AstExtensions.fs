@@ -27,14 +27,8 @@ type SynSimplePats with
 type SynModuleSigDecl with
     member decl.FullRange : Range =
         match decl with
-        | SynModuleSigDecl.Types (types = SynTypeDefnSig(typeInfo = SynComponentInfo(attributes = ha :: _)) :: _ as allTypes) ->
-            match List.tryLast allTypes with
-            | Some (SynTypeDefnSig (range = r)) -> mkRange decl.Range.FileName ha.Range.Start r.End
-            | None -> mkRange decl.Range.FileName ha.Range.Start decl.Range.End
-        | SynModuleSigDecl.Types (types = allTypes) ->
-            match List.tryLast allTypes with
-            | Some (SynTypeDefnSig (range = rEnd)) -> mkRange decl.Range.FileName decl.Range.Start rEnd.End
-            | _ -> decl.Range
+        | SynModuleSigDecl.Types(types = SynTypeDefnSig(typeInfo = SynComponentInfo(attributes = ha :: _)) :: _) ->
+            mkRange decl.Range.FileName ha.Range.Start decl.Range.End
         | _ -> decl.Range
 
 type SynModuleOrNamespace with
