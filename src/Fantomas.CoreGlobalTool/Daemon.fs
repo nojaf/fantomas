@@ -114,13 +114,13 @@ type FantomasLSPServer(sender: Stream, reader: Stream) as this =
         let response : TextEdit = TextEdit()
         let range = Range()
         range.Start <- (Position(0u, 0u))
-        range.End <- (Position(countLines options.SourceCode, 0u))
+        range.End <- (Position(countLines options.SourceCode - 1u, 0u))
         response.Range <- range
 
         let config =
             match Option.ofObj options.Config with
-            | Some options -> Fantomas.Extras.EditorConfig.parseOptionsFromEditorConfig options
-            | None -> FormatConfig.FormatConfig.Default
+            | Some options -> parseOptionsFromEditorConfig options
+            | None -> readConfiguration filePath
 
         response.NewText <-
             CodeFormatter.FormatDocumentAsync(filePath, SourceString options.SourceCode, config)

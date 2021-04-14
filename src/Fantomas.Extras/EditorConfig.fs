@@ -95,8 +95,7 @@ let tryReadConfiguration (fsharpFile: string) : FormatConfig option =
     if editorConfigSettings.Properties.Count = 0 then
         None
     else
-        Some
-        <| parseOptionsFromEditorConfig editorConfigSettings.Properties
+        Some(parseOptionsFromEditorConfig editorConfigSettings.Properties)
 
 let readConfiguration (fsharpFile: string) : FormatConfig =
     tryReadConfiguration fsharpFile

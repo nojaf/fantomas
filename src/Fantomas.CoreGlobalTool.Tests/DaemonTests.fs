@@ -9,6 +9,7 @@ open Serilog
 open StreamJsonRpc
 open Fantomas
 open FsUnit
+open Fantomas.CoreGlobalTool.Tests.TestHelpers
 
 Log.Logger <-
     LoggerConfiguration()
@@ -441,4 +442,139 @@ let ``configuration options`` () =
 
                 result.Options.["fsharp_strict_mode"].Type
                 |> should equal "boolean"
+            })
+
+[<Test>]
+let ``configurations can be passed to formatting`` () =
+    connectToServer
+        (fun client ->
+            async {
+                let source = "let add (a:int) (b:int): int = a +   b"
+
+                let options : FormatDocumentOptions =
+                    { SourceCode = source
+                      Config = readOnlyDict [ "fsharp_space_before_colon", "true" ]
+                      TextDocument = TextDocumentIdentifier(Uri = "file:///src/MyFile.fs") }
+
+                let! result =
+                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatDocument", options)
+                    |> Async.AwaitTask
+
+                result.NewText
+                |> should
+                    equal
+                    "let add (a : int) (b : int) : int = a + b
+"
+            })
+
+[<Test>]
+let ``.editorconfig is respected`` () =
+    connectToServer
+        (fun client ->
+            async {
+                use fileFixture =
+                    new TemporaryFileCodeSample(
+                        "let a  = // foo
+                                                                    9"
+                    )
+
+                use _configFixture =
+                    new ConfigurationFile(
+                        """
+[*.fs]
+indent_size=2
+"""
+                    )
+
+                let source =
+                    System.IO.File.ReadAllText(fileFixture.Filename)
+
+                let options : FormatDocumentOptions =
+                    { SourceCode = source
+                      Config = null
+                      TextDocument = TextDocumentIdentifier(Uri = sprintf "file://%s" fileFixture.Filename) }
+
+                let! result =
+                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatDocument", options)
+                    |> Async.AwaitTask
+
+                result.NewText
+                |> shouldEqualWithPrependNewline
+                    """
+let a = // foo
+  9
+"""
+            })
+
+[<Test>]
+let ``config has precedence over .editorconfig`` () =
+    connectToServer
+        (fun client ->
+            async {
+                use fileFixture =
+                    new TemporaryFileCodeSample(
+                        "let a  = // foo
+                                                                    9"
+                    )
+
+                use _configFixture =
+                    new ConfigurationFile(
+                        """
+[*.fs]
+indent_size=2
+"""
+                    )
+
+                let source =
+                    System.IO.File.ReadAllText(fileFixture.Filename)
+
+                let options : FormatDocumentOptions =
+                    { SourceCode = source
+                      Config = readOnlyDict [ "indent_size", "5" ]
+                      TextDocument = TextDocumentIdentifier(Uri = sprintf "file://%s" fileFixture.Filename) }
+
+                let! result =
+                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatDocument", options)
+                    |> Async.AwaitTask
+
+                result.NewText
+                |> shouldEqualWithPrependNewline
+                    """
+let a = // foo
+     9
+"""
+            })
+
+[<Test>]
+let ``range is correctly returned`` () =
+    connectToServer
+        (fun client ->
+            async {
+                let source =
+                    """
+let tryReadConfiguration (fsharpFile: string) : FormatConfig option =
+    let editorConfigSettings : EditorConfig.Core.FileConfiguration = editorConfigParser.Parse(fileName = fsharpFile)
+
+    if editorConfigSettings.Properties.Count = 0 then
+        None
+    else
+        Some (parseOptionsFromEditorConfig editorConfigSettings.Properties)
+"""
+
+                let options : FormatDocumentOptions =
+                    { SourceCode = source
+                      Config = null
+                      TextDocument = TextDocumentIdentifier(Uri = "file:///src/fs.fsx") }
+
+                let! result =
+                    client.InvokeWithParameterObjectAsync<TextEdit>("fantomas/formatDocument", options)
+                    |> Async.AwaitTask
+
+                // ranges in LSP are zero based
+                // https://microsoft.github.io/language-server-protocol/specifications/specification-current/#range
+                let expectedRange = Range()
+                expectedRange.Start <- (Position(0u, 0u))
+                expectedRange.End <- (Position(8u, 0u))
+
+                result.Range |> should equal expectedRange
             })
