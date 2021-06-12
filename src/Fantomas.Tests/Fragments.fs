@@ -13,6 +13,10 @@ let config =
     { FormatConfig.FormatConfig.Default with
           StrictMode = true }
 
+let parsingOptions filePath =
+    { FSharpParsingOptions.Default with
+          SourceFiles = [| filePath |] }
+
 type ASTFragment = Fragment of ParsedInput * Range
 
 let updateModuleInImpl (ast: ParsedInput) (mdl: SynModuleOrNamespace) : ParsedInput =
@@ -74,7 +78,12 @@ let splitParsedInput (ast: ParsedInput) : ASTFragment list =
     | ParsedInput.SigFile (ParsedSigFileInput.ParsedSigFileInput (modules = modules)) ->
         modules |> List.collect (splitModuleSig ast)
 
-let formatFragment (lines: string array) (defines: string list) (Fragment (ast, range)) (fileName: string) : Async<unit> =
+let formatFragment
+    (lines: string array)
+    (defines: string list)
+    (Fragment (ast, range))
+    (fileName: string)
+    : Async<unit> =
     async {
         try
             let! formatted = CodeFormatter.FormatASTAsync(ast, fileName, defines, None, config)
@@ -89,9 +98,9 @@ let formatFragment (lines: string array) (defines: string list) (Fragment (ast, 
                 Path.Combine(Path.GetDirectoryName(fileName), name)
 
             let code =
-                lines.[ (range.StartLine - 1) .. (range.EndLine - 1) ]
+                lines.[(range.StartLine - 1)..(range.EndLine - 1)]
                 |> String.concat "\n"
-            
+
             let errorLog =
                 $"""Unable to format %s{fileName}
 
@@ -117,15 +126,10 @@ let formatFragments (filePath: string) : unit =
         File.ReadAllText filePath
         |> SourceOrigin.SourceString
 
-    let lines =
-        File.ReadAllLines filePath
-    
-    let parsingOptions =
-        { FSharpParsingOptions.Default with
-              SourceFiles = [| filePath |] }
+    let lines = File.ReadAllLines filePath
 
     let ast =
-        CodeFormatter.ParseAsync(filePath, sourceOrigin, parsingOptions, checker)
+        CodeFormatter.ParseAsync(filePath, sourceOrigin, parsingOptions filePath, checker)
         |> Async.RunSynchronously
 
     let fragments : (string list * ASTFragment list) list =
@@ -167,6 +171,92 @@ let formatFragments (filePath: string) : unit =
 
                 formatFragments folder defines fragments)
 
+
+
 [<Test>]
 let ``format in fragments`` () =
     formatFragments @"C:\Users\nojaf\Projects\fsharp\src\fsharp\FSharp.Core\math\z.fs"
+
+let private validate (fileName: string) (code: string) : Async<FSharpDiagnostic list> =
+    let options =
+        { FSharpParsingOptions.Default with
+              SourceFiles = [| fileName |] }
+
+    let sourceCode = SourceText.ofString code
+
+    async {
+        let! result = checker.ParseFile(fileName, sourceCode, options)
+
+        return result.Errors |> Array.toList
+    }
+
+let formatPerDefines (filePath: string) =
+    let extension = Path.GetExtension(filePath)
+
+    let fileNameWithoutExtension =
+        Path.GetFileNameWithoutExtension(filePath)
+
+    let fragmentFolder =
+        Path.GetFullPath filePath
+        |> sprintf "%s_format_results"
+
+    if not (Directory.Exists(fragmentFolder)) then
+        Directory.CreateDirectory(fragmentFolder)
+        |> ignore
+
+    let sourceOrigin =
+        File.ReadAllText filePath
+        |> SourceOrigin.SourceString
+
+    let config = FormatConfig.FormatConfig.Default
+
+    let astAndDefines =
+        CodeFormatter.ParseAsync(filePath, sourceOrigin, parsingOptions filePath, checker)
+        |> Async.RunSynchronously
+
+    astAndDefines
+    |> Array.map
+        (fun (ast, defines) ->
+            async {
+                let resultFileName =
+                    String.concat "_" defines
+                    |> fun d -> $"%s{fileNameWithoutExtension}_%s{d}%s{extension}"
+
+                let outputPath =
+                    Path.Combine(fragmentFolder, resultFileName)
+
+                let! result = CodeFormatter.FormatASTAsync(ast, filePath, defines, Some sourceOrigin, config)
+
+                do!
+                    File.WriteAllTextAsync(outputPath, result)
+                    |> Async.AwaitTask
+
+                let! validationErrors = validate outputPath result
+
+                if List.isNotEmpty validationErrors then
+                    let errorFileName =
+                        String.concat "_" defines
+                        |> fun d -> $"%s{fileNameWithoutExtension}_%s{d}_errors.txt"
+                        |> fun f -> Path.Combine(fragmentFolder, f)
+                        
+                    File.WriteAllText(errorFileName, sprintf "%A" validationErrors)
+            }
+            |> Async.Catch)
+        |> Async.Parallel
+        |> Async.Ignore
+        |> Async.RunSynchronously
+
+[<Test>]
+let ``format per define combo ziggy`` () =
+    [|
+        @"C:\Users\nojaf\Projects\fsharp\src\fsharp\utils\prim-parsing.fs"
+    |]
+    |> Array.map (fun f -> async {
+        try
+            formatPerDefines f
+        with
+        | ex ->
+            printfn $"failure %A{ex} in %s{f}"
+    })
+    |> Async.Parallel
+    |> Async.Ignore
