@@ -8092,7 +8092,7 @@ progress {
     display: none !important;
   }
 }
-html, body {
+html, bod {
   width: 100%;
   margin: 0;
 }
@@ -8172,6 +8172,7 @@ header #core-title {
   transform: translate(-50%, -50%);
 }
 header #cta-buttons {
+  z-index: 1;
   position: absolute;
   bottom: 9rem;
   left: 50%;
