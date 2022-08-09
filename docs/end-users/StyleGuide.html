@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta name="author" content="Florian Verdonck, Jindřich Ivánek">
-  <title>FAQ
+  <title>Style guide
 </title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,84 +32,81 @@
                   </button>
               </div>
       <div id="sidebar-logo" class="d-flex justify-content-center p-5">
-      <a href="./index.html" ><img id="fsdocs-logo" src="/fantomas//images/logo-fantomas-white.svg" /></a>
+      <a href="/fantomas//docs/index.html" ><img id="fsdocs-logo" src="/fantomas//images/logo-fantomas-white.svg" /></a>
 </div>
       <div id="sidebar-generation" class="list-unstyled ps-0 text-white fs-6">
         <li class="nav-header">
-  End-user documentation
+  End-users
 </li>             
 <li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/FAKE.html">
-    FAKE build system
-
-  </a>
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/Rider.html">
-    JetBrains Rider
-
-  </a>
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/VSCode.html">
-    Visual Studio Code
-
-  </a>
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/Configuration.html">
-    Configuration
-
-  </a>
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/VisualStudio.html">
-    Visual Studio
-
-  </a>
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/StyleGuide.html">
-    Style guide
-
-  </a>
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/Benchmarks.html">
-    Benchmarks
-
-  </a>
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/FAQ.html">
-    FAQ
-
-  </a>
-</li>             
-<li class="nav-header">
-  Documentation
-</li>             
-<li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/GettingStarted.html">
+  <a class="nav-link" href="/fantomas/docs/end-users/GettingStarted.html">
     Getting Started
 
   </a>
 </li>             
 <li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/IgnoreFiles.html">
+  <a class="nav-link" href="/fantomas/docs/end-users/StyleGuide.html">
+    Style guide
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/Configuration.html">
+    Configuration
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/IgnoreFiles.html">
     Ignore Files
 
   </a>
 </li>             
 <li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/FormattingCheck.html">
+  <a class="nav-link" href="/fantomas/docs/end-users/FormattingCheck.html">
     Formatting Check
 
   </a>
 </li>             
 <li class="nav-item">
-  <a class="nav-link" href="/fantomas/docs/GitHooks.html">
+  <a class="nav-link" href="/fantomas/docs/end-users/GitHooks.html">
     Git hooks
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/FAKE.html">
+    FAKE build system
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/VisualStudio.html">
+    Visual Studio
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/Rider.html">
+    JetBrains Rider
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/VSCode.html">
+    Visual Studio Code
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/Benchmarks.html">
+    Benchmarks
+
+  </a>
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="/fantomas/docs/end-users/FAQ.html">
+    FAQ
 
   </a>
 </li>             
@@ -208,15 +205,44 @@
       </nav>
       <div id="fsdocs-content" class="bg-white m-2 m-sm-5 p-3 p-sm-4">
         
-<h1><a name="FAQ" class="anchor" href="#FAQ">FAQ</a></h1>
-<h2><a name="Why-the-name-Fantomas" class="anchor" href="#Why-the-name-Fantomas">Why the name "Fantomas"?</a></h2>
-<p>There are a few reasons to choose the name as such.
-First, it starts with an "F" just like many other F# projects.
-Second, Fantomas is my favourite character in the literature.
-Finally, Fantomas has the same Greek root as "<a href="https://en.wiktionary.org/wiki/phantom">phantom</a>"; coincidentally F# ASTs and formatting rules are so <em>mysterious</em> to be handled correctly.</p>
-<h2><a name="Can-I-make-a-design-suggestion" class="anchor" href="#Can-I-make-a-design-suggestion">Can I make a design suggestion?</a></h2>
-<h2><a name="Is-it-safe-to-use-the-Alpha-version-of-Fantomas" class="anchor" href="#Is-it-safe-to-use-the-Alpha-version-of-Fantomas">Is it safe to use the Alpha version of Fantomas?</a></h2>
-<p>TBD</p>
+<h1><a name="Style-guide" class="anchor" href="#Style-guide">Style guide</a></h1>
+<p>Fantomas tries to adhere to two F# style guides:
+- <a href="https://docs.microsoft.com/en-us/dotnet/fsharp/style-guide/formatting">Microsoft</a>
+- <a href="https://github.com/G-Research/fsharp-formatting-conventions">G-Research</a></p>
+<p>By default Fantomas  will format the code according to the Microsoft guide.<br />
+The benefit of these guides is that this allows us as the F# community to write code in the same manner.</p>
+<h2><a name="Let-it-go" class="anchor" href="#Let-it-go">Let it go</a></h2>
+<p>If you are not used to having a code formatter, you might struggle a bit at first. A part of using a code formatter is about letting go how you wrote things and accept a common consistent style instead.<br />
+When embraced, this can truly be a liberation feeling. You can play jazz while typing the code, focus on the task at hand and have the same output as if anyone in your team would have written it.</p>
+<h2><a name="A-cautionary-tale" class="anchor" href="#A-cautionary-tale">A cautionary tale</a></h2>
+<p>The responsibility of the coding style is also a shared one. The maintainers of Fantomas do not dictate how things should look like.<br />
+Instead, conversations are held over at <a href="https://github.com/fsharp/fslang-design#style-guide">fsharp/fslang-design</a>.</p>
+<p>Over the years, a lot of consumers of Fantomas have requested numerous features. These often go against the philosophy of being consistent amongst the community.
+If there were a gazillion of settings to please everybody it would be a missed opportunity to see all F# code bases in the same style.</p>
+<p>And more importantly the maintenance cost of each setting is always carried by only a handful of people. The hardship of having a setting is so high that in almost all cases it is not worth having it.<br />
+Even when someone proposes to contribute the setting, it always leads to lament and sorrow for the maintainers to carry.</p>
+<h2><a name="Default-style-guide" class="anchor" href="#Default-style-guide">Default style guide</a></h2>
+<p>As mentioned, the default style guide is not to be discussed on the Fantomas repository. The majority of the maintainers is burnt out talking about style at this point.<br />
+If you want to discuss the style, you are more then welcome on <a href="https://github.com/fsharp/fslang-design#style-guide">fsharp/fslang-design</a>.</p>
+<p>However, we greatly encourage that you take some time to understand the Fantomas code base.  Having an opinion on code style is easy, everybody writes code so it we all have our thoughts and feelings about it.
+Being able to translate your thoughts/opinions and prototyping them in Fantomas will gain you a much larger insight on how complex things can get.</p>
+<p>At the end of the day, if some new idea is validated on <code>fsharp/fslang-design</code>, it needs to be:</p>
+<ul>
+<li>Documented in the style guide (over at <a href="https://github.com/dotnet/docs/blob/main/docs/fsharp/style-guide/formatting.md">dotnet/docs</a>)</li>
+<li>Implemented in <code>Fantomas</code></li>
+</ul>
+<p>There’s no such thing as a free lunch, so please consider all aspects of debating the code style.</p>
+<h2><a name="G-Research-Style" class="anchor" href="#G-Research-Style">G-Research Style</a></h2>
+<p><a href="https://www.gresearch.co.uk/">G-Research</a> has been main enterprise sponsor for the last five years. Fantomas would not exists in it's current form if it were not for their support.<br />
+Their interest was to have a tool that automatically format code according to their internal guidelines. These have been made available publicly and can be turned on via <a href="https://github.com/G-Research/fsharp-formatting-conventions/blob/master/.editorconfig">various settings</a>.</p>
+<h2><a name="Recommendations" class="anchor" href="#Recommendations">Recommendations</a></h2>
+<p>To strengthen the message of unity we advice that you to not change the default settings.
+The <strong>out-of-the-box experience</strong> should be a result of what the <strong>brightest minds of the community</strong> came up with.
+If you are <em>new</em> to the F# language, this is what you want.</p>
+<div class="d-flex justify-content-between my-4">
+  <a href="../StyleGuide.html">Previous</a>
+  <a href="./Configuration.html">Next</a>
+</div>
 
         
       </div>
