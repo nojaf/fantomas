@@ -1,6 +1,7 @@
 namespace Fantomas.Core
 
 open Fantomas.Core.FormatConfig
+open Fantomas.Core.SyntaxOak
 open FSharp.Compiler.Text
 open FSharp.Compiler.Syntax
 
@@ -28,3 +29,10 @@ type CodeFormatter =
 
     /// Make a range from (startLine, startCol) to (endLine, endCol) to select some text
     static member MakeRange: fileName: string * startLine: int * startCol: int * endLine: int * endCol: int -> range
+
+    [<Experimental "Only for local development">]
+    static member ParseOakAsync:
+        isSignature: bool * source: string * ?config: FormatConfig -> Async<(Oak * string list) array>
+
+    [<Experimental "Only for local development">]
+    static member FormatOakAsync: oak: Oak * ?config: FormatConfig -> Async<string>
