@@ -36,21 +36,15 @@ type CodeFormatter =
         Range.mkRange fileName (Position.mkPos startLine startCol) (Position.mkPos endLine endCol)
 
     [<Experimental "Only for local development">]
-    static member ParseOakAsync
-        (
-            isSignature: bool,
-            source: string,
-            ?config: FormatConfig.FormatConfig
-        ) : Async<(Oak * string list) array> =
+    static member ParseOakAsync(isSignature: bool, source: string) : Async<(Oak * string list) array> =
         async {
-            let config = Option.defaultValue FormatConfig.FormatConfig.Default config
             let sourceText = CodeFormatterImpl.getSourceText source
             let! ast = CodeFormatterImpl.parse isSignature sourceText
 
             return
                 ast
                 |> Array.map (fun (ast, defines) ->
-                    let oak = ASTTransformer.mkOak config (Some sourceText) ast
+                    let oak = ASTTransformer.mkOak (Some sourceText) ast
                     oak, defines)
         }
 

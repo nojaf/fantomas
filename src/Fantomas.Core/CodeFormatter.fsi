@@ -31,8 +31,7 @@ type CodeFormatter =
     static member MakeRange: fileName: string * startLine: int * startCol: int * endLine: int * endCol: int -> range
 
     [<Experimental "Only for local development">]
-    static member ParseOakAsync:
-        isSignature: bool * source: string * ?config: FormatConfig -> Async<(Oak * string list) array>
+    static member ParseOakAsync: isSignature: bool * source: string -> Async<(Oak * string list) array>
 
     [<Experimental "Only for local development">]
     static member FormatOakAsync: oak: Oak * ?config: FormatConfig -> Async<string>
