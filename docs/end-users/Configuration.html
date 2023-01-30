@@ -209,8 +209,7 @@ UI might be available depending on the IDE.</p>
 
 <span class="pn">#</span> <span class="id">Apply</span> <span class="id">specific</span> <span class="id">settings</span> <span class="k">for</span> <span class="id">a</span> <span class="id">targeted</span> <span class="id">subfolder</span>
 <span class="pn">[</span><span class="id">src</span><span class="o">/</span><span class="id">Elmish</span><span class="o">/</span><span class="id">View</span><span class="pn">.</span><span class="id">fs</span><span class="pn">]</span>
-<span class="id">fsharp_multiline_block_brackets_on_same_column</span> <span class="o">=</span> <span class="k">true</span>
-<span class="id">fsharp_experimental_stroustrup_style</span> <span class="o">=</span> <span class="k">true</span>
+<span class="id">fsharp_multiline_bracket_style</span> <span class="o">=</span> <span class="id">experimental_stroustrup</span>
 </code></pre>
 <h2><a name="Trying-your-settings-via-the-online-tool" class="anchor" href="#Trying-your-settings-via-the-online-tool">Trying your settings via the online tool</a></h2>
 <p>You can quickly try your settings via the <a href="https://fsprojects.github.io/fantomas-tools/#/fantomas/preview" target="_blank">online tool</a>.</p>
@@ -230,7 +229,7 @@ However, there are settings that we do not recommend and generally should not be
 <p><fantomas-setting-icon type="green"></fantomas-setting-icon><strong>Safe to change:</strong> Settings that aren't attached to any guidelines. Depending on your team or your own preferences, feel free to change these as it's been agreed on the codebase, however, you can always use it's defaults.</p>
 <p><fantomas-setting-icon type="orange"></fantomas-setting-icon><strong>Use with caution:</strong> Settings where it is not recommended to change the default value. They might lead to incomplete results.</p>
 <p><fantomas-setting-icon type="red"></fantomas-setting-icon><strong>Do not use:</strong> Settings that don't follow any guidelines.</p>
-<p><fantomas-setting-icon-gresearch></fantomas-setting-icon-gresearch><strong>G-Research:</strong> G-Research styling guide. If you use one of these, for consistency reasons you should use all of them.</p></p>
+<p><fantomas-setting-icon type="gr"></fantomas-setting-icon><strong>G-Research:</strong> G-Research styling guide. If you use one of these, for consistency reasons you should use all of them.</p></p>
 <h2><a name="Auxiliary-settings" class="anchor" href="#Auxiliary-settings">Auxiliary settings</a></h2>
 <fantomas-setting name="indent_size" orange></fantomas-setting>
 <p><code>indent_size</code> has to be between 1 and 10.</p>
@@ -731,76 +730,103 @@ type MyType() =
 </code></pre>
 <table class="pre"><tr><td><pre><code>"let job = JobBuilder.UsingJobData(jobDataMap).Create&lt;WrapperJob&gt;().Build()
 "</code></pre></td></tr></table>
+<fantomas-setting name="fsharp_multiline_bracket_style" green></fantomas-setting>
+<p>How to format bracketted expressions (e.g. records, arrays, lists, etc.) that span multiple lines.</p>
+<p><em>This setting replaces the deprecated settings <code>fsharp_multiline_block_brackets_on_same_column</code> and <code>fsharp_experimental_stroustrup_style</code>.</em></p>
+<p>Possible values:</p>
+<ul>
+<li><code>cramped</code></li>
+<li><code>aligned</code></li>
+<li><code>experimental_stroustrup</code></li>
+</ul>
+<p>Default = <code>cramped</code>.</p>
+<p><strong>Cramped</strong> - The default way in F# to format brackets.</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 98)" onmouseover="showTip(event, 'fs4', 98)" class="fn">formatCode</span>
+    <span class="s">&quot;&quot;&quot; </span>
+<span class="s">    let band = { Vocals = &quot;John&quot;; Bass = &quot;Paul&quot;; Guitar = &quot;George&quot;; Drums = &quot;Ringo&quot; }</span>
+<span class="s">    let songs = [ &quot;Come Together&quot;; &quot;Hey Jude&quot;; &quot;Yesterday&quot;; &quot;Yellow Submarine&quot;; &quot;Here Comes the Sun&quot; ]</span>
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 99)" onmouseover="showTip(event, 'fs11', 99)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 100)" onmouseover="showTip(event, 'fs12', 100)" class="id">Default</span> <span class="k">with</span>
+        <span onmouseout="hideTip(event, 'fs15', 101)" onmouseover="showTip(event, 'fs15', 101)" class="prop">MultilineBracketStyle</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs16', 102)" onmouseover="showTip(event, 'fs16', 102)" class="uc">Cramped</span> <span class="pn">}</span>
+</code></pre>
+<table class="pre"><tr><td><pre><code>"let band =
+    { Vocals = "John"
+      Bass = "Paul"
+      Guitar = "George"
+      Drums = "Ringo" }
+
+let songs =
+    [ "Come Together"
+      "Hey Jude"
+      "Yesterday"
+      "Yellow Submarine"
+      "Here Comes the Sun" ]
+"</code></pre></td></tr></table>
+<p><strong>Aligned</strong> - Alternative way of formatting brackets. This will align the braces at the same column level.</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 103)" onmouseover="showTip(event, 'fs4', 103)" class="fn">formatCode</span>
+    <span class="s">&quot;&quot;&quot; </span>
+<span class="s">    let band = { Vocals = &quot;John&quot;; Bass = &quot;Paul&quot;; Guitar = &quot;George&quot;; Drums = &quot;Ringo&quot; }</span>
+<span class="s">    let songs = [ &quot;Come Together&quot;; &quot;Hey Jude&quot;; &quot;Yesterday&quot;; &quot;Yellow Submarine&quot;; &quot;Here Comes the Sun&quot; ]</span>
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 104)" onmouseover="showTip(event, 'fs11', 104)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 105)" onmouseover="showTip(event, 'fs12', 105)" class="id">Default</span> <span class="k">with</span>
+        <span onmouseout="hideTip(event, 'fs15', 106)" onmouseover="showTip(event, 'fs15', 106)" class="prop">MultilineBracketStyle</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs17', 107)" onmouseover="showTip(event, 'fs17', 107)" class="uc">Aligned</span> <span class="pn">}</span>
+</code></pre>
+<table class="pre"><tr><td><pre><code>"let band =
+    {
+        Vocals = "John"
+        Bass = "Paul"
+        Guitar = "George"
+        Drums = "Ringo"
+    }
+
+let songs =
+    [
+        "Come Together"
+        "Hey Jude"
+        "Yesterday"
+        "Yellow Submarine"
+        "Here Comes the Sun"
+    ]
+"</code></pre></td></tr></table>
+<p><strong>ExperimentalStroustrup</strong> - Experimental setting. Places the opening brace on the same line as the binding, and the closing brace on its own line.</p>
+<p><em>Please contribute to <a href="https://github.com/fsprojects/fantomas/issues/1408">fsprojects/fantomas#1408</a> and engage in <a href="https://github.com/fsharp/fslang-design/issues/706">fsharp/fslang-design#706</a>.</em></p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 108)" onmouseover="showTip(event, 'fs4', 108)" class="fn">formatCode</span>
+    <span class="s">&quot;&quot;&quot; </span>
+<span class="s">    let band = { Vocals = &quot;John&quot;; Bass = &quot;Paul&quot;; Guitar = &quot;George&quot;; Drums = &quot;Ringo&quot; }</span>
+<span class="s">    let songs = [ &quot;Come Together&quot;; &quot;Hey Jude&quot;; &quot;Yesterday&quot;; &quot;Yellow Submarine&quot;; &quot;Here Comes the Sun&quot; ]</span>
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 109)" onmouseover="showTip(event, 'fs11', 109)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 110)" onmouseover="showTip(event, 'fs12', 110)" class="id">Default</span> <span class="k">with</span>
+        <span onmouseout="hideTip(event, 'fs15', 111)" onmouseover="showTip(event, 'fs15', 111)" class="prop">MultilineBracketStyle</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs18', 112)" onmouseover="showTip(event, 'fs18', 112)" class="uc">ExperimentalStroustrup</span> <span class="pn">}</span>
+</code></pre>
+<table class="pre"><tr><td><pre><code>"let band = {
+    Vocals = "John"
+    Bass = "Paul"
+    Guitar = "George"
+    Drums = "Ringo"
+}
+
+let songs = [
+    "Come Together"
+    "Hey Jude"
+    "Yesterday"
+    "Yellow Submarine"
+    "Here Comes the Sun"
+]
+"</code></pre></td></tr></table>
 <h2><a name="G-Research-style" class="anchor" href="#G-Research-style">G-Research style</a></h2>
 <p>A series of settings required to conform with the <a href="https://github.com/G-Research/fsharp-formatting-conventions">G-Research style guide</a>.<br />
 From a consistency point of view, it is recommend to enable all these settings instead of cherry-picking a few.</p>
-<fantomas-setting name="fsharp_multiline_block_brackets_on_same_column" green gr></fantomas-setting>
-<p>Alternative way of formatting records, arrays and lists. This will align the braces at the same column level.</p>
-<p>Default = false.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 98)" onmouseover="showTip(event, 'fs4', 98)" class="fn">formatCode</span>
-    <span class="s">&quot;&quot;&quot; </span>
-<span class="s">    let myRecord =</span>
-<span class="s">        { Level = 1</span>
-<span class="s">          Progress = &quot;foo&quot;</span>
-<span class="s">          Bar = &quot;bar&quot;</span>
-<span class="s">          Street = &quot;Bakerstreet&quot;</span>
-<span class="s">          Number = 42 }</span>
-
-<span class="s">    type Range =</span>
-<span class="s">        { From: float</span>
-<span class="s">          To: float</span>
-<span class="s">          FileName: string }</span>
-
-<span class="s">    let a =</span>
-<span class="s">        [| (1, 2, 3)</span>
-<span class="s">           (4, 5, 6)</span>
-<span class="s">           (7, 8, 9)</span>
-<span class="s">           (10, 11, 12)</span>
-<span class="s">           (13, 14, 15)</span>
-<span class="s">           (16, 17,18)</span>
-<span class="s">           (19, 20, 21) |]</span>
-<span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 99)" onmouseover="showTip(event, 'fs11', 99)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 100)" onmouseover="showTip(event, 'fs12', 100)" class="id">Default</span> <span class="k">with</span>
-        <span onmouseout="hideTip(event, 'fs15', 101)" onmouseover="showTip(event, 'fs15', 101)" class="prop">MultilineBracketStyle</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs16', 102)" onmouseover="showTip(event, 'fs16', 102)" class="uc">Aligned</span> <span class="pn">}</span>
-</code></pre>
-<table class="pre"><tr><td><pre><code>"let myRecord =
-    {
-        Level = 1
-        Progress = "foo"
-        Bar = "bar"
-        Street = "Bakerstreet"
-        Number = 42
-    }
-
-type Range =
-    {
-        From: float
-        To: float
-        FileName: string
-    }
-
-let a =
-    [|
-        (1, 2, 3)
-        (4, 5, 6)
-        (7, 8, 9)
-        (10, 11, 12)
-        (13, 14, 15)
-        (16, 17, 18)
-        (19, 20, 21)
-    |]
-"</code></pre></td></tr></table>
 <fantomas-setting name="fsharp_newline_between_type_definition_and_members" green gr></fantomas-setting>
 <p>Adds a new line between a type definition and its first member.</p>
 <p>Default = false.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 103)" onmouseover="showTip(event, 'fs4', 103)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 113)" onmouseover="showTip(event, 'fs4', 113)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">type Range =</span>
 <span class="s">    { From: float</span>
 <span class="s">      To: float }</span>
 <span class="s">    member this.Length = this.To - this.From</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 104)" onmouseover="showTip(event, 'fs11', 104)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 105)" onmouseover="showTip(event, 'fs12', 105)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 114)" onmouseover="showTip(event, 'fs11', 114)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 115)" onmouseover="showTip(event, 'fs12', 115)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">NewlineBetweenTypeDefinitionAndMembers</span> <span class="o">=</span> <span class="k">true</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"type Range =
@@ -813,7 +839,7 @@ let a =
 <p>When a function signature exceeds the <code>max_line_length</code>, Fantomas will put all parameters on separate lines.<br />
 This setting also places the equals sign and return type on a new line.</p>
 <p>Default = false.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 106)" onmouseover="showTip(event, 'fs4', 106)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 116)" onmouseover="showTip(event, 'fs4', 116)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">[&lt;FunctionName(&quot;FormatCode&quot;)&gt;]</span>
 <span class="s">let run </span>
@@ -822,7 +848,7 @@ This setting also places the equals sign and return type on a new line.</p>
 <span class="s">    : HttpResponse =</span>
 <span class="s">    Http.main CodeFormatter.GetVersion format FormatConfig.FormatConfig.Default log req</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 107)" onmouseover="showTip(event, 'fs11', 107)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 108)" onmouseover="showTip(event, 'fs12', 108)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 117)" onmouseover="showTip(event, 'fs11', 117)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 118)" onmouseover="showTip(event, 'fs12', 118)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">AlignFunctionSignatureToIndentation</span> <span class="o">=</span> <span class="k">true</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"[&lt;FunctionName("FormatCode")&gt;]
@@ -837,7 +863,7 @@ let run
 <p>Provides an alternative way of formatting long member and constructor definitions,
 where the difference is mainly in the equal sign and returned type placement.</p>
 <p>Default = false.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 109)" onmouseover="showTip(event, 'fs4', 109)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 119)" onmouseover="showTip(event, 'fs4', 119)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">type C</span>
 <span class="s">    (</span>
@@ -857,7 +883,7 @@ where the difference is mainly in the equal sign and returned type placement.</p
 <span class="s">        ) : ReturnType =</span>
 <span class="s">        42</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 110)" onmouseover="showTip(event, 'fs11', 110)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 111)" onmouseover="showTip(event, 'fs12', 111)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 120)" onmouseover="showTip(event, 'fs11', 120)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 121)" onmouseover="showTip(event, 'fs12', 121)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">AlternativeLongMemberDefinitions</span> <span class="o">=</span> <span class="k">true</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"type C
@@ -884,7 +910,7 @@ type D() =
 <fantomas-setting name="fsharp_multi_line_lambda_closing_newline" green gr></fantomas-setting>
 <p>Places the closing parenthesis of a multiline lambda argument on the next line.</p>
 <p>Default = false.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 112)" onmouseover="showTip(event, 'fs4', 112)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 122)" onmouseover="showTip(event, 'fs4', 122)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">let printListWithOffset a list1 =</span>
 <span class="s">    List.iter</span>
@@ -900,7 +926,7 @@ type D() =
 <span class="s">            // print stuff</span>
 <span class="s">            printfn &quot;%d&quot; (a + elem))</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 113)" onmouseover="showTip(event, 'fs11', 113)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 114)" onmouseover="showTip(event, 'fs12', 114)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 123)" onmouseover="showTip(event, 'fs11', 123)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 124)" onmouseover="showTip(event, 'fs12', 124)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">MultiLineLambdaClosingNewline</span> <span class="o">=</span> <span class="k">true</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"let printListWithOffset a list1 =
@@ -922,7 +948,7 @@ let printListWithOffset a list1 =
 <p>Breaks the normal indentation flow for the last branch of a pattern match or if/then/else expression.<br />
 Only when the last pattern match or else branch was already at the same level of the entire match or if expression.</p>
 <p><em>This feature is considered experimental and is subject to change.</em></p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 115)" onmouseover="showTip(event, 'fs4', 115)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 125)" onmouseover="showTip(event, 'fs4', 125)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">let main argv =</span>
 <span class="s">    let args = parse argv</span>
@@ -939,7 +965,7 @@ Only when the last pattern match or else branch was already at the same level of
 <span class="s">    // do more stuff</span>
 <span class="s">    0</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 116)" onmouseover="showTip(event, 'fs11', 116)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 117)" onmouseover="showTip(event, 'fs12', 117)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 126)" onmouseover="showTip(event, 'fs11', 126)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 127)" onmouseover="showTip(event, 'fs12', 127)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">ExperimentalKeepIndentInBranch</span> <span class="o">=</span> <span class="k">true</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"let main argv =
@@ -961,43 +987,23 @@ Only when the last pattern match or else branch was already at the same level of
 <p>Always use a <code>|</code> before every case in the declaration of a discriminated union.<br />
 If <code>false</code>, a <code>|</code> character is used only in multiple-case discriminated unions, and is omitted in short single-case DUs.</p>
 <p>Default = false.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 118)" onmouseover="showTip(event, 'fs4', 118)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 128)" onmouseover="showTip(event, 'fs4', 128)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">    type MyDU = Short of int</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 119)" onmouseover="showTip(event, 'fs11', 119)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 120)" onmouseover="showTip(event, 'fs12', 120)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 129)" onmouseover="showTip(event, 'fs11', 129)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 130)" onmouseover="showTip(event, 'fs12', 130)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">BarBeforeDiscriminatedUnionDeclaration</span> <span class="o">=</span> <span class="k">true</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"type MyDU = | Short of int
 "</code></pre></td></tr></table>
 <h2><a name="Other" class="anchor" href="#Other">Other</a></h2>
 <p>Some additional settings that don't fit into any style guide.</p>
-<fantomas-setting name="fsharp_experimental_stroustrup_style" orange></fantomas-setting>
-<p>Please contribute to <a href="https://github.com/fsprojects/fantomas/issues/1408">fsprojects/fantomas#1408</a> and engage in <a href="https://github.com/fsharp/fslang-design/issues/706">fsharp/fslang-design#706</a>.</p>
-<p>Default = false.</p>
-<p>Requires <code>fsharp_multiline_block_brackets_on_same_column</code> to be <code>true</code> to take effect.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 121)" onmouseover="showTip(event, 'fs4', 121)" class="fn">formatCode</span>
-    <span class="s">&quot;&quot;&quot;</span>
-<span class="s">type PostalAddress =</span>
-<span class="s">    { Address: string</span>
-<span class="s">      City: string</span>
-<span class="s">      Zip: string }</span>
-<span class="s">&quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 122)" onmouseover="showTip(event, 'fs11', 122)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 123)" onmouseover="showTip(event, 'fs12', 123)" class="id">Default</span> <span class="k">with</span>
-        <span onmouseout="hideTip(event, 'fs15', 124)" onmouseover="showTip(event, 'fs15', 124)" class="prop">MultilineBracketStyle</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs15', 125)" onmouseover="showTip(event, 'fs15', 125)" class="rt">MultilineBracketStyle</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs17', 126)" onmouseover="showTip(event, 'fs17', 126)" class="id">ExperimentalStroustrup</span> <span class="pn">}</span>
-</code></pre>
-<table class="pre"><tr><td><pre><code>"type PostalAddress = {
-    Address: string
-    City: string
-    Zip: string
-}
-"</code></pre></td></tr></table>
 <fantomas-setting name="fsharp_blank_lines_around_nested_multiline_expressions" green></fantomas-setting>
 <p>Surround <strong>nested</strong> multi-line expressions with blank lines.<br />
 Existing blank lines are always preserved (via trivia), with exception when <a href="#fsharp_keep_max_number_of_blank_lines">fsharp_keep_max_number_of_blank_lines</a> is used.<br />
 Top level expressions will always follow the <a href="https://github.com/fsprojects/fantomas/blob/main/docs-old/FormattingConventions.md#2020-revision">2020 blank lines revision</a> principle.</p>
 <p>Default = true.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 127)" onmouseover="showTip(event, 'fs4', 127)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 131)" onmouseover="showTip(event, 'fs4', 131)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">    let topLevelFunction () =</span>
 <span class="s">        printfn &quot;Something to print&quot;</span>
@@ -1013,7 +1019,7 @@ Top level expressions will always follow the <a href="https://github.com/fsproje
 <span class="s">        // ...</span>
 <span class="s">        ()</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 128)" onmouseover="showTip(event, 'fs11', 128)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 129)" onmouseover="showTip(event, 'fs12', 129)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 132)" onmouseover="showTip(event, 'fs11', 132)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 133)" onmouseover="showTip(event, 'fs12', 133)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">BlankLinesAroundNestedMultilineExpressions</span> <span class="o">=</span> <span class="k">false</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"let topLevelFunction () =
@@ -1032,13 +1038,13 @@ let secondTopLevelFunction () =
 <fantomas-setting name="fsharp_keep_max_number_of_blank_lines" green></fantomas-setting>
 <p>Set maximal number of consecutive blank lines to keep from original source. It doesn't change number of new blank lines generated by Fantomas.</p>
 <p>Default=100</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 130)" onmouseover="showTip(event, 'fs4', 130)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 134)" onmouseover="showTip(event, 'fs4', 134)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">    open Foo</span>
 
 <span class="s">    let x = 42</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 131)" onmouseover="showTip(event, 'fs11', 131)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 132)" onmouseover="showTip(event, 'fs12', 132)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 135)" onmouseover="showTip(event, 'fs11', 135)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 136)" onmouseover="showTip(event, 'fs12', 136)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">KeepMaxNumberOfBlankLines</span> <span class="o">=</span> <span class="n">1</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"open Foo
@@ -1051,7 +1057,7 @@ There are numerous situations when the information in the AST alone cannot resto
 <p><strong>Please do not use this setting for formatting hand written code!</strong></p>
 <p>Valid use-case of this settings is code generation in projects like <a href="https://github.com/ionide/FsAst">FsAst</a> and <a href="https://github.com/MoiraeSoftware/myriad">Myriad</a>.</p>
 <p>Default = false.</p>
-<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 133)" onmouseover="showTip(event, 'fs4', 133)" class="fn">formatCode</span>
+<pre class="fssnip highlighted"><code lang="fsharp"><span onmouseout="hideTip(event, 'fs4', 137)" onmouseover="showTip(event, 'fs4', 137)" class="fn">formatCode</span>
     <span class="s">&quot;&quot;&quot; </span>
 <span class="s">    // some great comment</span>
 <span class="s">    let add a b =</span>
@@ -1061,7 +1067,7 @@ There are numerous situations when the information in the AST alone cannot resto
 <span class="s">        a + b</span>
 <span class="s">    #endif</span>
 <span class="s">    &quot;&quot;&quot;</span>
-    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 134)" onmouseover="showTip(event, 'fs11', 134)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 135)" onmouseover="showTip(event, 'fs12', 135)" class="id">Default</span> <span class="k">with</span>
+    <span class="pn">{</span> <span onmouseout="hideTip(event, 'fs11', 138)" onmouseover="showTip(event, 'fs11', 138)" class="m">FormatConfig</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs12', 139)" onmouseover="showTip(event, 'fs12', 139)" class="id">Default</span> <span class="k">with</span>
         <span class="prop">StrictMode</span> <span class="o">=</span> <span class="k">true</span> <span class="pn">}</span>
 </code></pre>
 <table class="pre"><tr><td><pre><code>"// some great comment
@@ -1137,8 +1143,9 @@ from Fantomas.Core<br /><br />--------------------<br />type FormatConfig =
   | ExperimentalStroustrup
   static member OfConfigString: cfgString: string -&gt; MultilineBracketStyle option
   static member ToConfigString: cfg: MultilineBracketStyle -&gt; string</div>
-<div class="fsdocs-tip" id="fs16">union case MultilineBracketStyle.Aligned: MultilineBracketStyle</div>
-<div class="fsdocs-tip" id="fs17">union case MultilineBracketStyle.ExperimentalStroustrup: MultilineBracketStyle</div>
+<div class="fsdocs-tip" id="fs16">union case MultilineBracketStyle.Cramped: MultilineBracketStyle</div>
+<div class="fsdocs-tip" id="fs17">union case MultilineBracketStyle.Aligned: MultilineBracketStyle</div>
+<div class="fsdocs-tip" id="fs18">union case MultilineBracketStyle.ExperimentalStroustrup: MultilineBracketStyle</div>
 
       </div>
         <div id="push"></div>
