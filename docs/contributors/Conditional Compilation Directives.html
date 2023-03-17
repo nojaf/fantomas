@@ -123,6 +123,9 @@
 <li class="nav-item"><a href="https://fsprojects.github.io/fantomas/docs/contributors/Pull request ground rules.html" class="nav-link pb-2 d-block" > Pull request ground rules
 </a></li>
 
+<li class="nav-item"><a href="https://fsprojects.github.io/fantomas/docs/contributors/Updating the compiler.html" class="nav-link pb-2 d-block" > Updating the compiler sources
+</a></li>
+
 <li class="nav-item"><a href="https://fsprojects.github.io/fantomas/docs/contributors/Releases.html" class="nav-link pb-2 d-block" > Releases
 </a></li>
 
@@ -295,6 +298,7 @@ graph TD
 <h2><a name="Merging-the-trees" class="anchor" href="#Merging-the-trees">Merging the trees</a></h2>
 <p>Once every tree is formatted, we chop each file into fragments.
 A fragment is everything between a conditional directive <code>#if | #else | #endif</code> or an actual directive.<br />
+This means fragments can also be empty strings.
 Each result should have the same amount of fragments before we can merge them together.
 If this is not the case, it means that somewhere a trivia was not properly restored.</p>
 <p>If the number of fragments add up in each tree, then we merge two trees by reducing both lists and comparing each fragment.<br />
