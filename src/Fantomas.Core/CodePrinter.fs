@@ -143,7 +143,7 @@ let genSingleTextNodeWithSpaceSuffix (addSpace: Context -> Context) (node: Singl
     (!-node.Text +> addSpace) |> genNode node
 
 let genSingleTextNodeSuffixDelimiter (node: SingleTextNode) =
-    genSingleTextNodeWithSpaceSuffix addSpaceIfSpaceAroundDelimiter node
+    genSingleTextNodeWithSpaceSuffix sepSpace node
 
 let genSingleTextNodeWithLeadingDot (node: SingleTextNode) = !- $".{node.Text}" |> genNode node
 
@@ -1218,20 +1218,11 @@ let genExpr (e: Expr) =
                 (fun e ->
                     !- " when"
                     +> expressionFitsOnRestOfLine (sepSpace +> genExpr e) (fun ctx ->
-                        // See https://github.com/fsprojects/fantomas/issues/2784
-                        let doubleIndent = ctx.Config.IndentSize < 4
-
-                        (indent
-                         +> onlyIf doubleIndent indent
-                         +> sepNln
-                         +> genExpr e
-                         +> unindent
-                         +> onlyIf doubleIndent unindent)
-                            ctx))
+                        (indent +> sepNln +> genExpr e +> unindent) ctx))
                 clauseNode.WhenExpr
             +> sepSpace
             +> genSingleTextNodeWithSpaceSuffix sepSpace clauseNode.Arrow
-            +> indentSepNlnUnindentUnlessStroustrup genExpr clauseNode.BodyExpr
+            +> genExpr clauseNode.BodyExpr
             +> leaveNode clauseNode
 
         atCurrentColumn (
@@ -1273,8 +1264,7 @@ let genExpr (e: Expr) =
             (genControlExpressionStartCore (Choice2Of2 node.If) node.IfExpr node.Then)
             (fun ((lineCountBefore, columnBefore), (lineCountAfter, columnAfter)) ctx ->
                 // Check if the `if expr then` is already multiline or cross the max_line_length.
-                let isMultiline =
-                    lineCountAfter > lineCountBefore || columnAfter > ctx.Config.MaxLineLength
+                let isMultiline = lineCountAfter > lineCountBefore || columnAfter > MaxLineLength
 
                 if isMultiline then
                     indentSepNlnUnindent (genExpr node.ThenExpr) ctx
@@ -3893,17 +3883,8 @@ let addFinalNewline ctx =
     let lastEvent = ctx.WriterEvents.TryHead
 
     match lastEvent with
-    | Some WriteLineBecauseOfTrivia ->
-        if ctx.Config.InsertFinalNewline then
-            ctx
-        else
-            // Due to trivia the last event is a newline, if insert_final_newline is false, we need to remove it.
-            { ctx with
-                WriterEvents = ctx.WriterEvents.Tail
-                WriterModel =
-                    { ctx.WriterModel with
-                        Lines = List.tail ctx.WriterModel.Lines } }
-    | _ -> onlyIf ctx.Config.InsertFinalNewline sepNln ctx
+    | Some WriteLineBecauseOfTrivia -> ctx
+    | _ -> sepNln ctx
 
 let genFile (oak: Oak) =
     (col sepNln oak.ParsedHashDirectives genParsedHashDirective

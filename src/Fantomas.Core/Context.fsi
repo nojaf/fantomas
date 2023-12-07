@@ -3,6 +3,8 @@ module internal Fantomas.Core.Context
 open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 
+val MaxLineLength: int
+
 type WriterEvent =
     | Write of string
     | WriteLine
@@ -23,10 +25,6 @@ type ShortExpressionInfo =
       ConfirmedMultiline: bool }
 
     member IsTooLong: maxPageWidth: int -> currentColumn: int -> bool
-
-type Size =
-    | CharacterWidth of maxWidth: Num
-    | NumberOfItems of items: Num * maxItems: Num
 
 type WriteModelMode =
     | Standard
@@ -53,14 +51,12 @@ type WriterModel =
 
 [<System.Diagnostics.DebuggerDisplay("\"{Dump()}\"")>]
 type Context =
-    { Config: FormatConfig
-      WriterModel: WriterModel
+    { WriterModel: WriterModel
       WriterEvents: Queue<WriterEvent>
       FormattedCursor: pos option }
 
     /// Initialize with a string writer and use space as delimiter
     static member Default: Context
-    static member Create: config: FormatConfig -> Context
     member WithDummy: writerCommands: Queue<WriterEvent> * ?keepPageWidth: bool -> Context
     member WithShortExpression: maxWidth: int * ?startColumn: int -> Context
     member Column: int
@@ -143,8 +139,6 @@ val optPre:
     ctx: Context ->
         Context
 
-val getListOrArrayExprSize: ctx: Context -> maxWidth: Num -> xs: 'a list -> Size
-val getRecordSize: ctx: Context -> fields: 'a list -> Size
 /// b is true, apply f1 otherwise apply f2
 val ifElse: b: bool -> f1: (Context -> Context) -> f2: (Context -> Context) -> ctx: Context -> Context
 
@@ -155,7 +149,6 @@ val ifElseCtx:
 val onlyIf: cond: bool -> f: ('a -> 'a) -> ctx: 'a -> 'a
 val onlyIfCtx: cond: ('a -> bool) -> f: ('a -> 'a) -> ctx: 'a -> 'a
 val onlyIfNot: cond: bool -> f: ('a -> 'a) -> ctx: 'a -> 'a
-val whenShortIndent: f: (Context -> Context) -> ctx: Context -> Context
 /// Repeat application of a function n times
 val rep: n: int -> f: (Context -> Context) -> ctx: Context -> Context
 val sepNone: ('a -> 'a)
@@ -171,8 +164,6 @@ val sepEqFixed: (Context -> Context)
 val sepArrow: (Context -> Context)
 val sepArrowRev: (Context -> Context)
 val sepBar: (Context -> Context)
-val addSpaceIfSpaceAroundDelimiter: ctx: Context -> Context
-val addSpaceIfSpaceAfterComma: ctx: Context -> Context
 /// opening token of list
 val sepOpenLFixed: (Context -> Context)
 /// closing token of list
@@ -199,11 +190,7 @@ val expressionFitsOnRestOfLine:
     expression: (Context -> Context) -> fallbackExpression: (Context -> Context) -> ctx: Context -> Context
 
 val isSmallExpression:
-    size: Size ->
-    smallExpression: (Context -> Context) ->
-    fallbackExpression: (Context -> Context) ->
-    ctx: Context ->
-        Context
+    smallExpression: (Context -> Context) -> fallbackExpression: (Context -> Context) -> ctx: Context -> Context
 
 /// provide the line and column before and after the leadingExpression to to the continuation expression
 val leadingExpressionResult:
@@ -228,14 +215,6 @@ val autoIndentAndNlnIfExpressionExceedsPageWidth: expr: (Context -> Context) -> 
 val sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth: expr: (Context -> Context) -> ctx: Context -> Context
 val sepSpaceOrDoubleIndentAndNlnIfExpressionExceedsPageWidth: expr: (Context -> Context) -> ctx: Context -> Context
 
-val sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidthUnlessStroustrup:
-    f: (Expr -> Context -> Context) -> expr: Expr -> ctx: Context -> Context
-
-val sepSpaceOrIndentAndNlnIfTypeExceedsPageWidthUnlessStroustrup:
-    f: (Type -> Context -> Context) -> t: Type -> ctx: Context -> Context
-
-val isStroustrupStyleExpr: config: FormatConfig -> e: Expr -> bool
-
 val autoParenthesisIfExpressionExceedsPageWidth: expr: (Context -> Context) -> ctx: Context -> Context
 val futureNlnCheck: f: (Context -> Context) -> ctx: Context -> bool
 /// similar to futureNlnCheck but validates whether the expression is going over the max page width
@@ -244,25 +223,16 @@ val exceedsWidth: maxWidth: int -> f: (Context -> Context) -> ctx: Context -> bo
 
 /// Similar to col, skip auto newline for index 0
 val colAutoNlnSkip0: f': (Context -> Context) -> c: 'a seq -> f: ('a -> Context -> Context) -> (Context -> Context)
-val sepSpaceBeforeClassConstructor: ctx: Context -> Context
 val sepColon: ctx: Context -> Context
 val sepColonFixed: (Context -> Context)
 val sepColonWithSpacesFixed: (Context -> Context)
 val sepComma: ctx: Context -> Context
 val sepSemi: ctx: Context -> Context
-val ifAlignOrStroustrupBrackets: f: (Context -> Context) -> g: (Context -> Context) -> (Context -> Context)
 val sepNlnWhenWriteBeforeNewlineNotEmptyOr: fallback: (Context -> Context) -> ctx: Context -> Context
 val sepNlnWhenWriteBeforeNewlineNotEmpty: (Context -> Context)
 val sepSpaceUnlessWriteBeforeNewlineNotEmpty: ctx: Context -> Context
 val autoIndentAndNlnWhenWriteBeforeNewlineNotEmpty: f: (Context -> Context) -> ctx: Context -> Context
 val addParenIfAutoNln: expr: Expr -> f: (Expr -> Context -> Context) -> (Context -> Context)
-
-val indentSepNlnUnindentUnlessStroustrup: f: (Expr -> Context -> Context) -> e: Expr -> ctx: Context -> Context
-
-val autoIndentAndNlnTypeUnlessStroustrup: f: (Type -> Context -> Context) -> t: Type -> ctx: Context -> Context
-
-val autoIndentAndNlnIfExpressionExceedsPageWidthUnlessStroustrup:
-    f: (Expr -> Context -> Context) -> e: Expr -> ctx: Context -> Context
 
 type ColMultilineItem = ColMultilineItem of expr: (Context -> Context) * sepNln: (Context -> Context)
 
@@ -285,4 +255,3 @@ type ColMultilineItem = ColMultilineItem of expr: (Context -> Context) * sepNln:
 ///
 /// let c = CCCC
 val colWithNlnWhenItemIsMultiline: items: ColMultilineItem list -> ctx: Context -> Context
-val colWithNlnWhenItemIsMultilineUsingConfig: items: ColMultilineItem list -> ctx: Context -> Context
