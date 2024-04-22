@@ -3484,7 +3484,7 @@ let genTypeDefn (td: TypeDefn) =
                     |> List.max
 
                 genSingleTextNode node.OpeningBrace
-                +> indentSepNlnUnindent (atCurrentColumn (col sepNln node.Fields (genField longestFieldName)))
+                +> indentSepNlnUnindent (atCurrentColumn (col sepNln node.Fields (genFieldAux longestFieldName)))
                 +> sepNln
                 +> genSingleTextNode node.ClosingBrace
 
@@ -3514,7 +3514,7 @@ let genTypeDefn (td: TypeDefn) =
                 sepNlnUnlessLastEventIsNewline
                 +> opt (indent +> sepNln) node.Accessibility genSingleTextNode
                 +> genSingleTextNodeSuffixDelimiter node.OpeningBrace
-                +> atCurrentColumn (sepNlnWhenWriteBeforeNewlineNotEmpty +> col sepNln node.Fields (genField 0))
+                +> atCurrentColumn (sepNlnWhenWriteBeforeNewlineNotEmpty +> col sepNln node.Fields genField)
                 +> addSpaceIfSpaceAroundDelimiter
                 +> genSingleTextNode node.ClosingBrace
                 +> optSingle (fun _ -> unindent) node.Accessibility
@@ -3536,7 +3536,7 @@ let genTypeDefn (td: TypeDefn) =
                     +> sepSpace
                     +> genSingleTextNode node.OpeningBrace
                     +> addSpaceIfSpaceAroundDelimiter
-                    +> col sepSemi node.Fields (genField 0)
+                    +> col sepSemi node.Fields genField
                     +> addSpaceIfSpaceAroundDelimiter
                     +> genSingleTextNode node.ClosingBrace
 
@@ -3689,7 +3689,7 @@ let genTypeInSignature (t: Type) =
     | Type.Funs funsNode -> autoIndentAndNlnIfExpressionExceedsPageWidth (genTypeList funsNode)
     | _ -> autoIndentAndNlnIfExpressionExceedsPageWidth (genType t)
 
-let genField (longestFieldName: int) (node: FieldNode) =
+let genFieldAux (longestFieldName: int) (node: FieldNode) =
     let genAccessAndFieldContent =
         genAccessOpt node.Accessibility
         +> (match node.Name with
@@ -3707,11 +3707,13 @@ let genField (longestFieldName: int) (node: FieldNode) =
     +> ifElseCtx hasWriteBeforeNewlineContent (indentSepNlnUnindent genAccessAndFieldContent) genAccessAndFieldContent
     |> genNode node
 
+let genField (node: FieldNode) = genFieldAux 0 node
+
 let genUnionCase (hasVerticalBar: bool) (node: UnionCaseNode) =
-    let shortExpr = col sepStar node.Fields (genField 0)
+    let shortExpr = col sepStar node.Fields genField
 
     let longExpr =
-        indentSepNlnUnindent (atCurrentColumn (col (sepStar +> sepNln) node.Fields (genField 0)))
+        indentSepNlnUnindent (atCurrentColumn (col (sepStar +> sepNln) node.Fields genField))
 
     let genBar =
         match node.Bar with
@@ -3775,7 +3777,7 @@ let genMemberDefn (md: MemberDefn) =
     | MemberDefn.Inherit node ->
         genSingleTextNode node.Inherit +> sepSpace +> genType node.BaseType
         |> genNode node
-    | MemberDefn.ValField node -> genField 0 node
+    | MemberDefn.ValField node -> genField node
     | MemberDefn.Member node -> genBinding node
     | MemberDefn.ExternBinding node -> genExternBinding node
     | MemberDefn.DoExpr node -> genExpr (Expr.Single node)
