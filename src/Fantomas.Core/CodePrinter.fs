@@ -3702,8 +3702,10 @@ let genFieldAux (longestFieldName: int) (node: FieldNode) =
             | None -> genType node.Type
             | Some name ->
                 genSingleTextNode name
+                +> onlyIfCtx
+                    (fun ctx -> ctx.Config.ExperimentalErian)
+                    (rep (longestFieldName - name.Text.Length + 1) (!- " "))
                 +> sepColon
-                +> rep (longestFieldName - name.Text.Length) (!- " ")
                 +> autoIndentAndNlnTypeUnlessStroustrup genType node.Type)
 
     genXml node.XmlDoc

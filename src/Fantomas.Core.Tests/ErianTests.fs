@@ -8,50 +8,31 @@ open Fantomas.Core.Tests.TestHelpers
 let config =
     { config with
         ExperimentalErian = true
-        MultilineBracketStyle = Aligned }
+        MultilineBracketStyle = Stroustrup }
 
 [<Test>]
 let ``testing the waters`` () =
     formatSourceString
         """
-type R =
-    {
-        Xemnas: int
-        Xigbar: int
-        Xaldin: int
-        Vexen: int
-        Lexaeus: int
-        Zexion: int
-        Saïx: int
-        Axel: int
-        Demyx: int
-        Luxord: int
-        Marluxia: int
-        Larxene: int
-        Roxas: int
-    }
+type Person =
+    { id : ID
+      name : string
+      age : int
+      nationality : Nation option
+      likesPho : bool }
 """
         config
     |> prepend newline
     |> should
         equal
         """
-type R =
-    {
-        Xemnas:   int
-        Xigbar:   int
-        Xaldin:   int
-        Vexen:    int
-        Lexaeus:  int
-        Zexion:   int
-        Saïx:     int
-        Axel:     int
-        Demyx:    int
-        Luxord:   int
-        Marluxia: int
-        Larxene:  int
-        Roxas:    int
-    }
+type Person = {
+    id          : ID
+    name        : string
+    age         : int
+    nationality : Nation option
+    likesPho    : bool
+}
 """
 
 [<Test>]
@@ -65,8 +46,7 @@ let rei =
       nationality = Some(Nations.Japan)
       likesPho = true }
 """
-        { config with
-            MultilineBracketStyle = Stroustrup }
+        config
     |> prepend newline
     |> should
         equal
