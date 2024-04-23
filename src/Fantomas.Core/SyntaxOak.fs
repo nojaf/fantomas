@@ -121,6 +121,13 @@ type IdentListNode(content: IdentifierOrDot list, range) =
             | _ -> None)
         |> Array.ofList
 
+    member val Length: int =
+        content
+        |> List.sumBy (function
+            | IdentifierOrDot.KnownDot _
+            | IdentifierOrDot.UnknownDot -> 1
+            | IdentifierOrDot.Ident ident -> (ident.Text: string).Length)
+
 type SingleTextNode(idText: string, range: range) =
     inherit NodeBase(range)
     member val Text = idText

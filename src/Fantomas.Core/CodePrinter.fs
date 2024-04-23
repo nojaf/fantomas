@@ -486,7 +486,7 @@ let genExpr (e: Expr) =
                      // Add spaces to ensure the record field (incl trivia) starts at the right column.
                      addFixedSpaces targetColumn
                      // Potential indentations will be in relation to the opening curly brace.
-                     +> genRecordFieldNameCramped false e)
+                     +> genRecordFieldNameCramped false 0 e)
                  +> addSpaceIfSpaceAroundDelimiter
                  +> genSingleTextNode node.ClosingBrace)
                     ctx
@@ -1604,7 +1604,9 @@ let genMultilineRecordCopyExpr (addAdditionalIndent: bool) fieldsExpr copyExpr =
 
 /// Special case for record fields in Cramped mode.
 /// The caller should have already verified that the settings do indeed specify Cramped.
-let genRecordFieldNameCramped (alreadyIndentedFurther: bool) (node: RecordFieldNode) =
+let genRecordFieldNameCramped (alreadyIndentedFurther: bool) (longestFieldName: int) (node: RecordFieldNode) =
+    ignore longestFieldName
+
     atCurrentColumn (
         enterNode node
         +> genIdentListNode node.FieldName
@@ -1624,21 +1626,25 @@ let genRecordFieldNameCramped (alreadyIndentedFurther: bool) (node: RecordFieldN
         genBodyExpr node.Expr ctx)
     +> leaveNode node
 
-let genRecordFieldNameAligned (node: RecordFieldNode) =
+let genRecordFieldNameAligned (longestFieldName: int) (node: RecordFieldNode) =
+    ignore longestFieldName
+
     atCurrentColumn (
         enterNode node
         +> genIdentListNode node.FieldName
         +> sepSpace
+        +> onlyIfCtx (fun ctx -> ctx.Config.ExperimentalErian) (rep (longestFieldName - node.FieldName.Length) (!- " "))
         +> genSingleTextNode node.Equals
     )
     +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidthUnlessStroustrup genExpr node.Expr
     +> leaveNode node
 
 let genMultilineRecordFieldsExpr
-    (genRecordField: RecordFieldNode -> Context -> Context)
+    (genRecordField: int -> RecordFieldNode -> Context -> Context)
     (node: ExprRecordBaseNode)
     : Context -> Context =
-    col sepNln node.Fields genRecordField
+    let longestFieldName = node.Fields |> List.map _.FieldName.Length |> List.max
+    col sepNln node.Fields (genRecordField longestFieldName)
 
 /// <summary>
 /// Print a (anonymous) record with additional information as a single line.
@@ -1732,7 +1738,7 @@ let genMultilineRecord (node: ExprRecordNode) (ctx: Context) =
                             // Add spaces to ensure the record field (incl trivia) starts at the right column.
                             addFixedSpaces targetColumn
                             // Potential indentations will be in relation to the opening curly brace.
-                            +> genRecordFieldNameCramped false e)
+                            +> genRecordFieldNameCramped false 0 e)
                         ctx
 
         // Edge case scenario to make sure that the closing brace is not before the opening one

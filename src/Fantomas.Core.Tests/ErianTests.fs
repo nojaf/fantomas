@@ -53,3 +53,29 @@ type R =
         Roxas:    int
     }
 """
+
+[<Test>]
+let ``record expression`` () =
+    formatSourceString
+        """
+let rei =
+    { id = newID()
+      name = "rei"
+      age = 33
+      nationality = Some(Nations.Japan)
+      likesPho = true }
+"""
+        { config with
+            MultilineBracketStyle = Stroustrup }
+    |> prepend newline
+    |> should
+        equal
+        """
+let rei = {
+    id          = newID ()
+    name        = "rei"
+    age         = 33
+    nationality = Some(Nations.Japan)
+    likesPho    = true
+}
+"""
