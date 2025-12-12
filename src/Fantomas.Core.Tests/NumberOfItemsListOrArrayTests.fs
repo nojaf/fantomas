@@ -15,7 +15,8 @@ f xs [ x; y; z ]
 List.map (fun x -> x * x) [1;2;]
     """
         { config with
-            ArrayOrListMultilineFormatter = NumberOfItems }
+            ArrayOrListMultilineFormatter = NumberOfItems
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -50,7 +51,8 @@ f xs [| x; y; z |]
 List.map (fun x -> x * x) [|1;2;|]
     """
         { config with
-            ArrayOrListMultilineFormatter = NumberOfItems }
+            ArrayOrListMultilineFormatter = NumberOfItems
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -291,7 +293,8 @@ let ``long expressions with number of items set to 3 will get split due to max l
     """
         { config with
             ArrayOrListMultilineFormatter = NumberOfItems
-            MaxArrayOrListNumberOfItems = 3 }
+            MaxArrayOrListNumberOfItems = 3
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -308,7 +311,9 @@ let x = [ a; b; c ]
 let y = [ longValueThatIsALotOfCharactersSoooooLong; longValueThatIsALotOfCharactersSoooooLong ]
 let z = [ longValueThatIsALotOfCharactersSoooooLong; 100; 123 ]
     """
-        { config with MaxArrayOrListWidth = 70 }
+        { config with
+            MaxArrayOrListWidth = 70
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

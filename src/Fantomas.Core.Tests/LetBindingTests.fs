@@ -772,7 +772,8 @@ let useEntries month year =
 
     (income, expenses)
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -929,7 +930,8 @@ let useOverviewPerMonth () =
 
     months
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -980,7 +982,9 @@ let ``don't add newline before array, 1033`` () =
            "--noframework"
            yield! refs |]
 """
-        { config with MaxArrayOrListWidth = 40 }
+        { config with
+            MaxArrayOrListWidth = 40
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1378,7 +1382,8 @@ printfn "%s" (lookupMonth 12)
 printfn "%s" (lookupMonth 1)
 printfn "%s" (lookupMonth 13) // Throws an exception!
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1717,7 +1722,8 @@ type Viewport =
       longitude: float
       zoom: int }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

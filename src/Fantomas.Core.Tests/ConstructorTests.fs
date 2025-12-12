@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.ConstructorTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``multiple base constructors in record, 2111`` () =
@@ -20,7 +21,9 @@ type UnhandledWebException =
     new(info: SerializationInfo, context: StreamingContext) =
         { inherit Exception(info, context) }
 """
-        { config with MaxLineLength = 100 }
+        { config with
+            MaxLineLength = 100
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -183,7 +186,8 @@ type CreateBuildingViewModel =
         then
             vm.program <- p
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

@@ -180,7 +180,8 @@ type ProtocolGlitchException =
     new(message: string, innerException: Exception) =
         { inherit CommunicationUnsuccessfulException(message, innerException) }
 """
-        spaceBeforeConfig
+        { spaceBeforeConfig with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -214,7 +215,8 @@ type DerivedClass =
 
     new(str2) = { inherit BaseClass(); string2 = str2 }
 """
-        spaceBeforeConfig
+        { spaceBeforeConfig with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -250,7 +252,8 @@ type DerivedClass =
           string2 = str2 }
 """
         { config with
-            SpaceBeforeClassConstructor = false }
+            SpaceBeforeClassConstructor = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

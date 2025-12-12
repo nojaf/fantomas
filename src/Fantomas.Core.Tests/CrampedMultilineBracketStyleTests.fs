@@ -5,6 +5,10 @@ open FsUnit
 open Fantomas.Core.Tests.TestHelpers
 open Fantomas.Core
 
+let config =
+    { config with
+        MultilineBracketStyle = Cramped }
+
 [<Test>]
 let ``record declaration`` () =
     formatSourceString "type AParameters = { a : int }" config

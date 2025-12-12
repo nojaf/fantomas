@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.SynExprSetTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 /// See https://fsprojects.github.io/fantomas/reference/fsharp-compiler-syntax-synexpr.html#Set
 
@@ -87,7 +88,8 @@ let ``don't add additional new line after SynExpr.LongIndentSet, 1111`` () =
 """
         { config with
             MaxArrayOrListWidth = 40
-            MaxInfixOperatorExpression = 50 }
+            MaxInfixOperatorExpression = 50
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

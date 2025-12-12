@@ -18,6 +18,9 @@ type CodeFormatter =
     /// Format an abstract syntax tree with the original source for trivia processing
     static member FormatASTAsync: ast: ParsedInput * source: string -> Async<string>
 
+    /// Format an abstract syntax tree with the original source for trivia processing
+    static member FormatASTAsync: ast: ParsedInput * config: FormatConfig * source: string -> Async<string>
+
     /// <summary>
     /// Format a source string using an optional config.
     /// </summary>

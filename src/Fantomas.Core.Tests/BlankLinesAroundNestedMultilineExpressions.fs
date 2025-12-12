@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.BlankLinesAroundNestedMultilineExpressions
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 let config =
     { config with
@@ -147,7 +148,9 @@ type MNIST(path:string, ?urls:seq<string>, ?train:bool, ?transform:Tensor->Tenso
             if File.Exists(filesProcessed.[3]) then target <- dsharp.load(filesProcessed.[3]) else target <- MNIST.LoadMNISTLabels(files.[3]); dsharp.save(target, filesProcessed.[3])
         data, target
 """
-        { config with MaxLineLength = 100 }
+        { config with
+            MaxLineLength = 100
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

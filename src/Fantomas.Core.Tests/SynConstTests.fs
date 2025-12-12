@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.SynConstTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 // https://fsharp.github.io/FSharp.Compiler.Service/reference/fsharp-compiler-ast-synconst.html
 [<Test>]
@@ -605,7 +606,8 @@ a:hover {color: #ecc;}
 "
         { config with
             MaxInfixOperatorExpression = 50
-            MaxArrayOrListWidth = 40 }
+            MaxArrayOrListWidth = 40
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

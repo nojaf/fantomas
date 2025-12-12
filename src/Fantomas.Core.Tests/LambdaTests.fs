@@ -63,7 +63,9 @@ let private badgeSample =
 
 exportDefault badgeSample
 """
-        { config with MaxArrayOrListWidth = 40 }
+        { config with
+            MaxArrayOrListWidth = 40
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -127,7 +129,8 @@ Target.create "Clean" (fun _ ->
     |> List.iter Shell.cleanDir
 )
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -672,7 +675,8 @@ Decode.map3 (fun aggregateId event commitPayload ->
               Payload = payload }
     | None -> None) (Decode.field "aggregate_id" Decode.string) (Decode.field "event" Decode.string) decodePayload
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -915,7 +919,8 @@ module Foo =
         }
 """
         { config with
-            MaxInfixOperatorExpression = 50 }
+            MaxInfixOperatorExpression = 50
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1067,7 +1072,8 @@ let g =
                revisionNumber = r
                processName = pn } -> p, r, pn)
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

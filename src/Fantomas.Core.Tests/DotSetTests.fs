@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.DotSetTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``function application with parentheses should not respect SpaceBeforeUppercaseInvocation`` () =
@@ -82,12 +83,8 @@ app().foo <- {|
 |}
 """
         { config with
-            SpaceBeforeLowercaseInvocation = true }
-    |> fun formatted ->
-        formatSourceString
-            formatted
-            { config with
-                SpaceBeforeLowercaseInvocation = true }
+            SpaceBeforeLowercaseInvocation = true
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

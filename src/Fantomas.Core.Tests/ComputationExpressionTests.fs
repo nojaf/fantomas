@@ -1335,7 +1335,8 @@ let loginHandler =
             return! text "Successfully logged in" next ctx
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2042,7 +2043,8 @@ let password =
             (fun s -> s.Length >= 6)
     }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2234,7 +2236,8 @@ let ``keep new line before match bang, 1313`` () =
         |> AsyncResult.foldResult id (fun _ -> []))
       "Incomplete pattern matches on this expression. For example"
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2297,7 +2300,8 @@ aggregateResult {
 }
 """
         { config with
-            MaxInfixOperatorExpression = 40 }
+            MaxInfixOperatorExpression = 40
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2420,7 +2424,8 @@ let ``trivia after computation expression, 2466`` () =
                               EndLine = e.EndLine }
                     } (*[/omit]*)
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

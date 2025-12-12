@@ -12,8 +12,12 @@ let parseAndFormat sourceCode =
         |> Seq.head
         |> fst
 
+    let config =
+        { config with
+            MultilineBracketStyle = Cramped }
+
     let formattedCode =
-        CodeFormatter.FormatASTAsync(ast, source = sourceCode)
+        CodeFormatter.FormatASTAsync(ast, source = sourceCode, config = config)
         |> Async.RunSynchronously
         |> String.normalizeNewLine
         |> fun s -> s.TrimEnd('\n')

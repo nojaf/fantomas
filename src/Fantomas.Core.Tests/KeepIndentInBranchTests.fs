@@ -268,7 +268,8 @@ module Foo =
                 Some 3
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -323,7 +324,8 @@ module Foo =
                 Some 3
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1416,7 +1418,9 @@ let x y =
             let ipv4 = string result.["ipv4"]
             None
 """
-        { config with MaxArrayOrListWidth = 40 }
+        { config with
+            MaxArrayOrListWidth = 40
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1462,7 +1466,9 @@ let x =
             let ipv4 = string result.["ipv4"]
             None
 """
-        { config with MaxArrayOrListWidth = 40 }
+        { config with
+            MaxArrayOrListWidth = 40
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

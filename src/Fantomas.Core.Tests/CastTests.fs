@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.CastTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``multiline downcast expression, `` () =
@@ -145,7 +146,8 @@ module Foo =
 """
         { config with
             SpaceBeforeColon = true
-            SpaceBeforeSemicolon = true }
+            SpaceBeforeSemicolon = true
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -180,7 +182,8 @@ module Foo =
 """
         { config with
             SpaceBeforeColon = true
-            SpaceBeforeSemicolon = true }
+            SpaceBeforeSemicolon = true
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

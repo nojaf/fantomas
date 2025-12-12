@@ -116,7 +116,8 @@ type Model =
       Name: string // bar
       Street: string }
     """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -312,7 +313,8 @@ let a =
     // bar
     B = 7 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -333,7 +335,8 @@ let a =
       // bar
       B = 7 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -356,7 +359,8 @@ let a =
       B = 7 }
 """
         { config with
-            SpaceAroundDelimiter = false }
+            SpaceAroundDelimiter = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -586,7 +590,8 @@ module TriviaModule =
 
 (* ending with block comment *)
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -826,7 +831,8 @@ type substring =
 #endif
 """
         { config with
-            MaxInfixOperatorExpression = 60 }
+            MaxInfixOperatorExpression = 60
+            MultilineBracketStyle = Cramped }
     |> should
         equal
         """(*
@@ -1274,7 +1280,8 @@ type T =
   ; // Delay in ms since it entered the queue
     delay : float }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1631,7 +1638,8 @@ type TorDirectory =
                 }
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2330,7 +2338,8 @@ type ExprFolder<'State> =
       targetIntercept: ('State -> Expr -> 'State) -> 'State -> DecisionTreeTarget -> 'State option
       tmethodIntercept: ('State -> Expr -> 'State) -> 'State -> ObjExprMethod -> 'State option }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2447,7 +2456,8 @@ let Anonymous =
     {| FontFamily = 700 // font-weight
        FontSize = 48. |} // font-weight
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

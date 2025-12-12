@@ -18,7 +18,8 @@ let f
     =
     x
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

@@ -1968,7 +1968,8 @@ let lessonsForm (f:ValidatedForm<Request.CreateLessons>) dispatch =
         ]
     ]
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

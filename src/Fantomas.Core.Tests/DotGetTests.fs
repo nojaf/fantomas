@@ -776,7 +776,8 @@ let blah =
 """
         { config with
             SpaceBeforeUppercaseInvocation = true
-            SpaceBeforeMember = true }
+            SpaceBeforeMember = true
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
