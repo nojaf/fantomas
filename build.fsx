@@ -461,9 +461,7 @@ let getReleaseNotes currentRelease (lastRelease: GithubRelease) =
         let queryResult =
             Cli
                 .Wrap("gh")
-                .WithArguments(
-                    $"pr list -S \"state:closed base:main closed:>{date} -author:app/robot\" --json commits,mergedAt"
-                )
+                .WithArguments($"pr list -S \"state:closed base:main closed:>{date}\" --json commits,mergedAt")
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteBufferedAsync()
                 .Task.Result
@@ -490,15 +488,12 @@ let getReleaseNotes currentRelease (lastRelease: GithubRelease) =
                     let mergedAtOpt =
                         match pr.TryGetProperty("mergedAt") with
                         | Some mergedAtJson ->
-                            try
-                                let mergedAtStr = mergedAtJson.AsString()
-                                Some(
-                                    DateTime
-                                        .Parse(mergedAtStr, null, System.Globalization.DateTimeStyles.RoundtripKind)
-                                        .ToUniversalTime()
-                                )
-                            with _ ->
-                                None
+                            let mergedAtStr = mergedAtJson.AsString()
+                            match
+                                DateTime.TryParse(mergedAtStr, null, System.Globalization.DateTimeStyles.RoundtripKind)
+                            with
+                            | true, dt -> Some(dt.ToUniversalTime())
+                            | false, _ -> None
                         | None -> None
 
                     match mergedAtOpt with
