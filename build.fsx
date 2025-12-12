@@ -427,28 +427,28 @@ let getReleaseNotes currentRelease (lastRelease: GithubRelease) =
                 ghReleaseResult.ExitCode = 0
                 && not (String.IsNullOrWhiteSpace(ghReleaseResult.StandardOutput.Trim()))
             then
-                try
-                    let jsonOutput = ghReleaseResult.StandardOutput.Trim()
-                    let jsonValue = FSharp.Data.JsonValue.Parse(jsonOutput)
-                    let releases = jsonValue.AsArray()
-                    if releases.Length > 0 then
-                        let createdAt = releases.[0].GetProperty("createdAt").AsString()
-                        let lastIdx = createdAt.LastIndexOf("Z", StringComparison.Ordinal)
-                        if lastIdx > 0 then
-                            let ghDate = createdAt.Substring(0, lastIdx)
-                            printfn $"Using most recent GitHub release date for author attribution: {ghDate}"
-                            ghDate
-                        else
-                            let fallbackDate = DateTime.UtcNow.ToString("yyyy-MM-dd")
-                            printfn $"Could not parse GitHub release date format, using current date: {fallbackDate}"
-                            fallbackDate
-                    else
+                let jsonOutput = ghReleaseResult.StandardOutput.Trim()
+                let jsonValue = FSharp.Data.JsonValue.Parse(jsonOutput)
+                let releases = jsonValue.AsArray()
+                if releases.Length > 0 then
+                    match releases.[0].TryGetProperty("createdAt") with
+                    | Some createdAtJson ->
+                        let createdAt = createdAtJson.AsString()
+                        // Parse ISO 8601 date and convert back to string format for the query
+                        let dateTime =
+                            DateTime
+                                .Parse(createdAt, null, System.Globalization.DateTimeStyles.RoundtripKind)
+                                .ToUniversalTime()
+                        let ghDate = dateTime.ToString("yyyy-MM-ddTHH:mm:ss")
+                        printfn $"Using most recent GitHub release date for author attribution: {ghDate}"
+                        ghDate
+                    | None ->
                         let fallbackDate = DateTime.UtcNow.ToString("yyyy-MM-dd")
-                        printfn $"No GitHub releases found, using current date: {fallbackDate}"
+                        printfn $"GitHub release missing createdAt, using current date: {fallbackDate}"
                         fallbackDate
-                with ex ->
+                else
                     let fallbackDate = DateTime.UtcNow.ToString("yyyy-MM-dd")
-                    printfn $"Could not parse GitHub release JSON, using current date: {fallbackDate}"
+                    printfn $"No GitHub releases found, using current date: {fallbackDate}"
                     fallbackDate
             else
                 let fallbackDate = DateTime.UtcNow.ToString("yyyy-MM-dd")
@@ -478,16 +478,9 @@ let getReleaseNotes currentRelease (lastRelease: GithubRelease) =
             let jsonValue = FSharp.Data.JsonValue.Parse(jsonOutput)
             let prs = jsonValue.AsArray()
 
-            // Parse the last release published date as ISO timestamp for comparison
+            // Parse the date as ISO 8601 format (GitHub always returns dates in this format: "2025-08-02T10:25:30Z")
             let cutoffTimestamp =
-                try
-                    DateTime.Parse(date).ToUniversalTime()
-                with _ ->
-                    // If parsing fails, try to parse as ISO format
-                    try
-                        DateTime.ParseExact(date, "yyyy-MM-ddTHH:mm:ss", null).ToUniversalTime()
-                    with _ ->
-                        DateTime.ParseExact(date, "yyyy-MM-dd", null).ToUniversalTime()
+                DateTime.Parse(date, null, System.Globalization.DateTimeStyles.RoundtripKind).ToUniversalTime()
 
             printfn $"Filtering PRs merged after: {cutoffTimestamp:O}"
 
@@ -495,35 +488,42 @@ let getReleaseNotes currentRelease (lastRelease: GithubRelease) =
                 prs
                 |> Array.collect (fun (pr: FSharp.Data.JsonValue) ->
                     let mergedAtOpt =
-                        try
-                            let mergedAtStr = pr.GetProperty("mergedAt").AsString()
-                            Some(DateTime.Parse(mergedAtStr).ToUniversalTime())
-                        with _ ->
-                            None
+                        match pr.TryGetProperty("mergedAt") with
+                        | Some mergedAtJson ->
+                            try
+                                let mergedAtStr = mergedAtJson.AsString()
+                                Some(
+                                    DateTime
+                                        .Parse(mergedAtStr, null, System.Globalization.DateTimeStyles.RoundtripKind)
+                                        .ToUniversalTime()
+                                )
+                            with _ ->
+                                None
+                        | None -> None
 
                     match mergedAtOpt with
                     | Some mergedAt when mergedAt > cutoffTimestamp ->
-                        try
-                            let commits = pr.GetProperty("commits").AsArray()
+                        match pr.TryGetProperty("commits") with
+                        | Some commitsJson ->
+                            let commits = commitsJson.AsArray()
                             commits
                             |> Array.collect (fun (commit: FSharp.Data.JsonValue) ->
-                                try
-                                    let commitAuthors = commit.GetProperty("authors").AsArray()
+                                match commit.TryGetProperty("authors") with
+                                | Some authorsJson ->
+                                    let commitAuthors = authorsJson.AsArray()
                                     commitAuthors
                                     |> Array.choose (fun (author: FSharp.Data.JsonValue) ->
-                                        try
-                                            let login = author.GetProperty("login").AsString()
+                                        match author.TryGetProperty("login") with
+                                        | Some loginJson ->
+                                            let login = loginJson.AsString()
                                             // Filter out bots
                                             if login.EndsWith("[bot]", StringComparison.Ordinal) then
                                                 None
                                             else
                                                 Some(login)
-                                        with _ ->
-                                            None)
-                                with _ ->
-                                    [||])
-                        with _ ->
-                            [||]
+                                        | None -> None)
+                                | None -> [||])
+                        | None -> [||]
                     | _ -> [||])
                 |> Array.distinct
                 |> Array.sort
