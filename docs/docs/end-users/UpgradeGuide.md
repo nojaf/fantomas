@@ -82,12 +82,17 @@ fsharp_experimental_stroustrup_style = true
 ### Miscellaneous
 - The namespace in [Fantomas.FCS](https://www.nuget.org/packages/Fantomas.FCS) changed from `FSharp.Compiler` to `Fantomas.FCS`.
 
-## v7 alpha
+## v7
 
 ### console application
 - Target framework is now `net8.0`.
 
 ### .editorconfig
 - `fsharp_max_dot_get_expression_width` was removed.
+
+## v8 alpha
+
+### .editorconfig
+- The default setting for `fsharp_multiline_bracket_style` is now `aligned`, to restore the previous behaviour use `fsharp_multiline_bracket_style = cramped`.
 
 <fantomas-nav previous="{{fsdocs-previous-page-link}}" next="{{fsdocs-next-page-link}}"></fantomas-nav>
