@@ -5,7 +5,12 @@ index: 14
 ---
 # Releases
 
-Releases in Fantomas are not automated and require some manual steps by the maintainers.
+Releases in Fantomas are automated via GitHub Actions. When a new release entry is added to the [CHANGELOG.md](https://github.com/fsprojects/fantomas/blob/main/CHANGELOG.md) and pushed to the `main` branch, the release workflow will automatically:
+
+1. Build and test the project
+2. Create NuGet packages
+3. Publish packages to NuGet
+4. Create a GitHub release with release notes
 
 ## Preparation
 
@@ -15,62 +20,81 @@ The [CHANGELOG.md](https://github.com/fsprojects/fantomas/blob/main/CHANGELOG.md
 ## [5.1.0] - 2022-11-04
 ```
 
-It is custom to have the next version merged into the `main` branch and locally publish from there.
+For prerelease versions, include the prerelease suffix:
+
+```md
+## [8.0.0-alpha-001] - 2024-12-12
+```
 
 Verify that all recent PRs and closed issues are listed in the changelog. Normally, this should be ok as we require a changelog entry before we merge a PR.
 
-## NuGet push
+Once the changelog entry is merged into `main`, the release workflow will automatically trigger and handle the release process.
 
-To publish the new versions to NuGet:
+## Testing Releases Locally
 
-> dotnet fsi build.fsx --push
+You can test the release process locally using the `--dry-run` flag. This will perform all validation and generate release notes without actually publishing to NuGet or creating a GitHub release:
 
-The `--push` will try and publish the `*.nupkg` files created by the build in the `bin` folder.
-`Fantomas.Client` will be excluded and requires a specific pipeline to publish.
-
-The pipeline does assume that the `NUGET_KEY` environment variable is set with a valid NuGet key.
-
-## GitHub release
-
-A new GitHub release entry should be created for official versions. This will notify users who have subscribed to releases.  
-In the past some alpha or beta releases have had a GitHub release, it depends on the occasion.
-
-### Tag
-
-Create a new tag based on the main branch. The assumption is that the `CHANGELOG` file contains the tag version you are about to create.
-
-### Release title
-
-For a revision release you can use the current date (example: `October 13th Release`), for a minor or major releas pick the month name (example: `September`).
-
-### Description
-
-Some parts of the description are fixed, some depend on the occasions:
-
-```md
-# Title
-
-<!-- Optional intro paragraph  -->
-
-<!-- Copy the sections of the changelog -->
-
-<!-- Optional special thanks -->
-Special thanks to @x, @y and @z!
-
-<!-- Link to published version on NuGet -->
-[https://www.nuget.org/packages/fantomas/5.0.4](https://www.nuget.org/packages/fantomas/5.0.4)
+```bash
+dotnet fsi build.fsx -- -p Release --dry-run
 ```
 
-The format of the title is `# version` (example: `# 5.0.5`). This differs from the notation used in the changelog file!  
-For minors and majors a codename (inside a `<sub>` tag) is used. All codenames so far have been song titles by the band Ghost (example `# 5.1.0 <sub>Kaisarion</sub> - 11/2022`).  
-With the exception of `v5, "Get Back"`.
+This is useful for:
+- Verifying the release notes before publishing
+- Checking that the changelog is parsed correctly
+- Testing author attribution
+- Ensuring the release pipeline works as expected
 
-The list of people to thank is compiled by cross referencing the changelog entries. The author of the GitHub release is omitted.  
-Don't be shy to include other names of people who have contributed in alternative ways when the occasion calls for it.
+## Automated Release Process
 
-### Artifacts
+The release pipeline (`build.fsx -p Release`) performs the following steps:
 
-Upload the `*.nupkg` files to the release artifacts.
+1. **Parses the changelog** to find the current and last release
+2. **Checks if the release already exists** on GitHub (skips if already published)
+3. **Builds and tests** the project
+4. **Creates NuGet packages** for all projects (except `Fantomas.Client`)
+5. **Publishes packages to NuGet**
+6. **Generates release notes** including:
+   - Changelog sections (Added, Changed, Fixed, etc.)
+   - Contributor attribution (from PR commits merged since the last release)
+   - Link to NuGet package
+7. **Creates GitHub release**:
+   - Draft releases for stable minor/major versions (patch = 0)
+   - Published releases for revisions (patch > 0) and all prereleases
+   - Includes `--prerelease` flag for alpha/beta versions
+
+### Release Types
+
+- **Stable minor/major** (e.g., `7.0.0`, `8.0.0`): Created as draft releases, requiring manual publish
+- **Stable revisions** (e.g., `7.0.5`, `8.1.2`): Published immediately
+- **Prereleases** (e.g., `8.0.0-alpha-001`, `8.0.0-beta-001`): Always published immediately
+
+### Author Attribution
+
+The release notes automatically include contributor attribution by:
+- Querying PRs merged since the last release
+- Extracting authors from all commits in those PRs
+- Filtering out bots (e.g., `dependabot[bot]`)
+- Generating a "Special thanks to..." message
+
+## Manual Steps
+
+The only manual step required is for **minor and major releases**:
+
+### Adding Release Nicknames
+
+Minor and major releases are created as **draft releases** on GitHub. This allows maintainers to add a cool nickname to the release title before publishing. 
+
+The nickname is typically a song name from the band Ghost. For example:
+- `# 5.1.0 <sub>Kaisarion</sub> - 11/2022`
+- `# 7.0.0 <sub>Year Zero</sub> - 01/2025`
+
+To add a nickname:
+1. Go to the draft release on GitHub
+2. Edit the release title to add the nickname in a `<sub>` tag
+3. Review the release notes (they're already generated automatically)
+4. Publish the release
+
+**Note**: `Fantomas.Client` requires a separate pipeline (`build.fsx -p PushClient`) and is not included in the automated release.
 
 ## Spread the word
 

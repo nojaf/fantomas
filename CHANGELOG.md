@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.0.0-alpha-001] - 2025-12-12
+
+### Changed
+
+- Update FCS to 'Remove LetOrUseKeyword from SynExprLetOrUseTrivia', commit 43932b4c7984d6562e91e5f1484868cd4f5befcf [#3167](https://github.com/fsprojects/fantomas/pull/3167)
+
 ## [7.0.5] - 2025-12-06
 
 ### Fixed
