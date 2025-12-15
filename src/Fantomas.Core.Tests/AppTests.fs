@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.AppTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 // the current behavior results in a compile error since the |> is merged to the last line
 [<Test>]
@@ -648,7 +649,9 @@ let ``string interpolation should not affect multiline function applications, 17
 
            mkMember $"this.Try{memberName}" None [ mkSynAttribute "CustomOperation" (mkSynExprConstString $"try{memberName}") ] [ parameters ] (objectStateExpr body)
 """
-        { config with IndentSize = 2 }
+        { config with
+            IndentSize = 2
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1130,7 +1133,9 @@ let ``multiline application wrapped in parentheses that equal the indent_size, 2
         """
 ((Combo { e1 = "Making this long so it goes on a new line new line new line new line making it long so it goes on a new line new line" }))
 """
-        { config with IndentSize = 2 }
+        { config with
+            IndentSize = 2
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

@@ -671,7 +671,8 @@ let r =
 Fooey
 \"\"\" |}
 "
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1205,7 +1206,8 @@ type Test =
      { WorkHoursPerWeek = 40u<hr*(staff weeks)> }
 """
         { config with
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

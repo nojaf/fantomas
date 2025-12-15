@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.InterfaceTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``interfaces and inheritance`` () =
@@ -61,7 +62,10 @@ let ``should not add with to interface definitions with no members`` () =
 
 [<Test>]
 let ``object expressions`` () =
-    formatSourceString """let obj1 = { new System.Object() with member x.ToString() = "F#" }""" config
+    formatSourceString
+        """let obj1 = { new System.Object() with member x.ToString() = "F#" }"""
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -82,7 +86,8 @@ let ``object expressions and interfaces`` () =
           interface IFirst with
             member this.F() = ()
             member this.G() = () }"""
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -107,7 +112,8 @@ let f () =
       interface IEnumerable<_> with
         member x.GetEnumerator() = null }"""
         { config with
-            MaxValueBindingWidth = 120 }
+            MaxValueBindingWidth = 120
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -473,7 +479,8 @@ let test () =
     { new IDisposable with
         override this.Dispose() = dispose somethingElse }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -616,7 +623,8 @@ let ``interface in obj expression, 2604`` () =
     interface Meh with
         member x.Blur = () }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -640,7 +648,8 @@ let create () =
       interface Interface2 with
           member _.Foo2 s = s }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

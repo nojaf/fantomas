@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.HashDirectiveTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``should use verbatim strings on some hash directives`` () =
@@ -176,7 +177,8 @@ type FSharpTokenizerColorState =
     | TripleQuoteStringInComment = 14
     | InitialState = 0
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

@@ -794,7 +794,8 @@ let ``anon record expr`` () =
         b
 |}
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -812,7 +813,8 @@ let ``obj expr`` () =
     interface Meh with
         member x.Blur = () }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1490,7 +1492,8 @@ let ``multiple always break infix operators`` () =
     [ IdentifierOrDot.KnownDot(stn "." dot)
       IdentifierOrDot.Ident(mkSynIdent ident) ])
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

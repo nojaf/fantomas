@@ -31,11 +31,11 @@ type CodeFormatter =
             return result.Code
         }
 
-    static member FormatASTAsync(ast: ParsedInput, source, config) : Async<FormatResult> =
+    static member FormatASTAsync(ast: ParsedInput, config, source) : Async<string> =
         async {
             let sourceText = Some(CodeFormatterImpl.getSourceText source)
             let result = CodeFormatterImpl.formatAST ast sourceText config None
-            return result
+            return result.Code
         }
 
     static member FormatDocumentAsync(isSignature, source) =

@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.0.0-alpha-002] - 2025-12-15
+
+### Changed
+
+- Breaking: change default of MultilineBracketStyle from Cramped to Aligned. [#3200](https://github.com/fsprojects/fantomas/issues/3200)
+
 ## [8.0.0-alpha-001] - 2025-12-12
 
 ### Changed

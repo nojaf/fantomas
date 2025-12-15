@@ -836,7 +836,8 @@ let private useLocationDetail (auth0 : Auth0Hook) (roles : RolesHook) id =
         { config with
             SpaceBeforeColon = true
             MaxArrayOrListWidth = 40
-            MaxInfixOperatorExpression = 50 }
+            MaxInfixOperatorExpression = 50
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1286,7 +1287,8 @@ let stillCramped = [
     x ; y ; z
 ]
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

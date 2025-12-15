@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.StructTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``struct type`` () =
@@ -166,7 +167,8 @@ struct // 1
     // 5       
     |} // 6 
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.PatternMatchingTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``match expressions`` () =
@@ -790,7 +791,9 @@ let private update onSubmit msg model =
 
         { model with Errors = errors }, Cmd.none
 """
-        { config with SpaceBeforeColon = true }
+        { config with
+            SpaceBeforeColon = true
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -936,7 +939,8 @@ let draftToken =
             else Other
         DraftToken.Create kind token
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

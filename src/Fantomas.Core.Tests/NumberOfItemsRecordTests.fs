@@ -32,7 +32,8 @@ let ``record instance`` () =
       Street = "Bakerstreet"
       Number = 42 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -57,7 +58,8 @@ let ``nested record`` () =
             ZipCode = "9000" }
       Number = 42 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -81,7 +83,8 @@ let ``update record`` () =
              Bar = "barry"
              Progress = "fooey" }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -116,7 +119,8 @@ let ``record instance with inherit keyword`` () =
           buildSettings = FSharpBuildSettings()
           targetPlatformData = targetPlatformData }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -171,7 +175,8 @@ let ``anonymous record`` () =
        Street = "Bakerstreet"
        Number = 42 |}
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -202,7 +207,9 @@ let ``anonymous record with multiple field update`` () =
     formatSourceString
         """let a = {| foo with Level = 7; Square = 9 |}
 """
-        { config with MaxRecordWidth = 35 }
+        { config with
+            MaxRecordWidth = 35
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -218,7 +225,8 @@ let ``anonymous type`` () =
     formatSourceString
         """type a = {| foo : string; bar : string |}
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -233,7 +241,8 @@ let ``anonymous record with single field`` () =
     formatSourceString
         """let a = {| A = "meh" |}
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -251,7 +260,8 @@ let anonRecord =
        C= { C1 = "foo"; C2LongerIdentifier = "bar"}
        D = { D1 = "bar" } |}
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -273,7 +283,8 @@ let ``record as parameter to function`` () =
         """let configurations =
     buildConfiguration { XXXXXXXXXXXX = "XXXXXXXXXXXXX"; YYYYYYYYYYYY = "YYYYYYYYYYYYYYY" }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -294,7 +305,8 @@ let ``records in list`` () =
         { Build = true; Configuration = "UNKNOWN"; Defines = [] }
     ]
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -320,7 +332,8 @@ let ``anonymous records in list`` () =
         {| Build = true; Configuration = "DEBUG"; Defines = ["FOO";"BAR"] |}
     ]
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -343,7 +356,8 @@ let ``records in array`` () =
         { Build = true; Configuration = "DEBUG"; Defines = ["FOO";"BAR"] }
     |]
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -363,7 +377,8 @@ let ``object expression`` () =
         """
 let obj1 = { new System.Object() with member x.ToString() = "F#" }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -383,7 +398,8 @@ let a =
         { new System.Object() with member x.ToString() = "C#" }
     ]
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -444,7 +460,8 @@ type Range =
 """
         { config with
             MaxValueBindingWidth = 120
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -465,7 +482,8 @@ type MyRecord =
     interface IMyInterface
 """
         { config with
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -482,7 +500,8 @@ let ``SynPat.Record in pattern match, 1173`` () =
 | { Bar = bar; Level = 12; Vibes = plenty; Lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " } -> "7"
 | _ -> "8"
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -506,7 +525,8 @@ let ``record declaration`` () =
       Street: string
       Number: int }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -530,7 +550,8 @@ type MyRecord =
       Street: string
       Number: int }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -558,7 +579,8 @@ type MyRecord =
     member Score : unit -> int
 """
         { config with
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -588,7 +610,8 @@ type ShortExpressionInfo =
     member x.Foo() = ()
 """
         { config with
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -609,7 +632,8 @@ let ``internal keyword before multiline record type, 1171`` () =
     formatSourceString
         """
     type A = internal { ALongIdentifier: string; YetAnotherLongIdentifier: bool }"""
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -626,7 +650,8 @@ let ``internal keyword before multiline record type in signature file, 1171`` ()
         """namespace Bar
 
     type A = internal { ALongIdentifier: string; YetAnotherLongIdentifier: bool }"""
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -643,7 +668,9 @@ type A =
 let ``indent update record fields far enough, 817`` () =
     formatSourceString
         "let expected = { ThisIsAThing.Empty with TheNewValue = 1; ThatValue = 2 }"
-        { config with IndentSize = 2 }
+        { config with
+            IndentSize = 2
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -658,7 +685,9 @@ let expected =
 let ``indent update anonymous record fields far enough`` () =
     formatSourceString
         "let expected = {| ThisIsAThing.Empty with TheNewValue = 1; ThatValue = 2 |}"
-        { config with IndentSize = 2 }
+        { config with
+            IndentSize = 2
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -671,7 +700,10 @@ let expected =
 
 [<Test>]
 let ``update record with standard indent`` () =
-    formatSourceString "let expected = { ThisIsAThing.Empty with TheNewValue = 1; ThatValue = 2 }" config
+    formatSourceString
+        "let expected = { ThisIsAThing.Empty with TheNewValue = 1; ThatValue = 2 }"
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -697,7 +729,8 @@ module Foo =
 
     let r = 3
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -726,7 +759,8 @@ type TestType =
             Foo : int
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -754,7 +788,8 @@ let config = {
       #endif
 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -781,7 +816,8 @@ let person =
       Address = { Street = "Bakerstreet"; Number = 42 }  // end address
     } // end person
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -802,7 +838,8 @@ type R = { a: int; b: string; c: float option }
 type S = { AReallyLongExpressionThatIsMuchLongerThan50Characters: int }
     """
         { config with
-            RecordMultilineFormatter = NumberOfItems }
+            RecordMultilineFormatter = NumberOfItems
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -858,7 +895,8 @@ f r' { r with a = x; b = y; z = c }
 g s' { s with AReallyLongExpressionThatIsMuchLongerThan50Characters = 1 }
     """
         { config with
-            RecordMultilineFormatter = NumberOfItems }
+            RecordMultilineFormatter = NumberOfItems
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -977,7 +1015,8 @@ f r' {| r with a = x; b = y; z = c |}
 g s' {| s with AReallyLongExpressionThatIsMuchLongerThan50Characters = 1 |}
     """
         { config with
-            RecordMultilineFormatter = NumberOfItems }
+            RecordMultilineFormatter = NumberOfItems
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1089,7 +1128,8 @@ type A = {| x: int; y: obj |}
 type B = {| x: AReallyLongTypeThatIsMuchLongerThan40Characters |}
 """
         { config with
-            RecordMultilineFormatter = NumberOfItems }
+            RecordMultilineFormatter = NumberOfItems
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

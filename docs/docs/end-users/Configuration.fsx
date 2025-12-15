@@ -734,8 +734,8 @@ fsharp_max_function_binding_width = 10
 ### fsharp_multiline_bracket_style
 <copy-to-clipboard text="fsharp_multiline_bracket_style = stroustrup"></copy-to-clipboard>
 
-`Cramped` The default way in F# to format brackets.  
-`Aligned` Alternative way of formatting records, arrays and lists. This will align the braces at the same column level.  
+`Cramped` Alternative way in F# to format brackets.  
+`Aligned` The default way of formatting records, arrays and lists. This will align the braces at the same column level.  
 `Stroustrup` Allow for easier reordering of members and keeping the code succinct. 
 *)
 

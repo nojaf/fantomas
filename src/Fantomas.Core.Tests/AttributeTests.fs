@@ -4,6 +4,7 @@ open NUnit.Framework
 open FsUnit
 
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``should keep the attribute on top of the function`` () =
@@ -120,7 +121,8 @@ let ``type params`` () =
         """
 let genericSumUnits ( x : float<'u>) (y: float<'u>) = x + y
 type vector3D<[<Measure>] 'u> = { x : float<'u>; y : float<'u>; z : float<'u>}"""
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -179,7 +181,8 @@ type Foo =
     { [<field:DataMember>]
       Bar:string }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -250,7 +253,8 @@ let ``comments before attributes should be added correctly, issue 422`` () =
           Phone    : string
           Verified : bool }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -542,7 +546,8 @@ type Commenter =
 
       DisplayName: string }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -658,7 +663,8 @@ type RoleAdminImportController(akkaService: AkkaService) =
 """
         { config with
             MaxInfixOperatorExpression = 40
-            MaxArrayOrListWidth = 40 }
+            MaxArrayOrListWidth = 40
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -885,7 +891,8 @@ module Foo =
             ()
 """
         { config with
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

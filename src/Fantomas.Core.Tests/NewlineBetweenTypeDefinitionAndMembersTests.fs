@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.NewlineBetweenTypeDefinitionAndMembersTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``newline between record type and members`` () =
@@ -14,7 +15,8 @@ let ``newline between record type and members`` () =
     member this.Length = this.To - this.From
 """
         { config with
-            MaxValueBindingWidth = 120 }
+            MaxValueBindingWidth = 120
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -38,7 +40,8 @@ let ``existing newline between record type and members should not be duplicate``
     member this.Length = this.To - this.From
 """
         { config with
-            MaxValueBindingWidth = 120 }
+            MaxValueBindingWidth = 120
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -59,7 +62,9 @@ let ``no extra newline after record type with no members`` () =
       To : float
       Name: string }
 """
-        { config with MaxRecordWidth = 39 }
+        { config with
+            MaxRecordWidth = 39
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -141,7 +146,8 @@ type Range =
       Name: string }
     member Length : unit -> int
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -255,7 +261,8 @@ type Color =
 
     member ToInt: unit -> int
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

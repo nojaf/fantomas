@@ -1244,7 +1244,8 @@ and Room =
       Items: Item list
       Exits: Exits }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1293,7 +1294,8 @@ and [<Marker()>] Room =
       Items: Item list
       Exits: Exits }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1934,7 +1936,8 @@ type TestType =
             Foo : int
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1960,7 +1963,8 @@ type OlapCube =
             ThreeDimension : int
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2236,7 +2240,9 @@ type Auth0User =
             { UserId = userId
               AppMetaData = metaData })
 """
-        { config with SpaceBeforeColon = true }
+        { config with
+            SpaceBeforeColon = true
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2306,7 +2312,8 @@ type RequestParser<'ctx, 'a> = internal {
   prohibited: ProhibitedRequestGetter list
 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2350,7 +2357,8 @@ let deserialize (e: RecordedEvent) : MyEvent =
     | nameof BData -> BData (JsonSerializer.Deserialize<string> e.Data)
     | t -> failwithf "Invalid EventType: %s" t
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -3010,7 +3018,8 @@ type V = // comment
       Y: OhSomethingElse
       Z: ALongTypeName }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -3603,7 +3612,8 @@ type R =
         F3: int
     }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

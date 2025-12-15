@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.SpecialConstructsTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``embedded IL`` () =
@@ -30,7 +31,8 @@ x.G[].TryFind 3
         { config with
             SpaceAfterComma = false
             SpaceAfterSemicolon = false
-            SpaceAroundDelimiter = false }
+            SpaceAroundDelimiter = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

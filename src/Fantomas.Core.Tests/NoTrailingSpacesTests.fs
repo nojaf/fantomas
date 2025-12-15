@@ -4,6 +4,7 @@ open NUnit.Framework
 open FsUnit
 
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``should not confuse me with an extra space at end of line v2`` () =
@@ -17,7 +18,8 @@ let ``should not confuse me with an extra space at end of line v2`` () =
         codeSnippet
         { config with
             MaxInfixOperatorExpression = 90
-            MaxArrayOrListWidth = 40 }
+            MaxArrayOrListWidth = 40
+            MultilineBracketStyle = Cramped }
     |> should
         equal
         """let ``should not extrude without positive distance`` () =

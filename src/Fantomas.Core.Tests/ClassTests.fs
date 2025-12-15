@@ -4,6 +4,7 @@ open NUnit.Framework
 open FsUnit
 
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``class signatures`` () =
@@ -511,7 +512,8 @@ module Logging =
     let SetQuartzLogger l = LogProvider.SetCurrentLogProvider(l)
 """
         { config with
-            MaxFunctionBindingWidth = 80 }
+            MaxFunctionBindingWidth = 80
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1141,7 +1143,8 @@ let ``trivia before and keyword in SynMemberDefn.GetSet, 2372`` () =
 
     override this.``type``: string = "fakerun" }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1170,7 +1173,8 @@ type [<AllowNullLiteral>] Terminal =
     abstract onKey: IEvent<{| key: string; domEvent: KeyboardEvent |}> with get, set
     abstract onLineFeed: IEvent<unit> with get, set
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

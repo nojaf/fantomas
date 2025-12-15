@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.QuotationTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``typed quotations`` () =
@@ -148,7 +149,9 @@ let ``overly aggressive de-indentation, 2110`` () =
                                             Push = null
                                             Pop = null } } @>
 """
-        { config with IndentSize = 2 }
+        { config with
+            IndentSize = 2
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

@@ -18,7 +18,8 @@ let ``should keep the (string * string) list type signature in records`` () =
       FileLoggers : MSBuildFileLoggerConfig list option }
 
     """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> should
         equal
         """type MSBuildParams =
@@ -74,7 +75,8 @@ let ``should not add parens in signature`` () =
     """
         { config with
             MaxFunctionBindingWidth = 120
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> should
         equal
         """type Route =
@@ -108,7 +110,8 @@ let ``should keep the (string option * Node) list type signature`` () =
       NextNodes : (string option * Node) list }
 
     """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> should
         equal
         """type Node =
@@ -703,7 +706,8 @@ let ``internal keyword before long record type`` () =
         """namespace Bar
 
     type A = internal { ALongIdentifier: string; YetAnotherLongIdentifier: bool }"""
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1068,7 +1072,9 @@ type TestType =
             Barry: string
         }
 """
-        { config with MaxRecordWidth = 10 }
+        { config with
+            MaxRecordWidth = 10
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1097,7 +1103,8 @@ type TestType =
             Meh : TimeSpan
         }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1581,7 +1588,8 @@ type Foo =
     static member Baz : int
 """
         { config with
-            NewlineBetweenTypeDefinitionAndMembers = false }
+            NewlineBetweenTypeDefinitionAndMembers = false
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

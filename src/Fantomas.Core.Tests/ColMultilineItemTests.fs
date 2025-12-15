@@ -215,7 +215,8 @@ asyncResult {
       return Ok job
     }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

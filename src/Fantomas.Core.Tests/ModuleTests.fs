@@ -433,7 +433,8 @@ type UrlModel =
       KeepNewlineAfter: bool
       Defines: string }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -484,7 +485,8 @@ type UrlModel =
       KeepNewlineAfter: bool
       Defines: string }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal

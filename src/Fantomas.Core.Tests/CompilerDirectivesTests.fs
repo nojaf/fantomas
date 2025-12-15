@@ -3,6 +3,7 @@ module Fantomas.Core.Tests.CompilerDirectiveTests
 open NUnit.Framework
 open FsUnit
 open Fantomas.Core.Tests.TestHelpers
+open Fantomas.Core
 
 [<Test>]
 let ``should keep compiler directives`` () =
@@ -1828,7 +1829,8 @@ let config = {
       #endif
 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1862,7 +1864,8 @@ let config = {
       #endif
 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -1895,7 +1898,8 @@ let config = {
       #endif
 }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2148,7 +2152,8 @@ let getDefaultProxyFor =
             | None -> getDefault())
 """
         { config with
-            MaxIfThenElseShortWidth = 50 }
+            MaxIfThenElseShortWidth = 50
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2488,7 +2493,8 @@ let inputFileFlagsFsiBase (_tcConfigB: TcConfigBuilder) =
     List.empty<CompilerOption>
 #endif
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
@@ -2530,7 +2536,8 @@ let ``define before opening bracket of array, 1597`` () =
             System.Environment.SetEnvironmentVariable(varName, value)
     }
 """
-        config
+        { config with
+            MultilineBracketStyle = Cramped }
     |> prepend newline
     |> should
         equal
