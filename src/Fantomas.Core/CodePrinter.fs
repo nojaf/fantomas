@@ -2795,8 +2795,9 @@ let genBinding (b: BindingNode) (ctx: Context) : Context =
         | _ -> false
 
     let binding =
-        match b.FunctionName with
-        | Choice1Of2 functionName when List.isNotEmpty b.Parameters ->
+        match (b.FunctionName, b.Parameters) with
+        | Choice1Of2 functionName, _ :: _ ->
+            // An actual function parameters
             let genAttrIsFirstChild =
                 onlyIf (not isRecursiveLetOrUseFunction) (genAttributes b.Attributes)
 
@@ -2969,47 +2970,8 @@ let genBinding (b: BindingNode) (ctx: Context) : Context =
              +> genAttrIsFirstChild
              +> genPref
              +> leadingExpressionIsMultiline genSignature genExpr)
-
-        | Choice2Of2(Pattern.Tuple _ as pat) ->
-            let genAttrAndPref =
-                if not isRecursiveLetOrUseFunction then
-                    (genAttributes b.Attributes +> genMultipleTextsNode b.LeadingKeyword)
-                else
-                    (genMultipleTextsNode b.LeadingKeyword
-                     +> sepSpace
-                     +> genOnelinerAttributes b.Attributes)
-
-            let afterLetKeyword =
-                genAccessOpt b.Accessibility
-                +> ifElse b.IsMutable (!-"mutable ") sepNone
-                +> genInlineOpt b.Inline
-
-            let genDestructedTuples =
-                expressionFitsOnRestOfLine (genPat pat) (sepOpenT +> genPat pat +> sepCloseT)
-                +> optSingle
-                    (fun (rt: BindingReturnInfoNode) ->
-                        genSingleTextNode rt.Colon
-                        +> sepSpace
-                        +> atCurrentColumnIndent (genType rt.Type))
-                    b.ReturnType
-
-            genXml b.XmlDoc
-            +> genAttrAndPref
-            +> sepSpace
-            +> (fun ctx ->
-                let prefix =
-                    afterLetKeyword
-                    +> sepSpace
-                    +> genDestructedTuples
-                    +> sepSpace
-                    +> genSingleTextNode b.Equals
-
-                let long = prefix +> indentSepNlnUnindent (genExpr b.Expr)
-                let short = prefix +> sepSpace +> genExpr b.Expr
-                isShortExpression ctx.Config.MaxValueBindingWidth short long ctx)
-
         | _ ->
-            // old code of genSynBindingValue
+            // Everything value related
             let genAttrIsFirstChild =
                 onlyIf (not isRecursiveLetOrUseFunction) (genAttributes b.Attributes)
 
@@ -3029,6 +2991,8 @@ let genBinding (b: BindingNode) (ctx: Context) : Context =
             let genValueName =
                 match b.FunctionName with
                 | Choice1Of2 lid -> genIdentListNode lid
+                | Choice2Of2 tuplePat when tuplePat.IsTuple ->
+                    expressionFitsOnRestOfLine (genPat tuplePat) (sepOpenT +> genPat tuplePat +> sepCloseT)
                 | Choice2Of2 pat -> genPat pat
                 +> optSingle genTyparDecls b.GenericTypeParameters
 
