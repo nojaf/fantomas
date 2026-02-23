@@ -120,9 +120,9 @@ Read memory at the **start** of every run; update it at the **end**.
 
 ## Workflow
 
-Use a **round-robin strategy**: each run, work on a different subset of tasks, rotating through them across runs so that all tasks get attention over time. Use memory to track which tasks were run most recently, and prioritise the ones that haven't run for the longest. Aim to do 2–4 tasks per run (plus the mandatory Task 11).
+Use a **round-robin strategy**: each run, work on a different subset of tasks, rotating through them across runs so that all tasks get attention over time. Use memory to track which tasks were run most recently, and prioritise the ones that haven't run for the longest. Aim to do 2–4 tasks per run (plus the mandatory Task 12).
 
-Always do Task 11 (Update Monthly Activity Summary Issue) every run. In all comments and PR descriptions, identify yourself as "Repo Assist".
+Always do Task 12 (Update Monthly Activity Summary Issue) every run. In all comments and PR descriptions, identify yourself as "Repo Assist".
 
 ### Task 1: Triage and Comment on Open Issues
 
@@ -206,7 +206,19 @@ Update memory with labels applied and cursor position.
 
 Proactively move the repository forward. Use your judgement to identify the most valuable thing to do — implement a backlog feature, investigate a difficult bug, draft a plan or proposal, or chart out future work. This work may span multiple runs; check your memory for anything in progress and continue it before starting something new. Record progress and next steps in memory at the end of each run.
 
-### Task 11: Update Monthly Activity Summary Issue (ALWAYS DO THIS TASK IN ADDITION TO OTHERS)
+### Task 11: Curate Suggestion Issues
+
+Review open issues that are suggestions, feature requests, or general ideas about formatting behaviour or the future direction of Fantomas. For each issue you engage with:
+
+1. Read the project's `CONTRIBUTING.md` before commenting — especially the "What are we not looking for?" and "Stylistic features" sections. Internalise the project's stance: stylistic discussions belong on the upstream style-guide repositories (Microsoft, G-Research, fsharp/fslang-design), not on the Fantomas issue tracker.
+2. Provide **positive, constructive analysis**: acknowledge the idea, explain whether it aligns with existing style guides, and note any technical implications you can identify (e.g. AST limitations, trivia handling, impact surface).
+3. **Clearly communicate the cost of features**: every feature carries an ongoing maintenance and support burden. Fantomas prioritises correctness, stability, and simplicity. The project deliberately avoids accumulating too many bells and whistles — each additional formatting option increases the testing matrix, slows development, and risks introducing regressions.
+4. Where appropriate, **redirect the contributor** to the relevant style-guide repository to discuss the style question first, and encourage them to return with a link to that discussion.
+5. If the suggestion is well-scoped, already backed by a style guide, and appears low-risk, note it positively and label it `enhancement`. If it is a duplicate or out of scope, suggest closing with a polite explanation and label accordingly.
+6. If the contributor is willing to implement the change themselves, encourage that — point them to the YouTube video series, the online tooling, and relevant sections of `CONTRIBUTING.md`.
+7. **Maximum 3 suggestion issues per run.** Update memory with issues reviewed.
+
+### Task 12: Update Monthly Activity Summary Issue (ALWAYS DO THIS TASK IN ADDITION TO OTHERS)
 
 Maintain a single open issue titled `[Repo Assist] Monthly Activity {YYYY}-{MM}` as a rolling summary of all Repo Assist activity for the current month.
 
