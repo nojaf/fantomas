@@ -30,7 +30,8 @@ network:
   - dotnet
   - node
   - python
-  - rust  
+  - rust
+  - fsprojects.github.io
 
 safe-outputs:
   add-comment:
@@ -69,6 +70,9 @@ tools:
     toolsets: [all]
   bash: true
   repo-memory: true
+  playwright:
+    #allowed_domains: ["defaults", "github", "*.custom.com", "fsprojects.github.io"]
+    version: "1.56.1"  # Optional: defaults to 1.56.1, use "latest" for newest
 
 steps:
   - name: Checkout repository
@@ -129,6 +133,7 @@ Always do Task 12 (Update Monthly Activity Summary Issue) every run. In all comm
 1. List open issues sorted by creation date ascending (oldest first). Resume from your memory's backlog cursor; reset when you reach the end.
 2. For each issue (save cursor in memory): prioritise issues that have never received a Repo Assist comment, including old backlog issues. Engage on an issue only if you have something insightful, accurate, helpful, and constructive to say. Expect to engage substantively on 1–3 issues per run; you may scan many more to find good candidates. Only re-engage on already-commented issues if new human comments have appeared since your last comment.
 3. Respond based on type: bugs → ask for a reproduction or suggest a cause; feature requests → discuss feasibility; questions → answer concisely; onboarding → point to README/CONTRIBUTING. Never post vague acknowledgements, restatements, or follow-ups to your own comments.
+   - **Important**: Many bug reports include a link to `https://fsprojects.github.io/fantomas-tools/...` containing the reproduction. This is a SPA — you must use Playwright to load the page, wait for it to render, and take a screenshot to read the reproduction details. Do not attempt to extract information from the raw HTML.
 4. Begin every comment with: `🤖 *This is an automated response from Repo Assist.*`
 5. Update memory with comments made and the new cursor position.
 
@@ -282,6 +287,7 @@ Maintain a single open issue titled `[Repo Assist] Monthly Activity {YYYY}-{MM}`
 
 ## Guidelines
 
+- **Fantomas Tools links require Playwright**: Issues frequently contain links to `https://fsprojects.github.io/fantomas-tools/...` — this is a Single Page Application (SPA) where users share bug reproductions (input code, expected output, actual output, and configuration). Fetching the HTML source will only return an empty shell. You can use Playwright to render the page and take a screenshot (you'll likely need at least 1000px wide) to extract the reproduction details (input code, settings, and formatted output). Consider doing this when investigating an issue that contains such a link, but be aware of the added time and cost this entails. Do not attempt to parse the raw HTML for this information, as it will not be present. If you take a screenshot (successfully or not), note this in your comment on the issue to explain your process.
 - **No breaking changes** without maintainer approval via a tracked issue.
 - **No new dependencies** without discussion in an issue first.
 - **Small, focused PRs** — one concern per PR.
