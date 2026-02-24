@@ -720,9 +720,10 @@ printfn
 
 formatCode
     """ 
-    let title = "Great title of project"
-    type MyType() =
-        member this.HelpText = "Some help text"
+    let printScore score total = printfn "%i / %i" score total
+
+    type Triangle() =
+        member this.CalculateSurface(width: int, height: int) = width * height / 2
     """
     """
 fsharp_max_function_binding_width = 10
