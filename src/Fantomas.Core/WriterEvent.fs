@@ -1,15 +1,18 @@
 namespace Fantomas.Core
 
+/// Represents a single event emitted during the code formatting process.
+/// The sequence of writer events captures how the formatter produces its output.
+[<Struct>]
 type WriterEvent =
-    | Write of string
+    | Write of text: string
     | WriteLine
     | WriteLineInsideStringConst
-    | WriteBeforeNewline of string
+    | WriteBeforeNewline of content: string
     | WriteLineBecauseOfTrivia
     | WriteLineInsideTrivia
-    | IndentBy of int
-    | UnIndentBy of int
-    | SetIndent of int
-    | RestoreIndent of int
-    | SetAtColumn of int
-    | RestoreAtColumn of int
+    | IndentBy of indent: int
+    | UnIndentBy of unindent: int
+    | SetIndent of setIndent: int
+    | RestoreIndent of restoreIndent: int
+    | SetAtColumn of setAtColumn: int
+    | RestoreAtColumn of restoreAtColumn: int
