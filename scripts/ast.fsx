@@ -1,6 +1,17 @@
-#r "../artifacts/bin/Fantomas.FCS/debug/Fantomas.FCS.dll"
+#load "shared.fsx"
 
 open System.IO
+open Shared
+
+let parseAst (input: string) (isSignature: bool) =
+    try
+        let ast =
+            Fantomas.FCS.Parse.parseFile isSignature (Fantomas.FCS.Text.SourceText.ofString input) []
+            |> fst
+
+        $"%A{ast}"
+    with ex ->
+        $"Error while parsing AST: %A{ex}"
 
 match Array.tryHead fsi.CommandLineArgs with
 | Some scriptPath ->
@@ -8,13 +19,6 @@ match Array.tryHead fsi.CommandLineArgs with
     let sourceFile = FileInfo(Path.Combine(__SOURCE_DIRECTORY__, __SOURCE_FILE__))
 
     if scriptFile.FullName = sourceFile.FullName then
-        let inputPath = fsi.CommandLineArgs.[fsi.CommandLineArgs.Length - 1]
-        let sample = File.ReadAllText(inputPath)
-        let isSignature = inputPath.EndsWith(".fsi")
-
-        let ast =
-            Fantomas.FCS.Parse.parseFile isSignature (Fantomas.FCS.Text.SourceText.ofString sample) []
-            |> fst
-
-        ast |> printfn "%A"
-| _ -> printfn "Usage: dotnet fsi ast.fsx <input file>"
+        let sample, isSignature, _ = parseArgs fsi.CommandLineArgs.[1..]
+        parseAst sample isSignature |> printfn "%s"
+| _ -> printfn "Usage: dotnet fsi ast.fsx [--signature] <input file>"

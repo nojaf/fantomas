@@ -21,17 +21,41 @@ let parseEditorConfigContent (content: string) : FormatConfig =
     finally
         Directory.Delete(tempDir, true)
 
+/// Parses args and returns (source, isSignature, config).
+/// Accepts either a file path as last arg, or source code via stdin.
+/// Optional flags: --editorconfig <content>, --signature
 let parseArgs (args: string array) =
     let editorConfigIdx = args |> Array.tryFindIndex (fun a -> a = "--editorconfig")
+    let hasSignatureFlag = args |> Array.exists (fun a -> a = "--signature")
 
-    let config, inputPath =
+    let config =
         match editorConfigIdx with
-        | Some idx ->
-            let editorConfigContent = args.[idx + 1]
-            let config = parseEditorConfigContent editorConfigContent
-            config, args.[args.Length - 1]
-        | None -> FormatConfig.Default, args.[args.Length - 1]
+        | Some idx -> parseEditorConfigContent args.[idx + 1]
+        | None -> FormatConfig.Default
 
-    let sample = File.ReadAllText(inputPath)
-    let isSignature = inputPath.EndsWith(".fsi")
-    sample, isSignature, config
+    // Collect flag indices to determine which arg (if any) is the input file
+    let flagIndices =
+        [| match editorConfigIdx with
+           | Some idx ->
+               yield idx
+               yield idx + 1
+           | None -> ()
+           yield!
+               args
+               |> Array.indexed
+               |> Array.choose (fun (i, a) -> if a = "--signature" then Some i else None) |]
+
+    let positionalArgs =
+        args
+        |> Array.indexed
+        |> Array.filter (fun (i, _) -> not (Array.contains i flagIndices))
+        |> Array.map snd
+
+    match Array.tryLast positionalArgs with
+    | Some path when File.Exists(path) ->
+        let sample = File.ReadAllText(path)
+        let isSignature = hasSignatureFlag || path.EndsWith(".fsi")
+        sample, isSignature, config
+    | _ ->
+        let sample = stdin.ReadToEnd()
+        sample, hasSignatureFlag, config
