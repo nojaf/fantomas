@@ -81,3 +81,10 @@ type CodeFormatter =
 
     /// Format SyntaxOak to string using given config
     static member FormatOakAsync: oak: Oak * config: FormatConfig -> Async<string>
+
+    /// Debug only: returns the writer events produced during formatting of a source string.
+    static member GetWriterEventsAsync: isSignature: bool * source: string -> Async<WriterEvent array>
+
+    /// Debug only: returns the writer events produced during formatting of a source string.
+    static member GetWriterEventsAsync:
+        isSignature: bool * source: string * config: FormatConfig -> Async<WriterEvent array>

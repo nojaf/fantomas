@@ -23,6 +23,7 @@
     <Compile Include="Defines.fsi" />
     <Compile Include="Defines.fs" />
     <Compile Include="CodeFormatterTypes.fs" />
+    <Compile Include="WriterEvent.fs" />
     <Compile Include="Context.fsi" />
     <Compile Include="Context.fs" />
     <Compile Include="CodePrinter.fsi" />

@@ -5,20 +5,6 @@ open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
 
-type WriterEvent =
-    | Write of string
-    | WriteLine
-    | WriteLineInsideStringConst
-    | WriteBeforeNewline of string
-    | WriteLineBecauseOfTrivia
-    | WriteLineInsideTrivia
-    | IndentBy of int
-    | UnIndentBy of int
-    | SetIndent of int
-    | RestoreIndent of int
-    | SetAtColumn of int
-    | RestoreAtColumn of int
-
 let (|CommentOrDefineEvent|_|) we =
     match we with
     | Write w when (String.startsWithOrdinal "//" w) -> Some we
@@ -288,6 +274,8 @@ let dump (isSelection: bool) (ctx: Context) =
 
     { Code = code
       Cursor = ctx.FormattedCursor }
+
+let dumpEvents (ctx: Context) : WriterEvent array = ctx.WriterEvents |> Seq.toArray
 
 let dumpAndContinue (ctx: Context) =
 #if DEBUG

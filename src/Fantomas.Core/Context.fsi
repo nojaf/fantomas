@@ -3,20 +3,6 @@ module internal Fantomas.Core.Context
 open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 
-type WriterEvent =
-    | Write of string
-    | WriteLine
-    | WriteLineInsideStringConst
-    | WriteBeforeNewline of string
-    | WriteLineBecauseOfTrivia
-    | WriteLineInsideTrivia
-    | IndentBy of int
-    | UnIndentBy of int
-    | SetIndent of int
-    | RestoreIndent of int
-    | SetAtColumn of int
-    | RestoreAtColumn of int
-
 type ShortExpressionInfo =
     { MaxWidth: int
       StartColumn: int
@@ -71,6 +57,7 @@ type Context =
 val writerEvent: e: WriterEvent -> ctx: Context -> Context
 val hasWriteBeforeNewlineContent: ctx: Context -> bool
 val dump: isSelection: bool -> ctx: Context -> FormatResult
+val dumpEvents: ctx: Context -> WriterEvent array
 val dumpAndContinue: ctx: Context -> Context
 val lastWriteEventIsNewline: ctx: Context -> bool
 

@@ -203,3 +203,6 @@ tests/.repositories/**
 
 # vscode history plugin
 .history/
+
+# LLM stuff
+.claude/settings.local.json
