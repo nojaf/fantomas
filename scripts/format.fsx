@@ -1,13 +1,13 @@
-#r "../artifacts/bin/Fantomas.FCS/debug/Fantomas.FCS.dll"
-#r "../artifacts/bin/Fantomas.Core/debug/Fantomas.Core.dll"
+#load "shared.fsx"
 
 open System.IO
 open Fantomas.Core
+open Shared
 
-let format (input: string) (isSignature: bool) =
+let format (input: string) (isSignature: bool) (config: FormatConfig) =
     async {
         try
-            let! result = CodeFormatter.FormatDocumentAsync(isSignature, input)
+            let! result = CodeFormatter.FormatDocumentAsync(isSignature, input, config)
             return result.Code
         with ex ->
             return $"Error while formatting: %A{ex}"
@@ -19,9 +19,6 @@ match Array.tryHead fsi.CommandLineArgs with
     let sourceFile = FileInfo(Path.Combine(__SOURCE_DIRECTORY__, __SOURCE_FILE__))
 
     if scriptFile.FullName = sourceFile.FullName then
-        let inputPath = fsi.CommandLineArgs.[fsi.CommandLineArgs.Length - 1]
-        let sample = File.ReadAllText(inputPath)
-        let isSignature = inputPath.EndsWith(".fsi")
-
-        format sample isSignature |> Async.RunSynchronously |> printfn "%s"
-| _ -> printfn "Usage: dotnet fsi format.fsx <input file>"
+        let sample, isSignature, config = parseArgs fsi.CommandLineArgs.[1..]
+        format sample isSignature config |> Async.RunSynchronously |> printfn "%s"
+| _ -> printfn "Usage: dotnet fsi format.fsx [--editorconfig <content>] <input file>"
