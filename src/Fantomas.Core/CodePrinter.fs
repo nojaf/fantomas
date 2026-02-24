@@ -137,7 +137,11 @@ let leaveNode<'n when 'n :> Node> (n: 'n) =
     col sepNone n.ContentAfter (genTrivia n)
 
 let genNode<'n when 'n :> Node> (n: 'n) (f: Context -> Context) =
-    enterNode n +> recordCursorNode f n +> leaveNode n
+    onlyIfCtx (fun ctx -> ctx.DebugMode) (writerEvent (NodeStart(n.GetType().Name, sprintf "%O" n.Range)))
+    +> enterNode n
+    +> recordCursorNode f n
+    +> leaveNode n
+    +> onlyIfCtx (fun ctx -> ctx.DebugMode) (writerEvent (NodeEnd(n.GetType().Name, sprintf "%O" n.Range)))
 
 let genSingleTextNode (node: SingleTextNode) = !-node.Text |> genNode node
 

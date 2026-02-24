@@ -110,7 +110,11 @@ type CodeFormatter =
             let ast, _ = asts.[0]
             let oak = ASTTransformer.mkOak (Some sourceText) ast
             let oak = Trivia.enrichTree config sourceText ast oak
-            let context = Context.Context.Create config
+
+            let context =
+                { Context.Context.Create config with
+                    DebugMode = true }
+
             let ctx = context |> CodePrinter.genFile oak
             return Context.dumpEvents ctx
         }

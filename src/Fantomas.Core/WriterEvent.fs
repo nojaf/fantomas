@@ -16,3 +16,5 @@ type WriterEvent =
     | RestoreIndent of restoreIndent: int
     | SetAtColumn of setAtColumn: int
     | RestoreAtColumn of restoreAtColumn: int
+    | NodeStart of nodeType: string * range: string
+    | NodeEnd of endNodeType: string * endRange: string

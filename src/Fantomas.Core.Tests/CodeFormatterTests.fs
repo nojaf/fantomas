@@ -127,3 +127,28 @@ let b = 0
     match oak.ModulesOrNamespaces.[0].Declarations.[0] with
     | ModuleDecl.TopLevelBinding node -> Assert.That(node.HasContentBefore, Is.True)
     | _ -> Assert.Fail()
+
+[<Test>]
+let ``GetWriterEventsAsync emits NodeStart and NodeEnd events`` () =
+    let events =
+        CodeFormatter.GetWriterEventsAsync(false, "let x = 1") |> Async.RunSynchronously
+
+    let nodeStarts =
+        events
+        |> Array.choose (function
+            | WriterEvent.NodeStart(nodeType, _) -> Some nodeType
+            | _ -> None)
+
+    let nodeEnds =
+        events
+        |> Array.choose (function
+            | WriterEvent.NodeEnd(nodeType, _) -> Some nodeType
+            | _ -> None)
+
+    Assert.That(nodeStarts, Is.Not.Empty)
+    Assert.That(nodeEnds, Is.Not.Empty)
+    // Every NodeStart should have a matching NodeEnd
+    Assert.That(nodeStarts.Length, Is.EqualTo nodeEnds.Length)
+    // Oak is the root node
+    Assert.That(nodeStarts.[0], Is.EqualTo "Oak")
+    Assert.That(nodeEnds |> Array.last, Is.EqualTo "Oak")

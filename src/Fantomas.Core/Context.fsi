@@ -39,10 +39,15 @@ type WriterModel =
 
 [<System.Diagnostics.DebuggerDisplay("\"{Dump()}\""); NoComparison>]
 type Context =
-    { Config: FormatConfig
-      WriterModel: WriterModel
-      WriterEvents: Queue<WriterEvent>
-      FormattedCursor: pos option }
+    {
+        Config: FormatConfig
+        WriterModel: WriterModel
+        WriterEvents: Queue<WriterEvent>
+        FormattedCursor: pos option
+        /// When enabled, genNode emits NodeStart/NodeEnd WriterEvents around each Oak node.
+        /// Only used by CodeFormatter.GetWriterEventsAsync for diagnostic output.
+        DebugMode: bool
+    }
 
     /// Initialize with a string writer and use space as delimiter
     static member Default: Context
