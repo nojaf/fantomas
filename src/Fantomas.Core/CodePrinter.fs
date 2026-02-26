@@ -57,6 +57,7 @@ let rec (|UppercaseExpr|LowercaseExpr|) (expr: Expr) =
     | Expr.DotIndexedGet node -> (|UppercaseExpr|LowercaseExpr|) node.ObjectExpr
     | Expr.TypeApp node -> (|UppercaseExpr|LowercaseExpr|) node.Identifier
     | Expr.Dynamic node -> (|UppercaseExpr|LowercaseExpr|) node.FuncExpr
+    | Expr.AppLongIdentAndSingleParenArg node -> lastFragmentInList node.FunctionName
     | Expr.AppSingleParenArg node -> (|UppercaseExpr|LowercaseExpr|) node.FunctionExpr
     | Expr.Paren node -> (|UppercaseExpr|LowercaseExpr|) node.Expr
     | Expr.App node -> (|UppercaseExpr|LowercaseExpr|) node.FunctionExpr
@@ -721,7 +722,15 @@ let genExpr (e: Expr) =
             +> genExpr node.Expr
             +> genSingleTextNode node.ClosingParen
         |> genNode node
-    | Expr.Dynamic node -> genExpr node.FuncExpr +> !-"?" +> genExpr node.ArgExpr |> genNode node
+    | Expr.Dynamic node ->
+        // Use sepNone for AppLongIdentAndSingleParenArg to preserve atomic application (no space before paren).
+        // Adding a space would change the AST from `(Jest.expect(json))?oMatchSnapshot` to `Jest.expect ((json)?oMatchSnapshot)`. See #3135.
+        let genFuncExpr =
+            match node.FuncExpr with
+            | Expr.AppLongIdentAndSingleParenArg appNode -> genAppLongIdentAndSingleParenArgExpr sepNone appNode
+            | _ -> genExpr node.FuncExpr
+
+        genFuncExpr +> !-"?" +> genExpr node.ArgExpr |> genNode node
     | Expr.PrefixApp node ->
         let genWithoutSpace = genSingleTextNode node.Operator +> genExpr node.Expr
         let genWithSpace = genSingleTextNode node.Operator +> sepSpace +> genExpr node.Expr

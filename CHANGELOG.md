@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Dynamic operator on result of qualified function call causes formatting error. [#3135](https://github.com/fsprojects/fantomas/issues/3135)
+
 ## [8.0.0-alpha-002] - 2025-12-15
 
 ### Changed

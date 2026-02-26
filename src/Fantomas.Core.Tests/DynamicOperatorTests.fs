@@ -125,3 +125,17 @@ let statusBarHeight = (window?getComputedStyle document.documentElement)?getProp
 let statusBarHeight =
     (window?getComputedStyle document.documentElement)?getPropertyValue "--statusBarHeight"
 """
+
+[<Test>]
+let ``dynamic operator on result of long ident paren arg, 3135`` () =
+    formatSourceString
+        """
+Jest.expect(json)?oMatchSnapshot ()
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+Jest.expect(json)?oMatchSnapshot ()
+"""
