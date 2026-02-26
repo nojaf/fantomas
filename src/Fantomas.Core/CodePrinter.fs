@@ -2618,7 +2618,17 @@ let genPat (p: Pattern) =
     match p with
     | Pattern.OptionalVal n -> genSingleTextNode n
     | Pattern.Or node -> genPatLeftMiddleRight node
-    | Pattern.Ands node -> col (!-" & ") node.Patterns genPat |> genNode node
+    | Pattern.Ands node ->
+        let short = col (!-" & ") node.Patterns genPat
+
+        let long =
+            match node.Patterns with
+            | [] -> sepNone
+            | head :: rest ->
+                genPat head
+                +> indentSepNlnUnindent (col sepNln rest (fun p -> !-"& " +> genPat p))
+
+        expressionFitsOnRestOfLine short long |> genNode node
     | Pattern.Null node
     | Pattern.Wild node -> genSingleTextNode node
     | Pattern.Parameter node ->
