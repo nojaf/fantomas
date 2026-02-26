@@ -464,7 +464,11 @@ let (|MultipleConsInfixApps|_|) expr =
     match expr with
     | ColonColonInfixApp _ ->
         let head, xs = visit expr None (Queue())
-        if xs.Count < 2 then ValueNone else ValueSome(head, Seq.toList xs)
+
+        if xs.Count < 2 then
+            ValueNone
+        else
+            ValueSome(head, Seq.toList xs)
     | _ -> ValueNone
 
 let rightOperators = set [| "@"; "**"; "^"; ":=" |]
@@ -524,7 +528,10 @@ let (|SameInfixApps|_|) expr =
             else
                 visitLeft operator.Text expr id
 
-        if xs.Count < 2 then ValueNone else ValueSome(head, Seq.toList xs)
+        if xs.Count < 2 then
+            ValueNone
+        else
+            ValueSome(head, Seq.toList xs)
     | _ -> ValueNone
 
 let newLineInfixOps = set [ "|>"; "||>"; "|||>"; ">>"; ">>=" ]
@@ -542,7 +549,11 @@ let (|NewlineInfixApps|_|) expr =
     match expr with
     | InfixApp _ ->
         let head, xs = visit expr id
-        if xs.Count < 2 then ValueNone else ValueSome(head, Seq.toList xs)
+
+        if xs.Count < 2 then
+            ValueNone
+        else
+            ValueSome(head, Seq.toList xs)
     | _ -> ValueNone
 
 [<TailCall>]
@@ -627,7 +638,11 @@ let (|App|_|) e =
         | e -> continuation (e, Queue())
 
     let head, xs = visit e id
-    if xs.Count = 0 then ValueNone else ValueSome(head, Seq.toList xs)
+
+    if xs.Count = 0 then
+        ValueNone
+    else
+        ValueSome(head, Seq.toList xs)
 
 [<return: Struct>]
 let (|ParenLambda|_|) e =
