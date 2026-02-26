@@ -611,7 +611,7 @@ let newState = {|
 let ``app node with single record arg`` () =
     formatSourceString
         """
-let newState =
+let newState = 
     Some
         {
             F1 = 0
@@ -635,7 +635,7 @@ let newState =
 let ``lowercase app node with single record arg`` () =
     formatSourceString
         """
-let newState =
+let newState = 
     someFunc
         {
             F1 = 0
@@ -659,7 +659,7 @@ let newState =
 let ``lowercase app node with multiple args ending in a single record arg`` () =
     formatSourceString
         """
-let newState =
+let newState = 
     myFn a b c { D = d; E = e }
 """
         { config with
@@ -679,7 +679,7 @@ let newState =
 let ``lowercase app node with multiple args ending in a single anonymous record arg`` () =
     formatSourceString
         """
-let newState =
+let newState = 
     myFn a b c {| D = d; E = e |}
 """
         { config with
@@ -838,7 +838,6 @@ let ``empty array with blank line inside, 3098`` () =
     formatSourceString
         """
 let myArray = [|
-
   |]
 """
         config
@@ -847,7 +846,6 @@ let myArray = [|
         equal
         """
 let myArray = [|
-
     |]
 """
 

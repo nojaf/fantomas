@@ -5,6 +5,7 @@
 ### Fixed
 
 - End of line comments after infix operators are preserved correctly. [#2287](https://github.com/fsprojects/fantomas/issues/2287)
+- Empty array with trivia inside now has correct indentation in Stroustrup style. [#3098](https://github.com/fsprojects/fantomas/issues/3098)
 
 ## [8.0.0-alpha-002] - 2025-12-15
 
