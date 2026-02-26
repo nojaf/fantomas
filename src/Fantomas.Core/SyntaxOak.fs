@@ -684,6 +684,7 @@ type Pattern =
         | IsInst n -> n
         | QuoteExpr n -> n
 
+/// Example: `lazy computeExpensiveValue`
 type ExprLazyNode(lazyWord: SingleTextNode, expr: Expr, range) =
     inherit NodeBase(range)
 
@@ -728,6 +729,7 @@ type ExprTypedNode(expr: Expr, operator: string, t: Type, range) =
     member val Operator = operator
     member val Type = t
 
+/// Example: `new StringBuilder(capacity)`
 type ExprNewNode(newKeyword: SingleTextNode, t: Type, arguments: Expr, range) =
     inherit NodeBase(range)
 
@@ -737,6 +739,7 @@ type ExprNewNode(newKeyword: SingleTextNode, t: Type, arguments: Expr, range) =
     member val Type = t
     member val Arguments = arguments
 
+/// Example: `(a, b, c)` — items are interleaved with comma `SingleTextNode` separators
 type ExprTupleNode(items: Choice<Expr, SingleTextNode> list, range) =
     inherit NodeBase(range)
 
@@ -757,6 +760,7 @@ type ExprStructTupleNode(structNode: SingleTextNode, tuple: ExprTupleNode, closi
     member val Tuple = tuple
     member val ClosingParen = closingParen
 
+/// Example: `[a; b; c]` for a list, `[|a; b; c|]` for an array — determined by the opening/closing tokens
 type ExprArrayOrListNode(openingToken: SingleTextNode, elements: Expr list, closingToken: SingleTextNode, range) =
     inherit NodeBase(range)
 
@@ -848,6 +852,7 @@ type ExprRecordBaseNode(openingBrace: SingleTextNode, fields: RecordFieldNode li
 /// <summary>
 /// Represents a record instance, parsed from both `SynExpr.Record` and `SynExpr.AnonRecd`.
 /// </summary>
+/// Example: `{ Field1 = value1; Field2 = value2 }` or with copy-and-update syntax `{ existing with Field1 = newValue }`
 type ExprRecordNode
     (
         openingBrace: SingleTextNode,
@@ -1075,6 +1080,7 @@ type ExprParenLambdaNode(openingParen: SingleTextNode, lambda: ExprLambdaNode, c
     member val Lambda = lambda
     member val ClosingParen = closingParen
 
+/// Example: `fun x y -> x + y`
 type ExprLambdaNode(funNode: SingleTextNode, parameters: Pattern list, arrow: SingleTextNode, expr: Expr, range) =
     inherit NodeBase(range)
 
@@ -1107,6 +1113,7 @@ type MatchClauseNode
     member val Arrow = arrow
     member val BodyExpr = bodyExpr
 
+/// Example: `function | Some x -> x | None -> defaultValue`
 type ExprMatchLambdaNode(functionNode: SingleTextNode, clauses: MatchClauseNode list, range) =
     inherit NodeBase(range)
 
@@ -1114,6 +1121,7 @@ type ExprMatchLambdaNode(functionNode: SingleTextNode, clauses: MatchClauseNode 
     member val Function = functionNode
     member val Clauses = clauses
 
+/// Example: `match x with | Some v -> v | None -> 0`
 type ExprMatchNode
     (matchNode: SingleTextNode, matchExpr: Expr, withNode: SingleTextNode, clauses: MatchClauseNode list, range) =
     inherit NodeBase(range)
@@ -1170,6 +1178,7 @@ type ExprPrefixAppNode(operator: SingleTextNode, expr: Expr, range) =
 
 type InfixApp = interface end
 
+/// Example: `a + b + c` — a sequence of the *same* operator applied repeatedly (avoids redundant nesting)
 type ExprSameInfixAppsNode(leadingExpr: Expr, subsequentExpressions: (SingleTextNode * Expr) list, range) =
     inherit NodeBase(range)
     interface InfixApp
@@ -1183,6 +1192,7 @@ type ExprSameInfixAppsNode(leadingExpr: Expr, subsequentExpressions: (SingleText
     member val LeadingExpr = leadingExpr
     member val SubsequentExpressions = subsequentExpressions
 
+/// Example: `a + b` — a single binary infix application with two different operands or operators
 type ExprInfixAppNode(lhs: Expr, operator: SingleTextNode, rhs: Expr, range) =
     inherit NodeBase(range)
     interface InfixApp
@@ -1232,11 +1242,13 @@ type ChainLink =
         | AppUnit n -> n
         | IndexExpr e -> Expr.Node e
 
+/// Example: `person.Address.City.ToUpper()` — a chain of dot-separated member accesses and calls
 type ExprChain(links: ChainLink list, range) =
     inherit NodeBase(range)
     override val Children: Node array = List.map ChainLink.Node links |> List.toArray
     member val Links = links
 
+/// Example: `List.map(f)` — a qualified name (dotted identifier) applied to a single parenthesised argument
 type ExprAppLongIdentAndSingleParenArgNode(functionName: IdentListNode, argExpr: Expr, range) =
     inherit NodeBase(range)
 
@@ -1244,6 +1256,7 @@ type ExprAppLongIdentAndSingleParenArgNode(functionName: IdentListNode, argExpr:
     member val FunctionName = functionName
     member val ArgExpr = argExpr
 
+/// Example: `f(a)` — a general expression (not a simple dotted name) applied to a single parenthesised argument
 type ExprAppSingleParenArgNode(functionExpr: Expr, argExpr: Expr, range) =
     inherit NodeBase(range)
     override val Children: Node array = [| yield Expr.Node functionExpr; yield Expr.Node argExpr |]
@@ -1291,6 +1304,7 @@ type ExprNestedIndexWithoutDotNode(identifierExpr: Expr, indexExpr: Expr, argume
     member val Index = indexExpr
     member val Argument = argumentExpr
 
+/// Example: `List.map f xs` — a function applied to two or more space-separated arguments
 type ExprAppNode(functionExpr: Expr, arguments: Expr list, range) =
     inherit NodeBase(range)
 
@@ -1441,6 +1455,7 @@ type IfKeywordNode =
 
     member x.Range = x.Node.Range
 
+/// Example: `if condition then result`
 type ExprIfThenNode(ifNode: IfKeywordNode, ifExpr: Expr, thenNode: SingleTextNode, thenExpr: Expr, range) =
     inherit NodeBase(range)
 
@@ -1455,6 +1470,7 @@ type ExprIfThenNode(ifNode: IfKeywordNode, ifExpr: Expr, thenNode: SingleTextNod
     member val Then = thenNode
     member val ThenExpr = thenExpr
 
+/// Example: `if condition then trueResult else falseResult`
 type ExprIfThenElseNode
     (
         ifNode: IfKeywordNode,
@@ -1482,6 +1498,7 @@ type ExprIfThenElseNode
     member val Else = elseNode
     member val ElseExpr = elseExpr
 
+/// Example: `if a then x elif b then y else z` — contains one or more `if/elif` branches and an optional `else`
 type ExprIfThenElifNode(branches: ExprIfThenNode list, elseBranch: (SingleTextNode * Expr) option, range) =
     inherit NodeBase(range)
 
