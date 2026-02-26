@@ -5,20 +5,6 @@ open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
 
-type WriterEvent =
-    | Write of string
-    | WriteLine
-    | WriteLineInsideStringConst
-    | WriteBeforeNewline of string
-    | WriteLineBecauseOfTrivia
-    | WriteLineInsideTrivia
-    | IndentBy of int
-    | UnIndentBy of int
-    | SetIndent of int
-    | RestoreIndent of int
-    | SetAtColumn of int
-    | RestoreAtColumn of int
-
 let (|CommentOrDefineEvent|_|) we =
     match we with
     | Write w when (String.startsWithOrdinal "//" w) -> Some we
@@ -130,6 +116,8 @@ module WriterModel =
             | RestoreAtColumn c -> { m with AtColumn = c }
             | SetIndent c -> { m with Indent = c }
             | RestoreIndent c -> { m with Indent = c }
+            | NodeStart _
+            | NodeEnd _ -> m
 
         match m.Mode with
         | Dummy
@@ -185,17 +173,23 @@ module WriterEvents =
 
 [<System.Diagnostics.DebuggerDisplay("\"{Dump()}\""); NoComparison>]
 type Context =
-    { Config: FormatConfig
-      WriterModel: WriterModel
-      WriterEvents: Queue<WriterEvent>
-      FormattedCursor: pos option }
+    {
+        Config: FormatConfig
+        WriterModel: WriterModel
+        WriterEvents: Queue<WriterEvent>
+        FormattedCursor: pos option
+        /// When enabled, genNode emits NodeStart/NodeEnd WriterEvents around each Oak node.
+        /// Only used by CodeFormatter.GetWriterEventsAsync for diagnostic output.
+        DebugMode: bool
+    }
 
     /// Initialize with a string writer and use space as delimiter
     static member Default =
         { Config = FormatConfig.Default
           WriterModel = WriterModel.init
           WriterEvents = Queue.empty
-          FormattedCursor = None }
+          FormattedCursor = None
+          DebugMode = false }
 
     static member Create config : Context =
         { Context.Default with Config = config }
@@ -288,6 +282,8 @@ let dump (isSelection: bool) (ctx: Context) =
 
     { Code = code
       Cursor = ctx.FormattedCursor }
+
+let dumpEvents (ctx: Context) : WriterEvent array = ctx.WriterEvents |> Seq.toArray
 
 let dumpAndContinue (ctx: Context) =
 #if DEBUG

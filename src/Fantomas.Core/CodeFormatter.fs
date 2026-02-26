@@ -98,3 +98,23 @@ type CodeFormatter =
             let result = context |> CodePrinter.genFile oak |> Context.dump false
             return result.Code
         }
+
+    static member GetWriterEventsAsync(isSignature, source) : Async<WriterEvent array> =
+        CodeFormatter.GetWriterEventsAsync(isSignature, source, FormatConfig.Default)
+
+    static member GetWriterEventsAsync(isSignature, source, config) : Async<WriterEvent array> =
+        async {
+            let sourceText = CodeFormatterImpl.getSourceText source
+            let! asts = CodeFormatterImpl.parse isSignature sourceText
+
+            let ast, _ = asts.[0]
+            let oak = ASTTransformer.mkOak (Some sourceText) ast
+            let oak = Trivia.enrichTree config sourceText ast oak
+
+            let context =
+                { Context.Context.Create config with
+                    DebugMode = true }
+
+            let ctx = context |> CodePrinter.genFile oak
+            return Context.dumpEvents ctx
+        }
