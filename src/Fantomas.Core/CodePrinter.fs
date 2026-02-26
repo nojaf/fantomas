@@ -8,25 +8,28 @@ open Microsoft.FSharp.Core.CompilerServices
 let noBreakInfixOps = set [| "="; ">"; "<"; "%" |]
 let newLineInfixOps = set [ "|>"; "||>"; "|||>"; ">>"; ">>=" ]
 
+[<return: Struct>]
 let (|IdentText|_|) (text: string) (e: Expr) =
     match e with
-    | Expr.Ident stn when stn.Text = text -> Some stn
-    | _ -> None
+    | Expr.Ident stn when stn.Text = text -> ValueSome stn
+    | _ -> ValueNone
 
 /// Matches an ExprAppNode that follows the query join RHS pattern:
 /// source on condition [into name]
+[<return: Struct>]
 let (|QueryJoinRhs|_|) (expr: Expr) =
     match expr with
     | Expr.App appNode ->
         match appNode.Arguments with
-        | [ IdentText "on" onNode; condition ] -> Some(appNode.FunctionExpr, onNode, condition, None)
+        | [ IdentText "on" onNode; condition ] -> ValueSome(appNode.FunctionExpr, onNode, condition, None)
         | [ IdentText "on" onNode; condition; IdentText "into" intoNode; target ] ->
-            Some(appNode.FunctionExpr, onNode, condition, Some(intoNode, target))
-        | _ -> None
-    | _ -> None
+            ValueSome(appNode.FunctionExpr, onNode, condition, Some(intoNode, target))
+        | _ -> ValueNone
+    | _ -> ValueNone
 
 /// Matches a query expression application with an `into` clause:
 /// groupBy expr into name, groupValBy expr expr into name
+[<return: Struct>]
 let (|QueryGroupInto|_|) (expr: Expr) =
     match expr with
     | Expr.App appNode ->
@@ -34,14 +37,14 @@ let (|QueryGroupInto|_|) (expr: Expr) =
 
         let rec splitAtInto before =
             function
-            | (IdentText "into" intoNode) :: rest -> Some(List.rev before, intoNode, rest)
+            | (IdentText "into" intoNode) :: rest -> ValueSome(List.rev before, intoNode, rest)
             | arg :: rest -> splitAtInto (arg :: before) rest
-            | [] -> None
+            | [] -> ValueNone
 
         match splitAtInto [] args with
-        | Some(beforeArgs, intoNode, afterArgs) -> Some(appNode.FunctionExpr, beforeArgs, intoNode, afterArgs)
-        | None -> None
-    | _ -> None
+        | ValueSome(beforeArgs, intoNode, afterArgs) -> ValueSome(appNode.FunctionExpr, beforeArgs, intoNode, afterArgs)
+        | ValueNone -> ValueNone
+    | _ -> ValueNone
 
 let rec (|UppercaseType|LowercaseType|) (t: Type) : Choice<unit, unit> =
     let upperOrLower (v: string) =
