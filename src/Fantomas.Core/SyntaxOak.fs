@@ -475,6 +475,9 @@ type Type =
         | Intersection n -> n
 
 /// A pattern composed from a left hand-side pattern, a single text token/operator and a right hand-side pattern.
+/// Example (Or): `A | B`
+/// Example (As): `x as y`
+/// Example (ListCons): `head :: tail`
 type PatLeftMiddleRight(lhs: Pattern, middle: Choice<SingleTextNode, string>, rhs: Pattern, range) =
     inherit NodeBase(range)
 
@@ -489,12 +492,14 @@ type PatLeftMiddleRight(lhs: Pattern, middle: Choice<SingleTextNode, string>, rh
     member val Middle = middle
     member val RightHandSide = rhs
 
+/// Example: `pat1 & pat2 & pat3`
 type PatAndsNode(pats: Pattern list, range) =
     inherit NodeBase(range)
 
     override val Children: Node array = [| yield! List.map Pattern.Node pats |]
     member val Patterns = pats
 
+/// Example: `[<Attr>] pat: Type` (attributed/typed parameter pattern)
 type PatParameterNode(attributes: MultipleAttributeListNode option, pat: Pattern, t: Type option, range) =
     inherit NodeBase(range)
 
@@ -507,6 +512,7 @@ type PatParameterNode(attributes: MultipleAttributeListNode option, pat: Pattern
     member val Pattern = pat
     member val Type = t
 
+/// Example: `( * )` (operator name used as a pattern in member definitions)
 type PatNamedParenStarIdentNode
     (
         accessibility: SingleTextNode option,
@@ -528,6 +534,7 @@ type PatNamedParenStarIdentNode
     member val Name = name
     member val ClosingParen = closingParen
 
+/// Example: `x` or `private x` (a simple named binding pattern)
 type PatNamedNode(accessibility: SingleTextNode option, name: SingleTextNode, range) =
     inherit NodeBase(range)
 
@@ -542,6 +549,7 @@ type NamePatPairNode(fieldName: IdentListNode, equals: SingleTextNode, pat: Patt
     member val Equals = equals
     member val Pattern = pat
 
+/// Example: `MyUnion(field1 = x; field2 = y)` (named field patterns on a union case)
 type PatNamePatPairsNode
     (
         identifier: IdentListNode,
@@ -566,6 +574,7 @@ type PatNamePatPairsNode
     member val Pairs = pairs
     member val ClosingParen = closingParen
 
+/// Example: `Some x` or `MyModule.MyDU value` (a union case or long-ident pattern with optional sub-patterns)
 type PatLongIdentNode
     (
         accessibility: SingleTextNode option,
@@ -587,6 +596,7 @@ type PatLongIdentNode
     member val TyparDecls = typarDecls
     member val Parameters = parameters
 
+/// Example: `(pat)` (a parenthesised pattern)
 type PatParenNode(openingParen: SingleTextNode, pat: Pattern, closingParen: SingleTextNode, range) =
     inherit NodeBase(range)
 
@@ -596,6 +606,7 @@ type PatParenNode(openingParen: SingleTextNode, pat: Pattern, closingParen: Sing
     member val Pattern = pat
     member val ClosingParen = closingParen
 
+/// Example: `a, b, c` (a tuple pattern)
 type PatTupleNode(items: Choice<Pattern, SingleTextNode> list, range) =
     inherit NodeBase(range)
 
@@ -607,12 +618,14 @@ type PatTupleNode(items: Choice<Pattern, SingleTextNode> list, range) =
 
     member val Items = items
 
+/// Example: `struct (a, b)` (a struct tuple pattern)
 type PatStructTupleNode(pats: Pattern list, range) =
     inherit NodeBase(range)
 
     override val Children: Node array = [| yield! (List.map Pattern.Node pats) |]
     member val Patterns = pats
 
+/// Example: `[a; b; c]` (list pattern) or `[| a; b; c |]` (array pattern)
 type PatArrayOrListNode(openToken: SingleTextNode, pats: Pattern list, closeToken: SingleTextNode, range) =
     inherit NodeBase(range)
 
@@ -622,6 +635,7 @@ type PatArrayOrListNode(openToken: SingleTextNode, pats: Pattern list, closeToke
     member val Patterns = pats
     member val CloseToken = closeToken
 
+/// Example: `{ Field1 = x; Field2 = y }` (a record pattern)
 type PatRecordNode(openingNode: SingleTextNode, fields: NamePatPairNode list, closingNode: SingleTextNode, range) =
     inherit NodeBase(range)
 
@@ -630,6 +644,7 @@ type PatRecordNode(openingNode: SingleTextNode, fields: NamePatPairNode list, cl
     member val Fields = fields
     member val ClosingNode = closingNode
 
+/// Example: `:? SomeType` (a type-test pattern)
 type PatIsInstNode(token: SingleTextNode, t: Type, range) =
     inherit NodeBase(range)
     override val Children: Node array = [| yield token; yield Type.Node t |]
