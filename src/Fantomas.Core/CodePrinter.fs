@@ -1778,7 +1778,20 @@ let genRecord smallRecordExpr multilineRecordExpr (node: ExprRecordBaseNode) ctx
 
 let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
     if node.Elements.IsEmpty then
-        genSingleTextNode node.Opening +> genSingleTextNode node.Closing |> genNode node
+        fun ctx ->
+            (genSingleTextNode node.Opening
+             +> (fun afterOpeningCtx ->
+                 // When the closing bracket has trivia (blank lines, comments) and we are using Stroustrup style,
+                 // the trivia needs to be indented inside the brackets. See 3098.
+                 if
+                     node.Closing.HasContentBefore
+                     && afterOpeningCtx.Config.MultilineBracketStyle = Stroustrup
+                 then
+                     (indent +> genSingleTextNode node.Closing +> unindent) afterOpeningCtx
+                 else
+                     (genSingleTextNode node.Closing) afterOpeningCtx)
+             |> genNode node)
+                ctx
     else
         let smallExpression =
             genSingleTextNode node.Opening
