@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Type app closing angle bracket padded by previous expression length. [#3179](https://github.com/fsprojects/fantomas/issues/3179)
+
 ## [8.0.0-alpha-002] - 2025-12-15
 
 ### Changed

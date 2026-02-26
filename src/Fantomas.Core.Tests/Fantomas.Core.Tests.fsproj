@@ -43,6 +43,7 @@
     <Compile Include="SpecialConstructsTests.fs" />
     <Compile Include="FormatAstTests.fs" />
     <Compile Include="LetBindingTests.fs" />
+    <Compile Include="TypeAppTests.fs" />
     <Compile Include="NoTrailingSpacesTests.fs" />
     <Compile Include="LazyTests.fs" />
     <Compile Include="SynLongIdentTests.fs" />
