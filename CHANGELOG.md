@@ -5,6 +5,7 @@
 ### Fixed
 
 - End of line comments after infix operators are preserved correctly. [#2287](https://github.com/fsprojects/fantomas/issues/2287)
+- Trivia around paren lambda with conditional compilation no longer causes merge error. [#2844](https://github.com/fsprojects/fantomas/issues/2844)
 
 ## [8.0.0-alpha-002] - 2025-12-15
 
