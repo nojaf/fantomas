@@ -240,6 +240,7 @@ let mkAttributes (creationAide: CreationAide) (al: SynAttributeList list) : Mult
 
 /// Only used to get items of SynExpr.ArrayOrListComputed
 /// We can safely assume the SequentialTrivia.SeparatorRange is not going to be `then`.
+[<return: Struct>]
 let (|Sequentials|_|) e =
     let rec visit (e: SynExpr) (finalContinuation: SynExpr list -> SynExpr list) : SynExpr list =
         match e with
@@ -251,8 +252,8 @@ let (|Sequentials|_|) e =
     match e with
     | SynExpr.Sequential(expr1 = e1; expr2 = e2) ->
         let xs = visit e2 id
-        Some(e1 :: xs)
-    | _ -> None
+        ValueSome(e1 :: xs)
+    | _ -> ValueNone
 
 let mkOpenAndCloseForArrayOrList isArray range =
     if isArray then
@@ -306,10 +307,11 @@ let rec visitLetOrUses acc expr =
         visitLetOrUses (acc @ xs') body
     | _ -> acc, expr
 
+[<return: Struct>]
 let (|LetOrUses|_|) expr =
     match expr with
-    | SynExpr.LetOrUse _ -> Some(visitLetOrUses [] expr)
-    | _ -> None
+    | SynExpr.LetOrUse _ -> ValueSome(visitLetOrUses [] expr)
+    | _ -> ValueNone
 
 // No [<TailCall>] — the recursive calls are partially applied and passed to Continuation.sequence (CPS),
 // which ensures stack safety, but the compiler can't verify this.
@@ -396,48 +398,53 @@ let mkSynMatchClause creationAide (SynMatchClause(p, eo, e, range, _, trivia)) :
         fullRange
     )
 
+[<return: Struct>]
 let (|ColonColonInfixApp|_|) =
     function
     | SynExpr.App(
         isInfix = true
         funcExpr = SynExpr.LongIdent(
             longDotId = SynLongIdent([ operatorIdent ], [], [ Some(IdentTrivia.OriginalNotation "::") ]))
-        argExpr = SynExpr.Tuple(exprs = [ e1; e2 ])) -> Some(e1, stn "::" operatorIdent.idRange, e2)
-    | _ -> None
+        argExpr = SynExpr.Tuple(exprs = [ e1; e2 ])) -> ValueSome(e1, stn "::" operatorIdent.idRange, e2)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|InfixApp|_|) synExpr =
     match synExpr with
-    | ColonColonInfixApp(lhs, operator, rhs) -> Some(lhs, operator, rhs)
+    | ColonColonInfixApp(lhs, operator, rhs) -> ValueSome(lhs, operator, rhs)
     | SynExpr.App(
         funcExpr = SynExpr.App(
             isInfix = true
             funcExpr = SynExpr.LongIdent(
                 longDotId = SynLongIdent([ operatorIdent ], [], [ Some(IdentTrivia.OriginalNotation operator) ]))
             argExpr = e1)
-        argExpr = e2) -> Some(e1, stn operator operatorIdent.idRange, e2)
-    | _ -> None
+        argExpr = e2) -> ValueSome(e1, stn operator operatorIdent.idRange, e2)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|IndexWithoutDot|_|) expr =
     match expr with
     | SynExpr.App(ExprAtomicFlag.Atomic, false, identifierExpr, SynExpr.ArrayOrListComputed(false, indexExpr, _), _) ->
-        Some(identifierExpr, indexExpr)
+        ValueSome(identifierExpr, indexExpr)
     | SynExpr.App(ExprAtomicFlag.NonAtomic,
                   false,
                   identifierExpr,
                   (SynExpr.ArrayOrListComputed(isArray = false; expr = indexExpr) as argExpr),
                   _) when (RangeHelpers.isAdjacentTo identifierExpr.Range argExpr.Range) ->
-        Some(identifierExpr, indexExpr)
-    | _ -> None
+        ValueSome(identifierExpr, indexExpr)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|EmptyComputationExpr|_|) expr =
     match expr with
     | SynExpr.App(ExprAtomicFlag.NonAtomic,
                   false,
                   funcExpr,
                   SynExpr.Record(recordFields = []; range = StartEndRange 1 (mOpen, _, mClose)),
-                  range) -> Some(funcExpr, mOpen, mClose, range)
-    | _ -> None
+                  range) -> ValueSome(funcExpr, mOpen, mClose, range)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|MultipleConsInfixApps|_|) expr =
     let rec visit expr (headAndLastOperator: (SynExpr * SingleTextNode) option) (xs: Queue<SingleTextNode * SynExpr>) =
         match expr with
@@ -457,11 +464,12 @@ let (|MultipleConsInfixApps|_|) expr =
     match expr with
     | ColonColonInfixApp _ ->
         let head, xs = visit expr None (Queue())
-        if xs.Count < 2 then None else Some(head, Seq.toList xs)
-    | _ -> None
+        if xs.Count < 2 then ValueNone else ValueSome(head, Seq.toList xs)
+    | _ -> ValueNone
 
 let rightOperators = set [| "@"; "**"; "^"; ":=" |]
 
+[<return: Struct>]
 let (|SameInfixApps|_|) expr =
     let rec visitLeft sameOperator expr continuation =
         match expr with
@@ -516,11 +524,12 @@ let (|SameInfixApps|_|) expr =
             else
                 visitLeft operator.Text expr id
 
-        if xs.Count < 2 then None else Some(head, Seq.toList xs)
-    | _ -> None
+        if xs.Count < 2 then ValueNone else ValueSome(head, Seq.toList xs)
+    | _ -> ValueNone
 
 let newLineInfixOps = set [ "|>"; "||>"; "|||>"; ">>"; ">>=" ]
 
+[<return: Struct>]
 let (|NewlineInfixApps|_|) expr =
     let rec visit expr continuation =
         match expr with
@@ -533,8 +542,8 @@ let (|NewlineInfixApps|_|) expr =
     match expr with
     | InfixApp _ ->
         let head, xs = visit expr id
-        if xs.Count < 2 then None else Some(head, Seq.toList xs)
-    | _ -> None
+        if xs.Count < 2 then ValueNone else ValueSome(head, Seq.toList xs)
+    | _ -> ValueNone
 
 [<TailCall>]
 let rec visitElIf acc expr =
@@ -555,6 +564,7 @@ let rec visitElIf acc expr =
         // The else branch is not an if/then/else, so it's the final else body
         List.rev acc, Some expr
 
+[<return: Struct>]
 let (|ElIf|_|) expr =
     match expr with
     | SynExpr.IfThenElse _ ->
@@ -592,19 +602,21 @@ let (|ElIf|_|) expr =
                 | None -> None
             | None -> None
 
-        Some(clauses, elseInfo)
-    | _ -> None
+        ValueSome(clauses, elseInfo)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|ConstNumberExpr|_|) =
     function
-    | SynExpr.Const(SynConst.Double v, m) -> Some(string<double> v, m)
-    | SynExpr.Const(SynConst.Decimal v, m) -> Some(string<decimal> v, m)
-    | SynExpr.Const(SynConst.Single v, m) -> Some(string<single> v, m)
-    | SynExpr.Const(SynConst.Int16 v, m) -> Some(string<int16> v, m)
-    | SynExpr.Const(SynConst.Int32 v, m) -> Some(string<int> v, m)
-    | SynExpr.Const(SynConst.Int64 v, m) -> Some(string<int64> v, m)
-    | _ -> None
+    | SynExpr.Const(SynConst.Double v, m) -> ValueSome(string<double> v, m)
+    | SynExpr.Const(SynConst.Decimal v, m) -> ValueSome(string<decimal> v, m)
+    | SynExpr.Const(SynConst.Single v, m) -> ValueSome(string<single> v, m)
+    | SynExpr.Const(SynConst.Int16 v, m) -> ValueSome(string<int16> v, m)
+    | SynExpr.Const(SynConst.Int32 v, m) -> ValueSome(string<int> v, m)
+    | SynExpr.Const(SynConst.Int64 v, m) -> ValueSome(string<int64> v, m)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|App|_|) e =
     let rec visit expr continuation =
         match expr with
@@ -615,19 +627,21 @@ let (|App|_|) e =
         | e -> continuation (e, Queue())
 
     let head, xs = visit e id
-    if xs.Count = 0 then None else Some(head, Seq.toList xs)
+    if xs.Count = 0 then ValueNone else ValueSome(head, Seq.toList xs)
 
+[<return: Struct>]
 let (|ParenLambda|_|) e =
     match e with
     | ParenExpr(lpr, SynExpr.Lambda(_, _, _, _, Some(pats, body), mLambda, { ArrowRange = Some mArrow }), rpr, _) ->
-        Some(lpr, pats, mArrow, body, mLambda, rpr)
-    | _ -> None
+        ValueSome(lpr, pats, mArrow, body, mLambda, rpr)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|ParenMatchLambda|_|) e =
     match e with
     | ParenExpr(lpr, SynExpr.MatchLambda(_, mFunction, clauses, _, mMatchLambda), rpr, _) ->
-        Some(lpr, mFunction, clauses, mMatchLambda, rpr)
-    | _ -> None
+        ValueSome(lpr, mFunction, clauses, mMatchLambda, rpr)
+    | _ -> ValueNone
 
 let mkMatchLambda creationAide mFunction cs m =
     ExprMatchLambdaNode(stn "function" mFunction, List.map (mkSynMatchClause creationAide) cs, m)
@@ -660,15 +674,17 @@ let mkLinksFromSynLongIdent (sli: SynLongIdent) : LinkExpr list =
         | LinkExpr.AppUnit _
         | LinkExpr.IndexExpr _ -> -1, -1)
 
+[<return: Struct>]
 let (|UnitExpr|_|) e =
     match e with
-    | SynExpr.Const(constant = SynConst.Unit) -> Some e.Range
-    | _ -> None
+    | SynExpr.Const(constant = SynConst.Unit) -> ValueSome e.Range
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|ParenExpr|_|) e =
     match e with
-    | SynExpr.Paren(e, lpr, Some rpr, pr) -> Some(lpr, e, rpr, pr)
-    | _ -> None
+    | SynExpr.Paren(e, lpr, Some rpr, pr) -> ValueSome(lpr, e, rpr, pr)
+    | _ -> ValueNone
 
 let mkLongIdentExprFromSynIdent (SynIdent(ident, identTrivia)) =
     SynExpr.LongIdent(false, SynLongIdent([ ident ], [], [ identTrivia ]), None, ident.idRange)
@@ -718,7 +734,8 @@ let mkLinksFromFunctionName (mkLinkFromExpr: SynExpr -> LinkExpr) (functionName:
               yield (mkLongIdentExprFromSynIdent lastSynIdent |> mkLinkFromExpr) ]
     | e -> [ mkLinkFromExpr e ]
 
-let (|ChainExpr|_|) (e: SynExpr) : LinkExpr list option =
+[<return: Struct>]
+let (|ChainExpr|_|) (e: SynExpr) : LinkExpr list voption =
     let rec visit (e: SynExpr) (continuation: LinkExpr list -> LinkExpr list) =
         match e with
         | SynExpr.App(
@@ -902,7 +919,7 @@ let (|ChainExpr|_|) (e: SynExpr) : LinkExpr list option =
     | SynExpr.App(
         isInfix = false
         funcExpr = SynExpr.LongIdent _ | SynExpr.Ident _ | SynExpr.DotGet(expr = SynExpr.TypeApp(expr = SynExpr.Ident _))
-        argExpr = ParenExpr(_, SynExpr.Lambda _, _, _)) -> None
+        argExpr = ParenExpr(_, SynExpr.Lambda _, _, _)) -> ValueNone
     | SynExpr.App(
         isInfix = false
         funcExpr = SynExpr.DotGet _ | SynExpr.TypeApp(expr = SynExpr.DotGet _)
@@ -910,19 +927,20 @@ let (|ChainExpr|_|) (e: SynExpr) : LinkExpr list option =
     | SynExpr.DotGet _
     | SynExpr.TypeApp(expr = SynExpr.DotGet _)
     | SynExpr.DotIndexedGet(objectExpr = SynExpr.App(funcExpr = SynExpr.DotGet _) | SynExpr.DotGet _) ->
-        Some(visit e id)
-    | _ -> None
+        ValueSome(visit e id)
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|AppSingleParenArg|_|) =
     function
-    | App(SynExpr.DotGet _, [ (SynExpr.Paren(expr = SynExpr.Tuple _)) ]) -> None
-    | App(e, [ UnitExpr _ as px ]) -> Some(e, px)
+    | App(SynExpr.DotGet _, [ (SynExpr.Paren(expr = SynExpr.Tuple _)) ]) -> ValueNone
+    | App(e, [ UnitExpr _ as px ]) -> ValueSome(e, px)
     | App(e, [ SynExpr.Paren(expr = singleExpr) as px ]) ->
         match singleExpr with
         | SynExpr.Lambda _
-        | SynExpr.MatchLambda _ -> None
-        | _ -> Some(e, px)
-    | _ -> None
+        | SynExpr.MatchLambda _ -> ValueNone
+        | _ -> ValueSome(e, px)
+    | _ -> ValueNone
 
 let mkParenExpr creationAide lpr e rpr m =
     ExprParenNode(stn "(" lpr, mkExpr creationAide e, stn ")" rpr, m)
@@ -1652,22 +1670,24 @@ let mkExprQuote creationAide isRaw e range : ExprQuoteNode =
 
     ExprQuoteNode(startToken, mkExpr creationAide e, endToken, range)
 
+[<return: Struct>]
 let (|ParenStarSynIdent|_|) =
     function
     | IdentTrivia.OriginalNotationWithParen(lpr, originalNotation, rpr) ->
         if originalNotation.Length > 1 && String.startsWithOrdinal "*" originalNotation then
-            Some(lpr, originalNotation, rpr)
+            ValueSome(lpr, originalNotation, rpr)
         else
-            None
-    | _ -> None
+            ValueNone
+    | _ -> ValueNone
 
+[<return: Struct>]
 let (|PatParameter|_|) (p: SynPat) =
     match p with
-    | SynPat.Typed(pat = pat; targetType = t) -> Some([], pat, Some t)
+    | SynPat.Typed(pat = pat; targetType = t) -> ValueSome([], pat, Some t)
     | SynPat.Attrib(pat = SynPat.Typed(pat = pat; targetType = t); attributes = attributes) ->
-        Some(attributes, pat, Some t)
-    | SynPat.Attrib(pat = pat; attributes = attributes) -> Some(attributes, pat, None)
-    | _ -> None
+        ValueSome(attributes, pat, Some t)
+    | SynPat.Attrib(pat = pat; attributes = attributes) -> ValueSome(attributes, pat, None)
+    | _ -> ValueNone
 
 let mkUnit (StartEndRange 1 (lpr, m, rpr)) = UnitNode(stn "(" lpr, stn ")" rpr, m)
 
@@ -1807,11 +1827,12 @@ let mkBindingReturnInfo creationAide (returnInfo: SynBindingReturnInfo option) =
                 BindingReturnInfoNode(stn ":" mColon, mkType creationAide t, m)))
         returnInfo
 
+[<return: Struct>]
 let (|OperatorWithStar|_|) (si: SynIdent) =
     match si with
     | SynIdent(ident, Some(ParenStarSynIdent(_, text, _))) ->
-        Some(IdentifierOrDot.Ident(stn $"( %s{text} )" ident.idRange))
-    | _ -> None
+        ValueSome(IdentifierOrDot.Ident(stn $"( %s{text} )" ident.idRange))
+    | _ -> ValueNone
 
 let mkBinding
     (creationAide: CreationAide)
@@ -2214,10 +2235,11 @@ let rec visitTFuns acc t =
     | SynType.Fun(t1, t2, _, trivia) -> visitTFuns ((t1, trivia.ArrowRange) :: acc) t2
     | _ -> List.rev acc, t
 
+[<return: Struct>]
 let (|TFuns|_|) t =
     match t with
-    | SynType.Fun _ -> Some(visitTFuns [] t)
-    | _ -> None
+    | SynType.Fun _ -> ValueSome(visitTFuns [] t)
+    | _ -> ValueNone
 
 let mkTypeList creationAide ts rt m =
     let parameters =
@@ -2366,10 +2388,11 @@ let rec visitOpenL acc decls =
     | SynModuleDecl.Open(target, range) :: rest -> visitOpenL ((target, range) :: acc) rest
     | _ -> List.rev acc, decls
 
+[<return: Struct>]
 let (|OpenL|_|) decls =
     match decls with
-    | SynModuleDecl.Open _ :: _ -> Some(visitOpenL [] decls)
-    | _ -> None
+    | SynModuleDecl.Open _ :: _ -> ValueSome(visitOpenL [] decls)
+    | _ -> ValueNone
 
 let mkOpenNodeForImpl (creationAide: CreationAide) (target, range) : Open =
     match target with
@@ -2384,10 +2407,11 @@ let rec visitHashDirectiveL acc decls =
     | SynModuleDecl.HashDirective(p, _) :: rest -> visitHashDirectiveL (p :: acc) rest
     | _ -> List.rev acc, decls
 
+[<return: Struct>]
 let (|HashDirectiveL|_|) decls =
     match decls with
-    | SynModuleDecl.HashDirective _ :: _ -> Some(visitHashDirectiveL [] decls)
-    | _ -> None
+    | SynModuleDecl.HashDirective _ :: _ -> ValueSome(visitHashDirectiveL [] decls)
+    | _ -> ValueNone
 
 let mkSynLeadingKeyword (lk: SynLeadingKeyword) =
     let mtn v =
@@ -3302,10 +3326,11 @@ let rec visitOpenSigL acc decls =
     | SynModuleSigDecl.Open(target, range) :: rest -> visitOpenSigL ((target, range) :: acc) rest
     | _ -> List.rev acc, decls
 
+[<return: Struct>]
 let (|OpenSigL|_|) decls =
     match decls with
-    | SynModuleSigDecl.Open _ :: _ -> Some(visitOpenSigL [] decls)
-    | _ -> None
+    | SynModuleSigDecl.Open _ :: _ -> ValueSome(visitOpenSigL [] decls)
+    | _ -> ValueNone
 
 [<TailCall>]
 let rec visitHashDirectiveSigL acc decls =
@@ -3313,10 +3338,11 @@ let rec visitHashDirectiveSigL acc decls =
     | SynModuleSigDecl.HashDirective(p, _) :: rest -> visitHashDirectiveSigL (p :: acc) rest
     | _ -> List.rev acc, decls
 
+[<return: Struct>]
 let (|HashDirectiveSigL|_|) decls =
     match decls with
-    | SynModuleSigDecl.HashDirective _ :: _ -> Some(visitHashDirectiveSigL [] decls)
-    | _ -> None
+    | SynModuleSigDecl.HashDirective _ :: _ -> ValueSome(visitHashDirectiveSigL [] decls)
+    | _ -> ValueNone
 
 let mkModuleSigDecl (creationAide: CreationAide) (decl: SynModuleSigDecl) =
     let declRange = decl.Range
