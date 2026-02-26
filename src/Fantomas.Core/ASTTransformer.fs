@@ -296,20 +296,23 @@ let mkTuple (creationAide: CreationAide) (exprs: SynExpr list) (commas: range li
 
 /// Unfold a list of let bindings
 /// Recursive and use properties have to be determined at this point
-let rec (|LetOrUses|_|) =
-    function
+[<TailCall>]
+let rec visitLetOrUses acc expr =
+    match expr with
     | SynExpr.LetOrUse { Bindings = xs
-                         Body = LetOrUses(ys, e)
+                         Body = body
                          Trivia = trivia } ->
         let xs' = List.mapWithLast (fun b -> b, None) (fun b -> b, trivia.InKeyword) xs
-        Some(xs' @ ys, e)
-    | SynExpr.LetOrUse { Bindings = xs
-                         Body = e
-                         Trivia = trivia } ->
-        let xs' = List.mapWithLast (fun b -> b, None) (fun b -> b, trivia.InKeyword) xs
-        Some(xs', e)
+        visitLetOrUses (acc @ xs') body
+    | _ -> acc, expr
+
+let (|LetOrUses|_|) expr =
+    match expr with
+    | SynExpr.LetOrUse _ -> Some(visitLetOrUses [] expr)
     | _ -> None
 
+// No [<TailCall>] — the recursive calls are partially applied and passed to Continuation.sequence (CPS),
+// which ensures stack safety, but the compiler can't verify this.
 let rec collectComputationExpressionStatements
     (creationAide: CreationAide)
     (e: SynExpr)
@@ -533,44 +536,63 @@ let (|NewlineInfixApps|_|) expr =
         if xs.Count < 2 then None else Some(head, Seq.toList xs)
     | _ -> None
 
-let rec (|ElIf|_|) =
-    function
-    | SynExpr.IfThenElse(e1,
-                         e2,
-                         Some(ElIf((elifNode: Choice<SingleTextNode, range * range>, eshE1, eshThenKw, eshE2) :: es,
-                                   elseInfo)),
-                         _,
-                         _,
-                         _,
-                         trivia) ->
+[<TailCall>]
+let rec visitElIf acc expr =
+    match expr with
+    | SynExpr.IfThenElse(e1, e2, Some elseExpr, _, _, _, trivia) ->
         let ifNode =
             stn (if trivia.IsElif then "elif" else "if") trivia.IfKeyword |> Choice1Of2
 
-        let elifNode =
-            match trivia.ElseKeyword with
-            | None -> elifNode
-            | Some mElse ->
-                match elifNode with
-                | Choice1Of2 ifNode -> Choice2Of2(mElse, ifNode.Range)
-                | Choice2Of2 _ -> failwith "Cannot merge a second else keyword into existing else if"
+        let entry = (ifNode, trivia.ElseKeyword, e1, stn "then" trivia.ThenKeyword, e2)
+        visitElIf (entry :: acc) elseExpr
+    | SynExpr.IfThenElse(e1, e2, None, _, _, _, trivia) ->
+        let ifNode =
+            stn (if trivia.IsElif then "elif" else "if") trivia.IfKeyword |> Choice1Of2
 
-        Some(
-            (ifNode, e1, stn "then" trivia.ThenKeyword, e2)
-            :: (elifNode, eshE1, eshThenKw, eshE2)
-            :: es,
-            elseInfo
-        )
+        let entry = (ifNode, trivia.ElseKeyword, e1, stn "then" trivia.ThenKeyword, e2)
+        List.rev (entry :: acc), None
+    | _ ->
+        // The else branch is not an if/then/else, so it's the final else body
+        List.rev acc, Some expr
 
-    | SynExpr.IfThenElse(e1, e2, e3, _, _, _, trivia) ->
+let (|ElIf|_|) expr =
+    match expr with
+    | SynExpr.IfThenElse _ ->
+        let rawEntries, elseBody = visitElIf [] expr
+
+        // Merge the else keyword from the previous entry into the current entry's ifNode.
+        // In the original recursive version, the parent's ElseKeyword was merged into the child's ifNode.
+        // Here, each entry's ElseKeyword belongs to the *next* entry's merge.
+        let clauses =
+            rawEntries
+            |> List.mapi (fun i (ifNode, _elseKw, e1, thenKw, e2) ->
+                let node: Choice<SingleTextNode, range * range> =
+                    if i = 0 then
+                        ifNode
+                    else
+                        // Get the previous entry's elseKw to merge into this entry
+                        let (_, prevElseKw, _, _, _) = rawEntries[i - 1]
+
+                        match prevElseKw with
+                        | Some mElse ->
+                            match ifNode with
+                            | Choice1Of2 ifNode -> Choice2Of2(mElse, ifNode.Range)
+                            | Choice2Of2 _ -> failwith "Cannot merge a second else keyword into existing else if"
+                        | None -> ifNode
+
+                (node, e1, thenKw, e2))
+
         let elseInfo =
-            match trivia.ElseKeyword, e3 with
-            | Some elseKw, Some elseExpr -> Some(stn "else" elseKw, elseExpr)
-            | _ -> None
+            match elseBody with
+            | Some elseExpr ->
+                let (_, lastElseKw, _, _, _) = List.last rawEntries
 
-        let ifNode =
-            stn (if trivia.IsElif then "elif" else "if") trivia.IfKeyword |> Choice1Of2
+                match lastElseKw with
+                | Some elseKw -> Some(stn "else" elseKw, elseExpr)
+                | None -> None
+            | None -> None
 
-        Some([ (ifNode, e1, stn "then" trivia.ThenKeyword, e2) ], elseInfo)
+        Some(clauses, elseInfo)
     | _ -> None
 
 let (|ConstNumberExpr|_|) =
@@ -2186,10 +2208,15 @@ let mkSynTypeConstraint (creationAide: CreationAide) (tc: SynTypeConstraint) : T
         |> TypeConstraint.WhereNotSupportsNull
 
 // Arrow type is right-associative
-let rec (|TFuns|_|) =
-    function
-    | SynType.Fun(t1, TFuns(ts, ret), _, trivia) -> Some((t1, trivia.ArrowRange) :: ts, ret)
-    | SynType.Fun(t1, t2, _, trivia) -> Some([ t1, trivia.ArrowRange ], t2)
+[<TailCall>]
+let rec visitTFuns acc t =
+    match t with
+    | SynType.Fun(t1, t2, _, trivia) -> visitTFuns ((t1, trivia.ArrowRange) :: acc) t2
+    | _ -> List.rev acc, t
+
+let (|TFuns|_|) t =
+    match t with
+    | SynType.Fun _ -> Some(visitTFuns [] t)
     | _ -> None
 
 let mkTypeList creationAide ts rt m =
@@ -2333,10 +2360,15 @@ let mkType (creationAide: CreationAide) (t: SynType) : Type =
         TypeOrNode(mkType creationAide innerType, stn "|" mBar, nullType, m) |> Type.Or
     | t -> failwith $"unexpected type: %A{t}"
 
-let rec (|OpenL|_|) =
-    function
-    | SynModuleDecl.Open(target, range) :: OpenL(xs, ys) -> Some((target, range) :: xs, ys)
-    | SynModuleDecl.Open(target, range) :: ys -> Some([ target, range ], ys)
+[<TailCall>]
+let rec visitOpenL acc decls =
+    match decls with
+    | SynModuleDecl.Open(target, range) :: rest -> visitOpenL ((target, range) :: acc) rest
+    | _ -> List.rev acc, decls
+
+let (|OpenL|_|) decls =
+    match decls with
+    | SynModuleDecl.Open _ :: _ -> Some(visitOpenL [] decls)
     | _ -> None
 
 let mkOpenNodeForImpl (creationAide: CreationAide) (target, range) : Open =
@@ -2346,10 +2378,15 @@ let mkOpenNodeForImpl (creationAide: CreationAide) (target, range) : Open =
         |> Open.ModuleOrNamespace
     | SynOpenDeclTarget.Type(typeName, _) -> OpenTargetNode(mkType creationAide typeName, range) |> Open.Target
 
-let rec (|HashDirectiveL|_|) =
-    function
-    | SynModuleDecl.HashDirective(p, _) :: HashDirectiveL(xs, ys) -> Some(p :: xs, ys)
-    | SynModuleDecl.HashDirective(p, _) :: ys -> Some([ p ], ys)
+[<TailCall>]
+let rec visitHashDirectiveL acc decls =
+    match decls with
+    | SynModuleDecl.HashDirective(p, _) :: rest -> visitHashDirectiveL (p :: acc) rest
+    | _ -> List.rev acc, decls
+
+let (|HashDirectiveL|_|) decls =
+    match decls with
+    | SynModuleDecl.HashDirective _ :: _ -> Some(visitHashDirectiveL [] decls)
     | _ -> None
 
 let mkSynLeadingKeyword (lk: SynLeadingKeyword) =
@@ -3130,6 +3167,7 @@ let mkMemberSig (creationAide: CreationAide) (ms: SynMemberSig) =
     | SynMemberSig.ValField(f, _) -> mkSynField creationAide f |> MemberDefn.ValField
     | _ -> failwithf "Cannot construct node for %A" ms
 
+[<TailCall>]
 let rec mkModuleDecls
     (creationAide: CreationAide)
     (decls: SynModuleDecl list)
@@ -3258,16 +3296,26 @@ let mkImplFile
     Oak(phds, mds, m)
 
 // start sig file
-let rec (|OpenSigL|_|) =
-    function
-    | SynModuleSigDecl.Open(target, range) :: OpenSigL(xs, ys) -> Some((target, range) :: xs, ys)
-    | SynModuleSigDecl.Open(target, range) :: ys -> Some([ target, range ], ys)
+[<TailCall>]
+let rec visitOpenSigL acc decls =
+    match decls with
+    | SynModuleSigDecl.Open(target, range) :: rest -> visitOpenSigL ((target, range) :: acc) rest
+    | _ -> List.rev acc, decls
+
+let (|OpenSigL|_|) decls =
+    match decls with
+    | SynModuleSigDecl.Open _ :: _ -> Some(visitOpenSigL [] decls)
     | _ -> None
 
-let rec (|HashDirectiveSigL|_|) =
-    function
-    | SynModuleSigDecl.HashDirective(p, _) :: HashDirectiveSigL(xs, ys) -> Some(p :: xs, ys)
-    | SynModuleSigDecl.HashDirective(p, _) :: ys -> Some([ p ], ys)
+[<TailCall>]
+let rec visitHashDirectiveSigL acc decls =
+    match decls with
+    | SynModuleSigDecl.HashDirective(p, _) :: rest -> visitHashDirectiveSigL (p :: acc) rest
+    | _ -> List.rev acc, decls
+
+let (|HashDirectiveSigL|_|) decls =
+    match decls with
+    | SynModuleSigDecl.HashDirective _ :: _ -> Some(visitHashDirectiveSigL [] decls)
     | _ -> None
 
 let mkModuleSigDecl (creationAide: CreationAide) (decl: SynModuleSigDecl) =
@@ -3473,6 +3521,7 @@ let mkTypeDefnSig (creationAide: CreationAide) (SynTypeDefnSig(typeInfo, typeRep
         TypeDefnRegularNode(typeNameNode, allMembers, typeDefnRange) |> TypeDefn.Regular
     | _ -> failwithf "Could not create a TypeDefn for %A" typeRepr
 
+[<TailCall>]
 let rec mkModuleSigDecls
     (creationAide: CreationAide)
     (decls: SynModuleSigDecl list)
