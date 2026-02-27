@@ -1183,3 +1183,24 @@ let ``don't indent function application arguments when function name is further 
     b
     c))))))))))))))))))))))
 """
+
+[<Test>]
+let ``idempotency problem when formatting NUnit Assert.That with lambda, 1740`` () =
+    formatSourceString
+        """
+Assert.That(
+    Assert.Throws(fun () -> FooFooFooFooFooFoo.BarBar.dodododo filesfiles [] outoutout |> ignore)
+        .Message,
+    Is.EqualTo(message)
+)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+Assert.That(
+    Assert.Throws(fun () -> FooFooFooFooFooFoo.BarBar.dodododo filesfiles [] outoutout |> ignore).Message,
+    Is.EqualTo(message)
+)
+"""
