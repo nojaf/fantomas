@@ -2313,3 +2313,29 @@ let value =
          "111111111111111111111111111111111111111111111111111111111111111111111", "22222222222222222222222222222222222")
     ||> createTuple
 """
+
+[<Test>]
+let ``long and pattern respects max line length, 1780`` () =
+    formatSourceString
+        """
+let v, x =
+    match n with
+    | Voluptatem voluptatem & Praesentium praesentium & Molestiae molestiae & Repudiandae repudiandae & Exercitationem exercitationem & Assumenda assumenda ->
+        libero, []
+    | _ -> saepe, delectus
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let v, x =
+    match n with
+    | Voluptatem voluptatem
+        & Praesentium praesentium
+        & Molestiae molestiae
+        & Repudiandae repudiandae
+        & Exercitationem exercitationem
+        & Assumenda assumenda -> libero, []
+    | _ -> saepe, delectus
+"""
