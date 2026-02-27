@@ -130,7 +130,11 @@ type CancellableTaskResultBuilderBase with
             task: CancellationToken -> ^TaskLike,
             continuation:
                 ('TResult1
-                    -> CancellableTaskResultCode<'TOverall, 'Error, 'TResult2>)
+                        -> CancellableTaskResultCode<
+                            'TOverall,
+                            'Error,
+                            'TResult2
+                         >)
         ) : bool =
         true
 """
@@ -579,4 +583,32 @@ XYZ.app<
     return
         wouldSomeoneWriteThisCode
 }]
+"""
+
+[<Test>]
+let ``multiline function type in parens gets extra indent, 3043`` () =
+    formatSourceString
+        """
+type MyCustomTypeWithAPrettyLongDescribingName = MyCustomConstructor1
+
+let private myFunction
+    : string
+          -> (MyCustomTypeWithAPrettyLongDescribingName -> MyCustomTypeWithAPrettyLongDescribingName -> MyCustomTypeWithAPrettyLongDescribingName)
+          -> unit =
+    fun a fn -> ()
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type MyCustomTypeWithAPrettyLongDescribingName = MyCustomConstructor1
+
+let private myFunction
+    : string
+          -> (MyCustomTypeWithAPrettyLongDescribingName
+                  -> MyCustomTypeWithAPrettyLongDescribingName
+                  -> MyCustomTypeWithAPrettyLongDescribingName)
+          -> unit =
+    fun a fn -> ()
 """
