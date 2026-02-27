@@ -1104,3 +1104,33 @@ let ``double pipe with application with two lambdas, 2682`` () =
     )
     lastArgument
 """
+
+[<Test>]
+let ``closing parenthesis of lambda in chained call should not be placed on own line, 2553`` () =
+    formatSourceString
+        """
+module Foo =
+    let bar () =
+        let thing =
+            Mock()
+                .Setup(fun aaaaaaaaaaaa -> <@ aaaaaaaaaaaa.Abcdefghijklmnopqrs "Food" "IsTastier" @>).Returns(false)
+                .Create()
+        ()
+"""
+        { config with MaxLineLength = 100 }
+    |> prepend newline
+    |> should
+        equal
+        """
+module Foo =
+    let bar () =
+        let thing =
+            Mock()
+                .Setup(fun aaaaaaaaaaaa ->
+                    <@ aaaaaaaaaaaa.Abcdefghijklmnopqrs "Food" "IsTastier" @>
+                )
+                .Returns(false)
+                .Create()
+
+        ()
+"""
