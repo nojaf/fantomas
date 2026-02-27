@@ -11,6 +11,7 @@
 - Multiline function type inside parentheses gets extra indentation to avoid compiler error. [#3043](https://github.com/fsprojects/fantomas/issues/3043)
 - Trivia around paren lambda with conditional compilation no longer causes merge error. [#2844](https://github.com/fsprojects/fantomas/issues/2844)
 - Type app closing angle bracket padded by previous expression length. [#3179](https://github.com/fsprojects/fantomas/issues/3179)
+- Dynamic operator on result of qualified function call causes formatting error. [#3135](https://github.com/fsprojects/fantomas/issues/3135)
 
 ## [8.0.0-alpha-002] - 2025-12-15
 
