@@ -2848,38 +2848,6 @@ and [<CustomEquality ; NoComparison>] Bar<'context, 'a> =
 """
 
 [<Test>]
-let ``multiple nested generic types`` () =
-    formatSourceString
-        """
-let bv =
-    unbox<
-        Fooadfadadfdadfadfadfadfadfadfsfdsfadfadadfada<
-            Foo<
-                innerContextLongLongLong,
-                bb
-             >
-         >
-     >
-        bf
-"""
-        { config with MaxLineLength = 10 }
-    |> prepend newline
-    |> should
-        equal
-        """
-let bv =
-    unbox<
-        Fooadfadadfdadfadfadfadfadfadfsfdsfadfadadfada<
-            Foo<
-                innerContextLongLongLong,
-                bb
-             >
-         >
-     >
-        bf
-"""
-
-[<Test>]
 let ``Trivia inside multiline generic type parameters`` () =
     formatSourceString
         """

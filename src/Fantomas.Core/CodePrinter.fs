@@ -2058,17 +2058,21 @@ let genAppSingleParenArgExpr (addSpace: Context -> Context) (node: ExprAppSingle
 /// When called from `SynExpr.App` we need to ensure the node.GreaterThan is placed one space further than the start column.
 /// This is to ensure the application remains an application.
 let genTypeApp (addAdditionalColumnOffset: bool) (node: ExprTypeAppNode) (ctx: Context) : Context =
-    let startColumn = ctx.Column + (if addAdditionalColumnOffset then 1 else 0)
-
     genNode
         node
-        (genExpr node.Identifier
-         +> genSingleTextNode node.LessThan
-         +> colGenericTypeParameters node.TypeParameters
-         // we need to make sure each expression in the function application has offset at least greater than
-         // See: https://github.com/fsprojects/fantomas/issues/1611
-         +> addFixedSpaces startColumn
-         +> genSingleTextNode node.GreaterThan)
+        (fun ctx ->
+            // Capture startColumn inside genNode (after leading trivia/newlines are written),
+            // so we get the column on the actual line, not a stale column from a previous line. See #3179.
+            let startColumn = ctx.Column + (if addAdditionalColumnOffset then 1 else 0)
+
+            (genExpr node.Identifier
+             +> genSingleTextNode node.LessThan
+             +> colGenericTypeParameters node.TypeParameters
+             // we need to make sure each expression in the function application has offset at least greater than
+             // See: https://github.com/fsprojects/fantomas/issues/1611
+             +> addFixedSpaces startColumn
+             +> genSingleTextNode node.GreaterThan)
+                ctx)
         ctx
 
 let genClauses (clauses: MatchClauseNode list) =
