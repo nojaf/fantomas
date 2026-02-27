@@ -18,20 +18,40 @@ let newline = "\n"
 
 let formatFSharpString isFsiFile (s: string) config =
     async {
+        // Collect comments from input
+        let inputSourceText = CodeFormatterImpl.getSourceText s
+        let inputAst, _ = Fantomas.FCS.Parse.parseFile isFsiFile inputSourceText []
+        let inputComments = Trivia.collectCommentTextsFromAST inputSourceText inputAst
+
         let! formatted = CodeFormatter.FormatDocumentAsync(isFsiFile, s, config)
         let formattedCode = formatted.Code.Replace("\r\n", "\n")
-        let! isValid = CodeFormatter.IsValidFSharpCodeAsync(isFsiFile, formattedCode)
 
-        if not isValid then
+        // Validity check — inlined, reusing AST for comment check below
+        let formattedSourceText = Fantomas.FCS.Text.SourceText.ofString formattedCode
+
+        let formattedAst, diagnostics =
+            Fantomas.FCS.Parse.parseFile isFsiFile formattedSourceText []
+
+        if not (Validation.noWarningOrErrorDiagnostics diagnostics) then
             failwith $"The formatted result is not valid F# code or contains warnings\n%s{formattedCode}"
 
+        // Comment preservation check
+        let outputComments =
+            Trivia.collectCommentTextsFromAST formattedSourceText formattedAst
+
+        if inputComments <> outputComments then
+            let missing = inputComments - outputComments
+            let extra = outputComments - inputComments
+
+            failwith
+                $"Comment trivia was not preserved.\nMissing: %A{missing}\nExtra: %A{extra}\nFormatted code:\n%s{formattedCode}"
+
+        // Idempotency check
         let! secondFormat = CodeFormatter.FormatDocumentAsync(isFsiFile, formattedCode, config)
         let secondFormattedCode = secondFormat.Code.Replace("\r\n", "\n")
 
         if formattedCode <> secondFormattedCode then
             failwith $"The formatted result was not idempotent.\n%s{formattedCode}\n%s{secondFormattedCode}"
-
-        // printfn "formatted code:\n%s\n" formattedCode
 
         return formattedCode
     }

@@ -4,7 +4,16 @@
 
 ### Fixed
 
+<<<<<<< fix-3179
 - Type app closing angle bracket padded by previous expression length. [#3179](https://github.com/fsprojects/fantomas/issues/3179)
+=======
+- End of line comments after infix operators are preserved correctly. [#2287](https://github.com/fsprojects/fantomas/issues/2287)
+- Lambda closing parenthesis in chained method calls is no longer placed on its own line when `MultiLineLambdaClosingNewline` is enabled. [#2553](https://github.com/fsprojects/fantomas/issues/2553)
+- Long `&` (AND) patterns now break across multiple lines to respect max line length. [#1780](https://github.com/fsprojects/fantomas/issues/1780)
+- Empty array with trivia inside now has correct indentation in Stroustrup style. [#3098](https://github.com/fsprojects/fantomas/issues/3098)
+- Multiline function type inside parentheses gets extra indentation to avoid compiler error. [#3043](https://github.com/fsprojects/fantomas/issues/3043)
+- Trivia around paren lambda with conditional compilation no longer causes merge error. [#2844](https://github.com/fsprojects/fantomas/issues/2844)
+>>>>>>> main
 
 ## [8.0.0-alpha-002] - 2025-12-15
 

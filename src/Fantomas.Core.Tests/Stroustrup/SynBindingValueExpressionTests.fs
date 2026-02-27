@@ -832,3 +832,39 @@ let list =
     // comment
     ]
 """
+
+[<Test>]
+let ``empty array with blank line inside, 3098`` () =
+    formatSourceString
+        """
+let myArray = [|
+  
+  |]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let myArray = [|
+
+    |]
+"""
+
+[<Test>]
+let ``empty array with comment inside, 3098`` () =
+    formatSourceString
+        """
+let myArray2 = [|
+  // Some comment
+  |]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let myArray2 = [|
+    // Some comment
+    |]
+"""
