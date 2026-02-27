@@ -3275,10 +3275,26 @@ let genType (t: Type) =
             genNode node (isSmallExpression size smallExpression longExpression) ctx
 
     | Type.Paren node ->
-        genSingleTextNode node.OpeningParen
-        +> genType node.Type
-        +> genSingleTextNode node.ClosingParen
-        |> genNode node
+        match node.Type with
+        | Type.Funs _ ->
+            let short =
+                genSingleTextNode node.OpeningParen
+                +> genType node.Type
+                +> genSingleTextNode node.ClosingParen
+
+            let long =
+                genSingleTextNode node.OpeningParen
+                +> indent
+                +> genType node.Type
+                +> unindent
+                +> genSingleTextNode node.ClosingParen
+
+            expressionFitsOnRestOfLine short long |> genNode node
+        | _ ->
+            genSingleTextNode node.OpeningParen
+            +> genType node.Type
+            +> genSingleTextNode node.ClosingParen
+            |> genNode node
     | Type.SignatureParameter node ->
         genOnelinerAttributes node.Attributes
         +> optSingle (fun id -> genSingleTextNode id +> sepColon) node.Identifier
