@@ -307,6 +307,28 @@ let addToTree (tree: Oak) (trivia: TriviaNode seq) =
             | BlockComment _
             | Cursor -> blockCommentToTriviaInstruction parentNode trivia
 
+let internal collectCommentTextsFromAST (sourceText: ISourceText) (ast: ParsedInput) : Set<TriviaContent> =
+    let parsedTrivia =
+        match ast with
+        | ParsedInput.ImplFile(ParsedImplFileInput(trivia = t))
+        | ParsedInput.SigFile(ParsedSigFileInput(trivia = t)) -> t
+
+    let fullRange =
+        let startPos = Position.mkPos 0 0
+        let endPos = Position.mkPos sourceText.Length 0
+        Range.mkRange String.Empty startPos endPos
+
+    let normalize (content: TriviaContent) =
+        match content with
+        | CommentOnSingleLine s
+        | LineCommentAfterSourceCode s -> CommentOnSingleLine(s.TrimEnd())
+        | BlockComment(s, _, _) -> BlockComment(s.TrimEnd(), false, false)
+        | other -> other
+
+    collectTriviaFromCodeComments sourceText parsedTrivia.CodeComments fullRange
+    |> List.map (fun tn -> normalize tn.Content)
+    |> Set.ofList
+
 let enrichTree (config: FormatConfig) (sourceText: ISourceText) (ast: ParsedInput) (tree: Oak) : Oak =
     let fullTreeRange = tree.Range
 
