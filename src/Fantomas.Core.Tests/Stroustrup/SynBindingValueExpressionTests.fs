@@ -838,6 +838,7 @@ let ``empty array with blank line inside, 3098`` () =
     formatSourceString
         """
 let myArray = [|
+  
   |]
 """
         config
@@ -846,6 +847,7 @@ let myArray = [|
         equal
         """
 let myArray = [|
+
     |]
 """
 
