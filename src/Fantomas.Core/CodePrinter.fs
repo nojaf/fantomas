@@ -1787,7 +1787,20 @@ let genRecord smallRecordExpr multilineRecordExpr (node: ExprRecordBaseNode) ctx
 
 let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
     if node.Elements.IsEmpty then
-        genSingleTextNode node.Opening +> genSingleTextNode node.Closing |> genNode node
+        fun ctx ->
+            (genSingleTextNode node.Opening
+             +> (fun afterOpeningCtx ->
+                 // When the closing bracket has trivia (blank lines, comments) and we are using Stroustrup style,
+                 // the trivia needs to be indented inside the brackets. See 3098.
+                 if
+                     node.Closing.HasContentBefore
+                     && afterOpeningCtx.Config.MultilineBracketStyle = Stroustrup
+                 then
+                     (indent +> genSingleTextNode node.Closing +> unindent) afterOpeningCtx
+                 else
+                     (genSingleTextNode node.Closing) afterOpeningCtx)
+             |> genNode node)
+                ctx
     else
         let smallExpression =
             genSingleTextNode node.Opening
@@ -2054,17 +2067,21 @@ let genAppSingleParenArgExpr (addSpace: Context -> Context) (node: ExprAppSingle
 /// When called from `SynExpr.App` we need to ensure the node.GreaterThan is placed one space further than the start column.
 /// This is to ensure the application remains an application.
 let genTypeApp (addAdditionalColumnOffset: bool) (node: ExprTypeAppNode) (ctx: Context) : Context =
-    let startColumn = ctx.Column + (if addAdditionalColumnOffset then 1 else 0)
-
     genNode
         node
-        (genExpr node.Identifier
-         +> genSingleTextNode node.LessThan
-         +> colGenericTypeParameters node.TypeParameters
-         // we need to make sure each expression in the function application has offset at least greater than
-         // See: https://github.com/fsprojects/fantomas/issues/1611
-         +> addFixedSpaces startColumn
-         +> genSingleTextNode node.GreaterThan)
+        (fun ctx ->
+            // Capture startColumn inside genNode (after leading trivia/newlines are written),
+            // so we get the column on the actual line, not a stale column from a previous line. See #3179.
+            let startColumn = ctx.Column + (if addAdditionalColumnOffset then 1 else 0)
+
+            (genExpr node.Identifier
+             +> genSingleTextNode node.LessThan
+             +> colGenericTypeParameters node.TypeParameters
+             // we need to make sure each expression in the function application has offset at least greater than
+             // See: https://github.com/fsprojects/fantomas/issues/1611
+             +> addFixedSpaces startColumn
+             +> genSingleTextNode node.GreaterThan)
+                ctx)
         ctx
 
 let genClauses (clauses: MatchClauseNode list) =
@@ -2627,7 +2644,17 @@ let genPat (p: Pattern) =
     match p with
     | Pattern.OptionalVal n -> genSingleTextNode n
     | Pattern.Or node -> genPatLeftMiddleRight node
-    | Pattern.Ands node -> col (!-" & ") node.Patterns genPat |> genNode node
+    | Pattern.Ands node ->
+        let short = col (!-" & ") node.Patterns genPat
+
+        let long =
+            match node.Patterns with
+            | [] -> sepNone
+            | head :: rest ->
+                genPat head
+                +> indentSepNlnUnindent (col sepNln rest (fun p -> !-"& " +> genPat p))
+
+        expressionFitsOnRestOfLine short long |> genNode node
     | Pattern.Null node
     | Pattern.Wild node -> genSingleTextNode node
     | Pattern.Parameter node ->
@@ -3261,10 +3288,26 @@ let genType (t: Type) =
             genNode node (isSmallExpression size smallExpression longExpression) ctx
 
     | Type.Paren node ->
-        genSingleTextNode node.OpeningParen
-        +> genType node.Type
-        +> genSingleTextNode node.ClosingParen
-        |> genNode node
+        match node.Type with
+        | Type.Funs _ ->
+            let short =
+                genSingleTextNode node.OpeningParen
+                +> genType node.Type
+                +> genSingleTextNode node.ClosingParen
+
+            let long =
+                genSingleTextNode node.OpeningParen
+                +> indent
+                +> genType node.Type
+                +> unindent
+                +> genSingleTextNode node.ClosingParen
+
+            expressionFitsOnRestOfLine short long |> genNode node
+        | _ ->
+            genSingleTextNode node.OpeningParen
+            +> genType node.Type
+            +> genSingleTextNode node.ClosingParen
+            |> genNode node
     | Type.SignatureParameter node ->
         genOnelinerAttributes node.Attributes
         +> optSingle (fun id -> genSingleTextNode id +> sepColon) node.Identifier

@@ -5,6 +5,7 @@ open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 
 val findNodeWhereRangeFitsIn: root: Node -> range: range -> Node option
+val collectCommentTextsFromAST: sourceText: ISourceText -> ast: ParsedInput -> Set<TriviaContent>
 val enrichTree: config: FormatConfig -> sourceText: ISourceText -> ast: ParsedInput -> tree: Oak -> Oak
 
 /// Try and insert a cursor position as Trivia inside the Oak

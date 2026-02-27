@@ -3240,3 +3240,46 @@ let CombineImportedAssembliesTask
 
     ()
 """
+
+[<Test>]
+let ``trivia around paren lambda with conditional compilation, 2844`` () =
+    formatSourceString
+        """
+Program.statefulWithCmdMsg
+|> (fun program ->
+            { program with
+                CanReuseView = ViewHelper.canReuseView
+                SyncAction =
+                    (fun fn ->
+                        program.SyncAction
+                            (
+#if IOS
+                            // iOS animates by default layout changes, we don't want that
+                            fun () -> UIKit.UIView.PerformWithoutAnimation(fn)
+#else
+                            fn
+#endif
+                        )) })
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+Program.statefulWithCmdMsg
+|> (fun program ->
+    { program with
+        CanReuseView = ViewHelper.canReuseView
+        SyncAction =
+            (fun fn ->
+                program.SyncAction
+                    (
+#if IOS
+                    // iOS animates by default layout changes, we don't want that
+                    fun () -> UIKit.UIView.PerformWithoutAnimation(fn)
+#else
+                    fn
+#endif
+                ))
+    })
+"""

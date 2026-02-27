@@ -1,4 +1,4 @@
-module Fantomas.Core.Tests.TypeAnnotationTests
+module Fantomas.Core.Tests.TypeAppTests
 
 open NUnit.Framework
 open FsUnit
@@ -6,137 +6,23 @@ open Fantomas.Core
 open Fantomas.Core.Tests.TestHelpers
 
 [<Test>]
-let ``multiline type annotation`` () =
+let ``type app closing angle bracket not padded by previous expression length, 3179`` () =
     formatSourceString
         """
-let f
-    (x:
-        {|
-            x: int
-            y: AReallyLongTypeThatIsMuchLongerThan40Characters
-        |})
-    =
-    x
-"""
-        { config with
-            MultilineBracketStyle = Cramped }
-    |> prepend newline
-    |> should
-        equal
-        """
-let f
-    (x:
-        {| x: int
-           y: AReallyLongTypeThatIsMuchLongerThan40Characters |})
-    =
-    x
-"""
+let x () =
+    (someFunctionCall ()) |> anotherOne |> anotherOne |> alsoAnotherOne
 
-[<Test>]
-let ``multiline tuple type`` () =
-    formatSourceString
-        """
-type Meh
-    (
-        input: LongTupleItemTypeOneThing * LongTupleItemTypeThingTwo * LongTupleItemTypeThree * LongThingFour * LongThingFiveYow
-    ) =
-    class
-    end
+    Unchecked.defaultof<_>
 """
         config
     |> prepend newline
     |> should
         equal
         """
-type Meh
-    (
-        input:
-            LongTupleItemTypeOneThing *
-            LongTupleItemTypeThingTwo *
-            LongTupleItemTypeThree *
-            LongThingFour *
-            LongThingFiveYow
-    ) = class end
-"""
+let x () =
+    (someFunctionCall ()) |> anotherOne |> anotherOne |> alsoAnotherOne
 
-[<Test>]
-let ``long multiline type application`` () =
-    formatSourceString
-        """
-type X =
-    Teq<int, list int, System.DateTime array,
-            //
-            int>
-"""
-        config
-    |> prepend newline
-    |> should
-        equal
-        """
-type X =
-    Teq<
-        int,
-        list int,
-        System.DateTime array,
-        //
-        int
-     >
-"""
-
-[<Test>]
-let ``multiline app type`` () =
-    formatSourceString
-        """
-type CancellableTaskResultBuilderBase with
-
-    [<NoEagerConstraintApplication>]
-    static member inline BindDynamic< ^TaskLike, 'TResult1, 'TResult2, ^Awaiter, 'TOverall, 'Error
-        when ^TaskLike: (member GetAwaiter: unit -> ^Awaiter)
-        and ^Awaiter :> ICriticalNotifyCompletion
-        and ^Awaiter: (member get_IsCompleted: unit -> bool)
-        and ^Awaiter: (member GetResult: unit -> Result<'TResult1, 'Error>)>
-        (
-            sm:
-                byref<
-                    ResumableStateMachine<
-                        CancellableTaskResultStateMachineData<'TOverall, 'Error>
-                >
-                >,
-            task: CancellationToken -> ^TaskLike,
-            continuation:
-                ('TResult1 -> CancellableTaskResultCode<'TOverall, 'Error, 'TResult2>)
-        ) : bool = true
-"""
-        { config with MaxLineLength = 80 }
-    |> prepend newline
-    |> should
-        equal
-        """
-type CancellableTaskResultBuilderBase with
-
-    [<NoEagerConstraintApplication>]
-    static member inline BindDynamic< ^TaskLike, 'TResult1, 'TResult2, ^Awaiter, 'TOverall, 'Error
-        when ^TaskLike: (member GetAwaiter: unit -> ^Awaiter)
-        and ^Awaiter :> ICriticalNotifyCompletion
-        and ^Awaiter: (member get_IsCompleted: unit -> bool)
-        and ^Awaiter: (member GetResult: unit -> Result<'TResult1, 'Error>)>
-        (
-            sm:
-                byref<
-                    ResumableStateMachine<
-                        CancellableTaskResultStateMachineData<'TOverall, 'Error>
-                     >
-                 >,
-            task: CancellationToken -> ^TaskLike,
-            continuation:
-                ('TResult1
-                        -> CancellableTaskResultCode<
-                            'TOverall,
-                            'Error,
-                            'TResult2
-                         >)
-        ) : bool =
-        true
+    Unchecked.defaultof<_>
 """
 
 [<Test>]
@@ -586,29 +472,33 @@ XYZ.app<
 """
 
 [<Test>]
-let ``multiline function type in parens gets extra indent, 3043`` () =
+let ``multiple nested generic types`` () =
     formatSourceString
         """
-type MyCustomTypeWithAPrettyLongDescribingName = MyCustomConstructor1
-
-let private myFunction
-    : string
-          -> (MyCustomTypeWithAPrettyLongDescribingName -> MyCustomTypeWithAPrettyLongDescribingName -> MyCustomTypeWithAPrettyLongDescribingName)
-          -> unit =
-    fun a fn -> ()
+let bv =
+    unbox<
+        Fooadfadadfdadfadfadfadfadfadfsfdsfadfadadfada<
+            Foo<
+                innerContextLongLongLong,
+                bb
+             >
+         >
+     >
+        bf
 """
-        config
+        { config with MaxLineLength = 10 }
     |> prepend newline
     |> should
         equal
         """
-type MyCustomTypeWithAPrettyLongDescribingName = MyCustomConstructor1
-
-let private myFunction
-    : string
-          -> (MyCustomTypeWithAPrettyLongDescribingName
-                  -> MyCustomTypeWithAPrettyLongDescribingName
-                  -> MyCustomTypeWithAPrettyLongDescribingName)
-          -> unit =
-    fun a fn -> ()
+let bv =
+    unbox<
+        Fooadfadadfdadfadfadfadfadfadfsfdsfadfadadfada<
+            Foo<
+                innerContextLongLongLong,
+                bb
+             >
+         >
+     >
+        bf
 """
