@@ -724,6 +724,21 @@ type SomeWin32Callback =
 """
 
 [<Test>]
+let ``long delegate with generic args should not break around arrow, 2468`` () =
+    formatSourceString
+        """
+type some_delegate = delegate of Func<int, int> * Guid * string * Func<Func<int, int>, int> -> Func<Func<int, int>, string, string>
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type some_delegate =
+    delegate of Func<int, int> * Guid * string * Func<Func<int, int>, int> -> Func<Func<int, int>, string, string>
+"""
+
+[<Test>]
 let ``should keep the ? in optional parameters`` () =
     formatSourceString
         """type Shell() =
