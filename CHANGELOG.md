@@ -4,9 +4,6 @@
 
 ### Fixed
 
-<<<<<<< fix-3135
-- Dynamic operator on result of qualified function call causes formatting error. [#3135](https://github.com/fsprojects/fantomas/issues/3135)
-=======
 - End of line comments after infix operators are preserved correctly. [#2287](https://github.com/fsprojects/fantomas/issues/2287)
 - Lambda closing parenthesis in chained method calls is no longer placed on its own line when `MultiLineLambdaClosingNewline` is enabled. [#2553](https://github.com/fsprojects/fantomas/issues/2553)
 - Long `&` (AND) patterns now break across multiple lines to respect max line length. [#1780](https://github.com/fsprojects/fantomas/issues/1780)
@@ -14,7 +11,7 @@
 - Multiline function type inside parentheses gets extra indentation to avoid compiler error. [#3043](https://github.com/fsprojects/fantomas/issues/3043)
 - Trivia around paren lambda with conditional compilation no longer causes merge error. [#2844](https://github.com/fsprojects/fantomas/issues/2844)
 - Type app closing angle bracket padded by previous expression length. [#3179](https://github.com/fsprojects/fantomas/issues/3179)
->>>>>>> main
+- Dynamic operator on result of qualified function call causes formatting error. [#3135](https://github.com/fsprojects/fantomas/issues/3135)
 
 ## [8.0.0-alpha-002] - 2025-12-15
 
