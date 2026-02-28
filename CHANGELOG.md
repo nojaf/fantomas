@@ -13,6 +13,7 @@
 - Type app closing angle bracket padded by previous expression length. [#3179](https://github.com/fsprojects/fantomas/issues/3179)
 - Dynamic operator on result of qualified function call causes formatting error. [#3135](https://github.com/fsprojects/fantomas/issues/3135)
 - Long delegate type with generic args no longer breaks around arrow. [#2468](https://github.com/fsprojects/fantomas/issues/2468)
+- Idempotency problem when formatting NUnit Assert.That with lambda argument. [#1740](https://github.com/fsprojects/fantomas/issues/1740)
 
 ## [8.0.0-alpha-002] - 2025-12-15
 
