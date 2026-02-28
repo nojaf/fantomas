@@ -1422,3 +1422,21 @@ let allDecls =
     @+ iimplsLs
     @+ ctorLs
 """
+
+[<Test>]
+let ``comment between lines breaks indentation, 2944`` () =
+    formatSourceString
+        """
+5 =
+  // a comment
+  5
+"""
+        { config with IndentSize = 2 }
+    |> prepend newline
+    |> should
+        equal
+        """
+5 =
+  // a comment
+  5
+"""

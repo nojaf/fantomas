@@ -812,36 +812,55 @@ let genExpr (e: Expr) =
                 ctx
 
     | Expr.InfixApp node ->
-        let genOnelinerInfixExpr (node: ExprInfixAppNode) =
-            let genExpr e =
-                match e with
-                | Expr.Record _
-                | Expr.AnonStructRecord _ -> atCurrentColumnIndent (genExpr e)
-                | _ -> genExpr e
+        let genRhsExpr e =
+            match e with
+            | Expr.Record _
+            | Expr.AnonStructRecord _ -> atCurrentColumnIndent (genExpr e)
+            | _ -> genExpr e
 
+        let genShortInfixExpr =
             genExpr node.LeftHandSide
             +> sepSpace
             +> genSingleTextNode node.Operator
             +> sepNlnWhenWriteBeforeNewlineNotEmpty
             +> sepSpace
-            +> genExpr node.RightHandSide
+            +> genRhsExpr node.RightHandSide
 
-        if
-            isLambdaOrIfThenElse node.LeftHandSide
-            && newLineInfixOps.Contains node.Operator.Text
-        then
+        let isNewLineInfixOp = newLineInfixOps.Contains node.Operator.Text
+        let isNoBreakInfixOp = noBreakInfixOps.Contains node.Operator.Text
+
+        // Lambdas or if/then/else on the LHS of pipe-like operators (|>, ||>, >>)
+        // always use the multiline layout to avoid confusing indentation.
+        if isLambdaOrIfThenElse node.LeftHandSide && isNewLineInfixOp then
             genNode node (genMultilineInfixExpr node)
+        // No-break operators (=, >, <, %) keep the operator on the same line as the LHS.
+        // When the expression doesn't fit on one line, indent the RHS to preserve
+        // correct indentation when trivia (comments) precedes it. See #2944.
+        elif isNoBreakInfixOp then
+            let genLongNoBreakInfixExpr =
+                genExpr node.LeftHandSide
+                +> sepSpace
+                +> genSingleTextNode node.Operator
+                +> indent
+                +> sepNlnWhenWriteBeforeNewlineNotEmpty
+                +> sepSpace
+                +> genRhsExpr node.RightHandSide
+                +> unindent
+
+            fun ctx ->
+                genNode
+                    node
+                    (isShortExpression ctx.Config.MaxInfixOperatorExpression genShortInfixExpr genLongNoBreakInfixExpr)
+                    ctx
+        // All other infix operators place the operator at the start of the next line.
         else
             fun ctx ->
                 genNode
                     node
                     (isShortExpression
                         ctx.Config.MaxInfixOperatorExpression
-                        (genOnelinerInfixExpr node)
-                        (ifElse
-                            (noBreakInfixOps.Contains(node.Operator.Text))
-                            (genOnelinerInfixExpr node)
-                            (genMultilineInfixExpr node)))
+                        genShortInfixExpr
+                        (genMultilineInfixExpr node))
                     ctx
 
     | Expr.IndexWithoutDot node ->

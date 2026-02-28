@@ -13,6 +13,7 @@
 - Type app closing angle bracket padded by previous expression length. [#3179](https://github.com/fsprojects/fantomas/issues/3179)
 - Dynamic operator on result of qualified function call causes formatting error. [#3135](https://github.com/fsprojects/fantomas/issues/3135)
 - Long delegate type with generic args no longer breaks around arrow. [#2468](https://github.com/fsprojects/fantomas/issues/2468)
+- Comment between lines of no-break infix expression no longer loses indentation. [#2944](https://github.com/fsprojects/fantomas/issues/2944)
 
 ## [8.0.0-alpha-002] - 2025-12-15
 
