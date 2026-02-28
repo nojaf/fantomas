@@ -97,7 +97,14 @@ type NodeBase(range: range) =
             if hasChildren then
                 for n in x.Children do
                     match n with
-                    | :? SingleTextNode as stn -> sb.Append(contentIndent).Append(stn.ToString()).AppendLine() |> ignore
+                    | :? SingleTextNode as stn ->
+                        for tn in stn.ContentBefore do
+                            sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+
+                        sb.Append(contentIndent).Append(stn.ToString()).AppendLine() |> ignore
+
+                        for tn in stn.ContentAfter do
+                            sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
                     | :? NodeBase as nb ->
                         nb.AppendToStringWithIndent(sb, depth + 1)
                         sb.AppendLine() |> ignore
