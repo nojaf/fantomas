@@ -4050,10 +4050,12 @@ let genModule (m: ModuleOrNamespaceNode) =
             (genXml header.XmlDoc
              +> genAttributes header.Attributes
              +> genMultipleTextsNode header.LeadingKeyword
+             +> indent
              +> sepSpace
              +> genAccessOpt header.Accessibility
              +> onlyIf header.IsRecursive (sepSpace +> !-"rec" +> sepSpace)
              +> optSingle genIdentListNode header.Name
+             +> unindent
              |> genNode header)
             +> newline)
         m.Header

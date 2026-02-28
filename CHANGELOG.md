@@ -15,6 +15,7 @@
 - Long delegate type with generic args no longer breaks around arrow. [#2468](https://github.com/fsprojects/fantomas/issues/2468)
 - Idempotency problem when formatting NUnit Assert.That with lambda argument. [#1740](https://github.com/fsprojects/fantomas/issues/1740)
 - Comment between lines of no-break infix expression no longer loses indentation. [#2944](https://github.com/fsprojects/fantomas/issues/2944)
+- Hash directives around access modifier in module declaration no longer lose indentation. [#3188](https://github.com/fsprojects/fantomas/issues/3188)
 
 ## [8.0.0-alpha-002] - 2025-12-15
 
