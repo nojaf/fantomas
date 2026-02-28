@@ -1,5 +1,11 @@
-A comprehensive guide to F# Formatting Conventions
-===
+---
+category: Contributors
+categoryindex: 2
+index: 15
+---
+# Formatting Conventions
+
+> This document is a historical reference. It was the precursor to the [Microsoft F# formatting style guide](https://learn.microsoft.com/en-us/dotnet/fsharp/style-guide/formatting), which is now the authoritative source for F# formatting conventions. We preserve it here for its legacy value to the project.
 
 This article is written mostly based on ["F# Coding Guidelines"][1] (offline version) from Don Syme.
 There are certain bits of the original document that need to be updated when F# has changed a lot in last few years.
@@ -36,31 +42,31 @@ Another purpose of the article is to recognize requirements for an F# source cod
 ## General rules for indentation
 
 ### Using spaces
-When indentation is required, you must use spaces, not tabs. 
-At least one space is required. 
-Your organization can create coding standards to specify the number of spaces to use for indentation; two, three or four spaces of indentation at each level where indentation occurs is typical. 
+When indentation is required, you must use spaces, not tabs.
+At least one space is required.
+Your organization can create coding standards to specify the number of spaces to use for indentation; two, three or four spaces of indentation at each level where indentation occurs is typical.
 That said, indentation of programs is a subjective matter.
 Variations are OK, but the first rule you should follow is *consistency of indentation*:
 
 > Choose a generally accepted style of indentation, then use it systematically throughout the whole application.
 
-You can configure Visual Studio to match your organization's indentation standards by changing the options in the **Options** dialog box, which is available from the **Tools** menu. 
+You can configure Visual Studio to match your organization's indentation standards by changing the options in the **Options** dialog box, which is available from the **Tools** menu.
 In the **Text Editor** node, expand **F#** and then click **Tabs**. For a description of the available options, see [Options, Text Editor, All Languages, Tabs](http://msdn.microsoft.com/en-us/library/7sffa753.aspx).
 
-In general, when the compiler parses your code, it maintains an internal stack that indicates the current level of nesting. 
-When code is indented, a new level of nesting is created, or pushed onto this internal stack. 
-When a construct ends, the level is popped. 
+In general, when the compiler parses your code, it maintains an internal stack that indicates the current level of nesting.
+When code is indented, a new level of nesting is created, or pushed onto this internal stack.
+When a construct ends, the level is popped.
 Indentation is one way to signal the end of a level and pop the internal stack, but certain tokens also cause the level to be popped, such as the `end` keyword, or a closing brace or parenthesis.
 
 ### Offside rule
 A page is often 80 columns wide.
-Code in a multiline construct, such as a type definition, function definition, `try...with` construct, and looping constructs, must be indented relative to the opening line of the construct. 
-The first indented line establishes a column position for subsequent code in the same construct. 
-The indentation level is called a *context*. The column position sets a minimum column, referred to as an *offside line*, for subsequent lines of code that are in the same context. 
-When a line of code is encountered that is indented less than this established column position, the compiler assumes that the context has ended and that you are now coding at the next level up, in the previous context. 
-The term *offside* is used to describe the condition in which a line of code triggers the end of a construct because it is not indented far enough. 
-In other words, code to the left of an offside line is offside. 
-In correctly indented code, you take advantage of the offside rule in order to delineate the end of constructs. 
+Code in a multiline construct, such as a type definition, function definition, `try...with` construct, and looping constructs, must be indented relative to the opening line of the construct.
+The first indented line establishes a column position for subsequent code in the same construct.
+The indentation level is called a *context*. The column position sets a minimum column, referred to as an *offside line*, for subsequent lines of code that are in the same context.
+When a line of code is encountered that is indented less than this established column position, the compiler assumes that the context has ended and that you are now coding at the next level up, in the previous context.
+The term *offside* is used to describe the condition in which a line of code triggers the end of a construct because it is not indented far enough.
+In other words, code to the left of an offside line is offside.
+In correctly indented code, you take advantage of the offside rule in order to delineate the end of constructs.
 If you use indentation improperly, an offside condition can cause the compiler to issue a warning or can lead to the incorrect interpretation of your code.
 Offside lines are determined as follows.
  - An `=` token associated with a let introduces an offside line at the column of the first token after the `=` sign.
@@ -88,13 +94,13 @@ Indent `|` in type definition by 4 spaces:
 
 ```fsharp
 // OK
-type Volume = 
+type Volume =
     | Liter of float
     | USPint of float
     | ImperialPint of float
 
 // Not OK
-type Volume = 
+type Volume =
 | Liter of float
 | USPint of float
 | ImperialPint of float
@@ -115,7 +121,7 @@ match x, y with
 | 1, _ -> 0
 | x, 1 -> 0
 | x, y -> 1
-```      
+```
 
 #### Records
 Short records can be written in one line:
@@ -126,24 +132,24 @@ let point = { X = 1.0; Y = 0.0 }
 Opening token for records starts in a new line. Closing token is normally on the end of line of last construct:
 
 ```fsharp
-let rainbow = 
+let rainbow =
     { boss = "Jeffrey"
       lackeys = ["Zippy"; "George"; "Bungle"] }
 ```
 
-Not everyone likes this style, and variation is ok. 
+Not everyone likes this style, and variation is ok.
 For large constructs (> 6 lines) the closing token can be on a fresh line:
 
 ```fsharp
-let rainbow = 
+let rainbow =
     { boss1 = "Jeffrey"
-      boss2 = "Jeffrey" 
-      boss3 = "Jeffrey" 
-      boss4 = "Jeffrey" 
-      boss5 = "Jeffrey" 
-      boss6 = "Jeffrey" 
-      boss7 = "Jeffrey" 
-      boss8 = "Jeffrey" 
+      boss2 = "Jeffrey"
+      boss3 = "Jeffrey"
+      boss4 = "Jeffrey"
+      boss5 = "Jeffrey"
+      boss6 = "Jeffrey"
+      boss7 = "Jeffrey"
+      boss8 = "Jeffrey"
       lackeys = ["Zippy"; "George"; "Bungle"]
     }
 ```
@@ -176,7 +182,7 @@ Always use at least one space between two distinct parenthetical operators (e.g.
 Lists and arrays that split across multiple lines follow a similar rule as records do:
 
 ```fsharp
-let pascalsTriangle = 
+let pascalsTriangle =
     [| [|1|]
        [|1; 1|]
        [|1; 2; 1|]
@@ -184,7 +190,7 @@ let pascalsTriangle =
        [|1; 4; 6; 4; 1|]
        [|1; 5; 10; 10; 5; 1|]
        [|1; 6; 15; 20; 15; 6; 1|]
-       [|1; 7; 21; 35; 35; 21; 7; 1|] 
+       [|1; 7; 21; 35; 35; 21; 7; 1|]
        [|1; 8; 28; 56; 70; 56; 28; 8; 1|]
     |]
 ```
@@ -193,17 +199,17 @@ let pascalsTriangle =
 DUs that split across multiple lines follow a similar rule:
 
 ```fsharp
-let tree1 = 
+let tree1 =
     BinaryNode
-        (BinaryNode(BinaryValue 1, BinaryValue 2), 
+        (BinaryNode(BinaryValue 1, BinaryValue 2),
          BinaryNode(BinaryValue 3, BinaryValue 4))
 ```
 However, the following way is also acceptable:
 ```fsharp
-let tree1 = 
-    BinaryNode( 
-        BinaryNode(BinaryValue 1, BinaryValue 2), 
-        BinaryNode(BinaryValue 3, BinaryValue 4) 
+let tree1 =
+    BinaryNode(
+        BinaryNode(BinaryValue 1, BinaryValue 2),
+        BinaryNode(BinaryValue 3, BinaryValue 4)
     )
 ```
 
@@ -257,9 +263,9 @@ try
     else
         raise (new System.ApplicationException())
 with
-| :? System.ApplicationException -> 
-    printfn "A second that was not a multiple of 3"    
-| _ -> 
+| :? System.ApplicationException ->
+    printfn "A second that was not a multiple of 3"
+| _ ->
     printfn "A second that was a multiple of 3"
 ```
 
@@ -272,9 +278,9 @@ try
     else
         raise (new System.ApplicationException())
 with
-    | :? System.ApplicationException -> 
-        printfn "A second that was not a multiple of 3"    
-    | _ -> 
+    | :? System.ApplicationException ->
+        printfn "A second that was not a multiple of 3"
+    | _ ->
         printfn "A second that was a multiple of 3"
 ```
 
@@ -306,7 +312,7 @@ match lam with
    sizeLambda lam1 + sizeLambda lam2
 | Var v -> 1
 ```
-Some programmers apply this rule systematically to any clause of any pattern matching. 
+Some programmers apply this rule systematically to any clause of any pattern matching.
 This does not add any good to readability hence **is not recommended**.
 
 ```fsharp
@@ -318,7 +324,7 @@ let rec fib = function
         1
     | n ->
         fib (n - 1) + fib (n - 2)
-```       
+```
 Pattern matching of anonymous functions, starting by `function`, are indented with respect to the `function` keyword:
 
 ```fsharp
@@ -344,7 +350,7 @@ let f = function
     | LongName _  -> 2
     | _           -> 3
 ```
-The justification is that it is harder to maintain the program. 
+The justification is that it is harder to maintain the program.
 Adding a new case may screw up indentation and we often give up alignment at that time.
 
 ### Function applications
@@ -353,30 +359,30 @@ Arguments are always indented from functions:
 
 ```fsharp
 // OK
-Printf.sprintf "\t%s - %i\n\r" 
+Printf.sprintf "\t%s - %i\n\r"
      x.IngredientName x.Quantity
 
 // OK
 Printf.sprintf
-     "\t%s - %i\n\r" 
-     x.IngredientName x.Quantity 
+     "\t%s - %i\n\r"
+     x.IngredientName x.Quantity
 
 // OK
-let printVolumes x = 
-    Printf.printf "Volume in liters = %f, in us pints = %f, in imperial = %f" 
-        (convertVolumeToLiter x) 
-        (convertVolumeUSPint x) 
-        (convertVolumeImperialPint x) 
+let printVolumes x =
+    Printf.printf "Volume in liters = %f, in us pints = %f, in imperial = %f"
+        (convertVolumeToLiter x)
+        (convertVolumeUSPint x)
+        (convertVolumeImperialPint x)
 
 // Not OK
-let printVolumes x = 
-    Printf.printf "Volume in liters = %f, in us pints = %f, in imperial = %f" 
-    (convertVolumeToLiter x) 
-    (convertVolumeUSPint x) 
-    (convertVolumeImperialPint x) 
+let printVolumes x =
+    Printf.printf "Volume in liters = %f, in us pints = %f, in imperial = %f"
+    (convertVolumeToLiter x)
+    (convertVolumeUSPint x)
+    (convertVolumeImperialPint x)
 
 // Not OK
-Printf.sprintf "\t%s - %i\n\r" 
+Printf.sprintf "\t%s - %i\n\r"
 x.IngredientName x.Quantity
 ```
 
@@ -396,15 +402,15 @@ let printListWithOffset a list1 =
 ```
 
 ### Infix operators
-Be careful to *keep operator symbols well separated by spaces*; not only will your formulas be more readable, but you will avoid confusion with multi-character operators. 
+Be careful to *keep operator symbols well separated by spaces*; not only will your formulas be more readable, but you will avoid confusion with multi-character operators.
 Obvious exceptions to this rule are the `!` and `.` symbols.
 They are not separated from their arguments.
 Moreover, infix expressions are OK to lineup on same column:
 ```fsharp
-acc + 
-(Printf.sprintf "\t%s - %i\n\r" 
+acc +
+(Printf.sprintf "\t%s - %i\n\r"
      x.IngredientName x.Quantity)
-            
+
 let function1 arg1 arg2 arg3 arg4 =
     arg1 + arg2
   + arg3 + arg4
@@ -416,47 +422,47 @@ Pipeline `|>` should go at the start of a line immediately under the expression 
 
 ```fsharp
 // OK
-let methods2 = 
+let methods2 =
     System.AppDomain.CurrentDomain.GetAssemblies()
-    |> List.ofArray 
-    |> List.map (fun assm -> assm.GetTypes()) 
+    |> List.ofArray
+    |> List.map (fun assm -> assm.GetTypes())
     |> Array.concat
-    |> List.ofArray 
-    |> List.map (fun t -> t.GetMethods()) 
+    |> List.ofArray
+    |> List.map (fun t -> t.GetMethods())
     |> Array.concat
 
 // OK
 let methods2 = System.AppDomain.CurrentDomain.GetAssemblies()
-               |> List.ofArray 
-               |> List.map (fun assm -> assm.GetTypes()) 
+               |> List.ofArray
+               |> List.map (fun assm -> assm.GetTypes())
                |> Array.concat
-               |> List.ofArray 
-               |> List.map (fun t -> t.GetMethods()) 
+               |> List.ofArray
+               |> List.map (fun t -> t.GetMethods())
                |> Array.concat
 
 // Not OK
 let methods2 = System.AppDomain.CurrentDomain.GetAssemblies()
-            |> List.ofArray 
-            |> List.map (fun assm -> assm.GetTypes()) 
+            |> List.ofArray
+            |> List.map (fun assm -> assm.GetTypes())
             |> Array.concat
-            |> List.ofArray 
-            |> List.map (fun t -> t.GetMethods()) 
+            |> List.ofArray
+            |> List.map (fun t -> t.GetMethods())
             |> Array.concat
 ```
 
 ### Modules
-Code in a local module must be indented relative to the module, but code in a top-level module does not have to be indented. 
+Code in a local module must be indented relative to the module, but code in a top-level module does not have to be indented.
 Namespace elements do not have to be indented.
 The following code examples illustrate this.
 ```fsharp
-// A is a top-level module. 
+// A is a top-level module.
 module A
 
 let function1 a b = a - b * b
 ```
 
 ```fsharp
-// A1 and A2 are local modules. 
+// A1 and A2 are local modules.
 module A1 =
     let function1 a b = a*a + b*b
 
@@ -470,11 +476,11 @@ Object expressions and interfaces are aligned in the same way with `member` bein
 For example, this is recommended:
 
 ```fsharp
-let comparer = 
+let comparer =
     { new IComparer<string> with
-          member x.Compare(s1, s2) = 
-              let rev (s : String) = 
-                  new String (Array.rev (s.ToCharArray())) 
+          member x.Compare(s1, s2) =
+              let rev (s : String) =
+                  new String (Array.rev (s.ToCharArray()))
               let reversed = rev s1 i
               reversed.CompareTo (rev s2) }
 ```
@@ -483,18 +489,18 @@ but this is not advocated:
 
 ```fsharp
 // Not OK
-let comparer = 
-    { new IComparer<string> with 
-      member x.Compare(s1, s2) = 
-          let rev (s : String) = 
+let comparer =
+    { new IComparer<string> with
+      member x.Compare(s1, s2) =
+          let rev (s : String) =
               new String (Array.rev (s.ToCharArray())) in
-              let reversed = rev s1 in 
+              let reversed = rev s1 in
               reversed.CompareTo (rev s2) }
 ```
-Bodies of modules, classes, interfaces, and structures delimited by `begin...end`, `{...}`, `class...end`, or `interface...end`. 
+Bodies of modules, classes, interfaces, and structures delimited by `begin...end`, `{...}`, `class...end`, or `interface...end`.
 This allows for a style in which the opening keyword of a type definition can be on the same line as the type name without forcing the whole body to be indented further than the opening keyword.
 ```fsharp
-type IMyInterface = interface 
+type IMyInterface = interface
     abstract Function1 : int -> int
 end
 ```
@@ -504,11 +510,11 @@ end
 Avoid extraneous whitespace in the following situations:
 
  - Immediately inside parentheses and brackets.
-   
+
    ```fsharp
-   // OK 
+   // OK
    spam (ham.[1])
-   
+
    // Not OK
    spam ( ham.[ 1 ] )
    ```
@@ -517,7 +523,7 @@ Avoid extraneous whitespace in the following situations:
    ```fsharp
    // OK
    let makeStreamReader x = new System.IO.StreamReader(path=x)
-   
+
    // Not OK
    let makeStreamReader x = new System.IO.StreamReader(path = x)
    ```
@@ -527,7 +533,7 @@ Avoid extraneous whitespace in the following situations:
  - Method definitions inside a class are separated by a single blank line.
  - Extra blank lines may be used (sparingly) to separate groups of related functions. Blank lines may be omitted between a bunch of related one-liners (e.g. a set of dummy implementations).
  - Use blank lines in functions, sparingly, to indicate logical sections.
- 
+
 #### 2020 Revision
 
 Blank lines are introduces around any multiline code constructs:
@@ -543,17 +549,17 @@ let c = 10
 ```
 
 The `SynExpr.IfThenElse` expression is multiline so a blank line between `let a` and `if someCondition` and between `if someCondition` and `let b` is fitting.
-Single line statements are combined without any additional blank lines, see `let b` and `let c`. 
+Single line statements are combined without any additional blank lines, see `let b` and `let c`.
 
 ### Comments
 
-Block comments generally apply to some (or all) code that follows them, and are indented to the same level as that code. 
+Block comments generally apply to some (or all) code that follows them, and are indented to the same level as that code.
 Each line of a block comment starts with a `(*` or `//` and a single space (unless it is indented text inside the comment).
 Paragraphs inside a block comment are separated by a line containing a single `*` or `//`.
 
 Use inline comments sparingly.
-An inline comment is a comment on the same line as a statement. 
-Inline comments should be separated by at least two spaces from the statement. 
+An inline comment is a comment on the same line as a statement.
+Inline comments should be separated by at least two spaces from the statement.
 They should start with a `//` and a single space.
 
 ## Conclusions
@@ -573,3 +579,5 @@ Other whitespace-significant rules are taken from ["PEP 8 -- Style Guide for Pyt
   [2]: http://msdn.microsoft.com/en-us/library/dd233191.aspx
   [3]: http://caml.inria.fr/resources/doc/guides/guidelines.en.html
   [4]: http://www.python.org/dev/peps/pep-0008/
+
+<fantomas-nav previous="{{fsdocs-previous-page-link}}" next="{{fsdocs-next-page-link}}"></fantomas-nav>
