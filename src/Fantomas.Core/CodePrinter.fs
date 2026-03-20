@@ -1962,7 +1962,11 @@ let genTupleExpr (node: ExprTupleNode) =
 
     let longExpression = genTupleMultiline node
 
-    let exprs = node.Items |> List.choose (function Choice1Of2 e -> Some e | _ -> None)
+    let exprs =
+        node.Items
+        |> List.choose (function
+            | Choice1Of2 e -> Some e
+            | _ -> None)
 
     if requiresMultilineToPreserveSemantics exprs then
         atCurrentColumn longExpression |> genNode node
@@ -1971,7 +1975,11 @@ let genTupleExpr (node: ExprTupleNode) =
         |> genNode node
 
 let genTupleMultiline (node: ExprTupleNode) =
-    let exprs = node.Items |> List.choose (function Choice1Of2 e -> Some e | _ -> None)
+    let exprs =
+        node.Items
+        |> List.choose (function
+            | Choice1Of2 e -> Some e
+            | _ -> None)
 
     // When a non-last element is open-ended (lambda, if-then-else, match, ...),
     // the comma must start a new line so that it isn't swallowed by the preceding expression.
