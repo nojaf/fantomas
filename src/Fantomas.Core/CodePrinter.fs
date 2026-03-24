@@ -1913,17 +1913,7 @@ let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
             ifElse preferMultilineCramped genMultiLineArrayOrListCramped genMultiLineArrayOrListAlignBrackets
 
         fun ctx ->
-            let alwaysMultiline =
-                let isIfThenElse =
-                    function
-                    | Expr.IfThen _
-                    | Expr.IfThenElse _ -> true
-                    | _ -> false
-
-                List.exists isIfThenElse node.Elements
-                || List.forall isLambdaOrIfThenElse node.Elements
-
-            if alwaysMultiline then
+            if requiresMultilineToPreserveSemantics node.Elements then
                 multilineExpression ctx
             else
                 let size = getListOrArrayExprSize ctx ctx.Config.MaxArrayOrListWidth node.Elements

@@ -229,3 +229,79 @@ match x with
 | false -> 2
 , y
 """
+
+// Expr.ArrayOrList (open-ended non-last element)
+
+[<Test>]
+let ``lambda as non-last list element stays multiline`` () =
+    formatSourceString
+        """
+[ fun x -> x
+  y ]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[
+    fun x -> x
+    y
+]
+"""
+
+[<Test>]
+let ``if-then-else as non-last list element stays multiline`` () =
+    formatSourceString
+        """
+[ if a then b else c
+  y ]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[
+    if a then b else c
+    y
+]
+"""
+
+[<Test>]
+let ``nested open-ended as non-last list element stays multiline`` () =
+    formatSourceString
+        """
+[ x = fun y -> y
+  z ]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[
+    x = fun y -> y
+    z
+]
+"""
+
+[<Test>]
+let ``lambda in middle of list stays multiline`` () =
+    formatSourceString
+        """
+[ a
+  fun x -> x
+  b ]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+[
+    a
+    fun x -> x
+    b
+]
+"""
