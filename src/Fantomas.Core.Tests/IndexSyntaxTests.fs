@@ -333,4 +333,3 @@ let test (dict: System.Collections.Generic.IDictionary<string, unit -> unit -> u
     let key = "foo"
     dict[key] () ()
 """
-
