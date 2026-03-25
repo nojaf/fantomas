@@ -367,3 +367,49 @@ let ``nested open-ended in non-last record field stays multiline`` () =
     C = 3
 }
 """
+
+// Regression tests
+
+[<Test>]
+let ``lambda in tuple in list preserves semantics, 3278`` () =
+    formatSourceString
+        """
+module A
+
+let x =
+    [
+        1, fun () -> 1
+        1, fun () -> 1
+    ]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module A
+
+let x =
+    [
+        1, fun () -> 1
+        1, fun () -> 1
+    ]
+"""
+
+[<Test>]
+let ``lambda with custom operator preserves semantics, 3274`` () =
+    formatSourceString
+        """
+let a =
+    fun x -> {| X = x |}
+    <*| op
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let a =
+    fun x -> {| X = x |}
+    <*| op
+"""

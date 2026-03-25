@@ -14,6 +14,9 @@
 - `%%` (double-percent) infix operator moved to new line, producing invalid F#. [#2107](https://github.com/fsprojects/fantomas/issues/2107)
 - Indentation warning when formatting `match` with long anonymous record discriminant. [#1903](https://github.com/fsprojects/fantomas/issues/1903)
 - Index-without-dot with variable key followed by unit arguments added spurious spaces, e.g. `dict[key] () ()` became `dict [ key ] () ()`. [#2519](https://github.com/fsprojects/fantomas/issues/2519)
+- Open-ended expressions (lambda, if-then-else, match, ...) in non-last positions of infix, tuple, list/array, and record expressions now stay multiline to preserve semantics. [#3279](https://github.com/fsprojects/fantomas/issues/3279)
+- Lambda in tuple in list on single line changes code meaning. [#3278](https://github.com/fsprojects/fantomas/issues/3278)
+- Custom operator applied to lambda collapses to single line changing semantics. [#3274](https://github.com/fsprojects/fantomas/issues/3274)
 
 ## [8.0.0-alpha-007] - 2026-03-10
 
