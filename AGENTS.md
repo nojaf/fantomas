@@ -20,6 +20,10 @@ All scripts accept a file path or stdin, with optional `--signature` and `--edit
 
 Scripts require a debug build first (`dotnet build src/Fantomas/Fantomas.fsproj`).
 
+## Changelog
+
+When updating `CHANGELOG.md`, add new entries to the **end** of the relevant section (e.g. `### Fixed`), not the top. One entry per issue.
+
 ## Post-task Steps
 
 Run these after completing a task, not during iterative development — analyzers can be slow.
