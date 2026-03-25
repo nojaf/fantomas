@@ -355,16 +355,6 @@ let isIfThenElse (e: Expr) =
 
 let (|IsIfThenElse|_|) (e: Expr) = if isIfThenElse e then Some e else None
 
-// TODO: eventually replace fully with isOpenEndedExpression
-let isLambdaOrIfThenElse (e: Expr) =
-    match e with
-    | Expr.Lambda _
-    | IsIfThenElse _ -> true
-    | _ -> false
-
-let (|IsLambdaOrIfThenElse|_|) (e: Expr) =
-    if isLambdaOrIfThenElse e then Some e else None
-
 /// Does this expression end with a construct whose body extends
 /// unboundedly to the right (lambda, if-then-else, tuple, ...)?
 let rec isOpenEndedExpression (e: Expr) =
@@ -1737,25 +1727,15 @@ let genMultilineRecordFieldsExpr
 /// <param name="genExtra">Either the `expr with` or `inherit T`.</param>
 /// <param name="node">ExprRecordBaseNode</param>
 let genSmallRecordBaseExpr genExtra (node: ExprRecordBaseNode) =
-    let lastIndex = node.Fields.Length - 1
-
     genSingleTextNode node.OpeningBrace
     +> addSpaceIfSpaceAroundDelimiter
     +> genExtra
-    +> coli sepSemi node.Fields (fun i rf ->
-        // Parenthesize lambdas and if/then/else in non-last fields to prevent
-        // the body from extending to the end of the line and swallowing subsequent fields.
-        // e.g. { B = (fun x -> x + 1); C = 3 } instead of { B = fun x -> x + 1; C = 3 }
-        let genFieldExpr =
-            match rf.Expr with
-            | IsLambdaOrIfThenElse e when i <> lastIndex -> sepOpenT +> genExpr e +> sepCloseT
-            | _ -> genExpr rf.Expr
-
+    +> coli sepSemi node.Fields (fun _i rf ->
         genIdentListNode rf.FieldName
         +> sepSpace
         +> genSingleTextNode rf.Equals
         +> sepSpace
-        +> genFieldExpr
+        +> genExpr rf.Expr
         |> genNode rf)
     +> addSpaceIfSpaceAroundDelimiter
     +> genSingleTextNode node.ClosingBrace
@@ -1862,8 +1842,13 @@ let genMultilineRecord (node: ExprRecordNode) (ctx: Context) =
     ifAlignOrStroustrupBrackets genMultilineAlignBrackets genMultilineCramped ctx
 
 let genRecord smallRecordExpr multilineRecordExpr (node: ExprRecordBaseNode) ctx =
-    let size = getRecordSize ctx node.Fields
-    genNode node (isSmallExpression size smallRecordExpr multilineRecordExpr) ctx
+    let fieldExprs = node.Fields |> List.map (fun rf -> rf.Expr)
+
+    if requiresMultilineToPreserveSemantics fieldExprs then
+        genNode node multilineRecordExpr ctx
+    else
+        let size = getRecordSize ctx node.Fields
+        genNode node (isSmallExpression size smallRecordExpr multilineRecordExpr) ctx
 
 let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
     if node.Elements.IsEmpty then

@@ -305,3 +305,65 @@ let ``lambda in middle of list stays multiline`` () =
     b
 ]
 """
+
+// Record fields (open-ended non-last field value)
+
+[<Test>]
+let ``lambda in non-last record field stays multiline`` () =
+    formatSourceString
+        """
+{ A = 1
+  B = fun x -> x
+  C = 3 }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+{
+    A = 1
+    B = fun x -> x
+    C = 3
+}
+"""
+
+[<Test>]
+let ``if-then-else in non-last record field stays multiline`` () =
+    formatSourceString
+        """
+{ A = 1
+  B = if a then b else c
+  C = 3 }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+{
+    A = 1
+    B = if a then b else c
+    C = 3
+}
+"""
+
+[<Test>]
+let ``nested open-ended in non-last record field stays multiline`` () =
+    formatSourceString
+        """
+{ A = 1
+  B = x <+> fun y -> y
+  C = 3 }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+{
+    A = 1
+    B = x <+> fun y -> y
+    C = 3
+}
+"""

@@ -1459,7 +1459,7 @@ f
 """
 
 [<Test>]
-let ``lambda in non-last record field should be parenthesized on single line, 3246`` () =
+let ``lambda in non-last record field stays multiline to preserve semantics, 3246`` () =
     formatSourceString
         """
 type Rec = {
@@ -1482,5 +1482,10 @@ let test () : Rec =
         """
 type Rec = { A: int; B: int -> int; C: int }
 
-let test () : Rec = { A = 1; B = (fun x -> x + 1); C = 3 }
+let test () : Rec =
+    {
+        A = 1
+        B = fun x -> x + 1
+        C = 3
+    }
 """
