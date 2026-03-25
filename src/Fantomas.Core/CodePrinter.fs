@@ -353,7 +353,9 @@ let isIfThenElse (e: Expr) =
     | Expr.IfThenElse _ -> true
     | _ -> false
 
-let (|IsIfThenElse|_|) (e: Expr) = if isIfThenElse e then Some e else None
+[<return: Struct>]
+let (|IsIfThenElse|_|) (e: Expr) =
+    if isIfThenElse e then ValueSome e else ValueNone
 
 /// Does this expression end with a construct whose body extends
 /// unboundedly to the right (lambda, if-then-else, tuple, ...)?
