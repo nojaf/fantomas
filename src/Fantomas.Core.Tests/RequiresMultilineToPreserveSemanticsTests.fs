@@ -413,3 +413,129 @@ let a =
     fun x -> {| X = x |}
     <*| op
 """
+
+[<Test>]
+let ``constructor with 3 args and no open-ended elements stays on one line`` () =
+    formatSourceString
+        """
+Foo.Bar(Title = "hello", Url = "world", Count = 3)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+Foo.Bar(Title = "hello", Url = "world", Count = 3)
+"""
+
+[<Test>]
+let ``constructor with 4 args and no open-ended elements stays on one line`` () =
+    formatSourceString
+        """
+Foo.Bar(Title = "hello", Url = "world", Count = 3, Extra = "more")
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+Foo.Bar(Title = "hello", Url = "world", Count = 3, Extra = "more")
+"""
+
+[<Test>]
+let ``constructor with 3 args and if-then-else in first uses comma-leading`` () =
+    formatSourceString
+        """
+Foo.Bar(
+    Title = if true then Some "" else None
+    , Url = "world"
+    , Count = 3
+)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+Foo.Bar(
+    Title = if true then Some "" else None
+    , Url = "world"
+    , Count = 3
+)
+"""
+
+[<Test>]
+let ``constructor with 3 args and lambda in middle uses comma-leading`` () =
+    formatSourceString
+        """
+Foo.Bar(
+    Title = "hello"
+    , Url = fun x -> x
+    , Count = 3
+)
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+Foo.Bar(
+    Title = "hello"
+    , Url = fun x -> x
+    , Count = 3
+)
+"""
+
+[<Test>]
+let ``3-element tuple with lambda in last position stays on one line`` () =
+    formatSourceString
+        """
+let x = 1, 2, fun y -> y
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let x = 1, 2, fun y -> y
+"""
+
+[<Test>]
+let ``3-element tuple with lambda in first position uses comma-leading`` () =
+    formatSourceString
+        """
+let x =
+    fun y -> y
+    , 2
+    , 3
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let x =
+    fun y -> y
+    , 2
+    , 3
+"""
+
+[<Test>]
+let ``3-element tuple with lambda in middle uses comma-leading`` () =
+    formatSourceString
+        """
+let x =
+    1
+    , fun y -> y
+    , 3
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let x =
+    1
+    , fun y -> y
+    , 3
+"""
