@@ -257,7 +257,7 @@ val autoIndentAndNlnIfExpressionExceedsPageWidthUnlessStroustrup:
     f: (Expr -> Context -> Context) -> e: Expr -> ctx: Context -> Context
 
 [<NoComparison; NoEqualityAttribute>]
-type ColMultilineItem = ColMultilineItem of expr: (Context -> Context) * sepNln: (Context -> Context)
+type ColMultilineItem = ColMultilineItem of expr: (Context -> Context) * node: Node
 
 /// This helper function takes a list of expressions and ranges.
 /// If the expression is multiline it will add a newline before and after the expression.

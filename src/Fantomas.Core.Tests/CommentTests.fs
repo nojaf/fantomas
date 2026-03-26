@@ -2613,6 +2613,105 @@ let IsMangledInfixOperator mangled = (* where mangled is assumed to be a compile
 """
 
 [<Test>]
+let ``comment after try-with should retain indentation, 1233`` () =
+    formatSourceString
+        """
+type CustomCancelSource() =
+    interface IDisposable with
+        member self.Dispose() =
+            try
+                self.Cancel()
+            with
+            | :? ObjectDisposedException ->
+                ()
+            // TODO: cleanup also subscribed handlers?
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type CustomCancelSource() =
+    interface IDisposable with
+        member self.Dispose() =
+            try
+                self.Cancel()
+            with :? ObjectDisposedException ->
+                ()
+            // TODO: cleanup also subscribed handlers?
+"""
+
+[<Test>]
+let ``comment after try-with before let binding should retain indentation, 1233`` () =
+    formatSourceString
+        """
+let x =
+    try
+        foo ()
+    with
+    | :? ObjectDisposedException ->
+        ()
+    // TODO: cleanup
+let y = 1
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let x =
+    try
+        foo ()
+    with :? ObjectDisposedException ->
+        ()
+    // TODO: cleanup
+
+let y = 1
+"""
+
+/// When a comment is between sibling nodes at the same column,
+/// it should be assigned as ContentBefore of the next sibling (not ContentAfter of the previous).
+[<Test>]
+let ``comment between same-column top-level let bindings should be content before next binding, 1233`` () =
+    formatSourceString
+        """
+let a = 1
+// some comment
+let b = 2
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let a = 1
+// some comment
+let b = 2
+"""
+
+[<Test>]
+let ``comment between same-column nested let bindings should be content before next binding, 1233`` () =
+    formatSourceString
+        """
+let outer =
+    let a = 1
+    // some comment
+    let b = 2
+    a + b
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let outer =
+    let a = 1
+    // some comment
+    let b = 2
+    a + b
+"""
+
+[<Test>]
 let ``doc comment without associated declaration should not be duplicated, 2499`` () =
     formatSourceString
         """/// Returns `unit` if validation was successful otherwise will throw an `Exception`.

@@ -1008,13 +1008,19 @@ let autoIndentAndNlnIfExpressionExceedsPageWidthUnlessStroustrup f (e: Expr) (ct
     else
         autoIndentAndNlnIfExpressionExceedsPageWidth (f e) ctx
 
+/// Pairs an expression-printing function with the Oak node it came from.
+/// Previously this carried a pre-computed separator function (sepNln or sepNone),
+/// but that meant the caller had to decide separator logic up front. By carrying the
+/// Node instead, colWithNlnWhenItemIsMultiline can inspect the node's trivia at
+/// evaluation time — specifically checking HasContentBefore to avoid double newlines
+/// when the node already has leading trivia (e.g. a blank line or comment).
 [<NoComparison; NoEquality>]
 type ColMultilineItem =
     | ColMultilineItem of
         // current expression
         expr: (Context -> Context) *
-        // sepNln of current item
-        sepNln: (Context -> Context)
+        // the Node for the current item, used to check trivia for separator logic
+        node: Node
 
 [<NoComparison>]
 type ColMultilineItemsState =
@@ -1070,8 +1076,8 @@ let isMultilineItem (expr: Context -> Context) (ctx: Context) : bool * Context =
 let colWithNlnWhenItemIsMultiline (items: ColMultilineItem list) (ctx: Context) : Context =
     match items with
     | [] -> ctx
-    | [ (ColMultilineItem(expr, _)) ] -> expr ctx
-    | ColMultilineItem(initialExpr, _) :: items ->
+    | [ ColMultilineItem(expr, _) ] -> expr ctx
+    | ColMultilineItem(initialExpr, _initialNode) :: items ->
         let result =
             // The first item can be written as is.
             let initialIsMultiline, initialCtx = isMultilineItem initialExpr ctx
@@ -1083,7 +1089,13 @@ let colWithNlnWhenItemIsMultiline (items: ColMultilineItem list) (ctx: Context) 
             let rec loop (acc: ColMultilineItemsState) (items: ColMultilineItem list) =
                 match items with
                 | [] -> acc.Context
-                | ColMultilineItem(expr, sepNlnItem) :: rest ->
+                | ColMultilineItem(expr, currentNode) :: rest ->
+                    // We check the node's trivia here because expr hasn't been evaluated yet,
+                    // so there are no writer events to inspect. If the node has ContentBefore
+                    // (e.g., a Newline trivia from a blank line), expr will produce its own
+                    // leading newline — skip sepNlnItem to avoid a double newline.
+                    let sepNlnItem = if currentNode.HasContentBefore then sepNone else sepNln
+
                     // Assume the current item will be multiline or the previous was.
                     // If this is the case, we have already processed the correct stream of event (with additional newline)
                     // It is cheaper to replay the current expression if it (and its predecessor) turned out to be single lines.

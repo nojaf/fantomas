@@ -692,12 +692,13 @@ let genExpr (e: Expr) =
         |> genNode node
     | Expr.CompExprBody node ->
         let genStatements =
+            // Pass the Oak node so colWithNlnWhenItemIsMultiline can inspect trivia
+            // (e.g. blank lines, comments) to decide whether to emit a separator newline.
             node.Statements
             |> List.map (function
                 | ComputationExpressionStatement.BindingStatement bindingNode ->
-                    ColMultilineItem(genBinding bindingNode, sepNlnUnlessContentBefore bindingNode)
-                | ComputationExpressionStatement.OtherStatement e ->
-                    ColMultilineItem(genExpr e, sepNlnUnlessContentBefore (Expr.Node e)))
+                    ColMultilineItem(genBinding bindingNode, bindingNode :> Node)
+                | ComputationExpressionStatement.OtherStatement e -> ColMultilineItem(genExpr e, Expr.Node e))
             |> colWithNlnWhenItemIsMultilineUsingConfig
             |> genNode node
 
@@ -4033,7 +4034,7 @@ let colWithNlnWhenMappedNodeIsMultiline<'n>
     (nodes: 'n list)
     : Context -> Context =
     nodes
-    |> List.map (fun n -> ColMultilineItem(f n, (mapNode >> sepNlnUnlessContentBefore) n))
+    |> List.map (fun n -> ColMultilineItem(f n, mapNode n))
     |> (if withUseConfig then
             colWithNlnWhenItemIsMultiline
         else
@@ -4072,6 +4073,11 @@ let genModule (m: ModuleOrNamespaceNode) =
 let addFinalNewline ctx =
     let lastEvent = ctx.WriterEvents.TryHead
 
+    let lastLineIsEmpty =
+        match ctx.WriterModel.Lines with
+        | [] -> false
+        | h :: _ -> String.IsNullOrWhiteSpace h
+
     match lastEvent with
     | Some WriteLineBecauseOfTrivia ->
         if ctx.Config.InsertFinalNewline then
@@ -4083,6 +4089,13 @@ let addFinalNewline ctx =
                 WriterModel =
                     { ctx.WriterModel with
                         Lines = List.tail ctx.WriterModel.Lines } }
+    | _ when lastLineIsEmpty ->
+        // With the new comment assignment logic, a comment can be attached as ContentAfter
+        // on a deeply nested last child (e.g. a try-with's last clause). When genNode unwinds,
+        // it emits indent/unindent/NodeEnd events *after* the trivia newline, so the last
+        // WriterEvent is not WriteLineBecauseOfTrivia even though the output already ends
+        // with a blank line. Checking the actual WriterModel catches this case.
+        ctx
     | _ -> onlyIf ctx.Config.InsertFinalNewline sepNln ctx
 
 let genFile (oak: Oak) =
