@@ -5,9 +5,16 @@ open Fantomas.FCS.Text
 open Fantomas.Core
 open Fantomas.Core.SyntaxOak
 
+/// Matches writer events that represent trivia: comments and conditional directives.
+/// These events get special treatment during multiline detection and normalization —
+/// newlines inside trivia use WriteLineInsideTrivia (not WriteLine), so they don't
+/// cause an expression to be considered multiline.
 let (|CommentOrDefineEvent|_|) we =
     match we with
-    | Write w when (String.startsWithOrdinal "//" w) -> Some we
+    // WriteComment covers line comments, block comments, and XML doc lines.
+    // Previously this was detected via string prefix ("//", "(*"), which was
+    // fragile and couldn't distinguish a comment from user code starting with "//".
+    | WriteComment _ -> Some we
     | Write w when (String.startsWithOrdinal "#if" w) -> Some we
     | Write w when (String.startsWithOrdinal "#else" w) -> Some we
     | Write w when (String.startsWithOrdinal "#endif" w) -> Some we
@@ -16,7 +23,8 @@ let (|CommentOrDefineEvent|_|) we =
 
 let (|EmptyWrite|_|) (we: WriterEvent) =
     match we with
-    | Write v -> if String.IsNullOrWhiteSpace v then Some() else None
+    | Write v
+    | WriteComment v -> if String.IsNullOrWhiteSpace v then Some() else None
     | _ -> None
 
 type ShortExpressionInfo =
@@ -97,7 +105,8 @@ module WriterModel =
                     | h :: tail -> String.empty :: h :: tail
 
                 { m with Lines = lines; Column = 0 }
-            | Write s ->
+            | Write s
+            | WriteComment s ->
                 { m with
                     Lines = (List.head m.Lines + s) :: (List.tail m.Lines)
                     Column = m.Column + (String.length s) }
@@ -129,7 +138,8 @@ module WriterModel =
                 | WriteLine
                 | WriteLineBecauseOfTrivia -> true
                 | WriteLineInsideStringConst -> true
-                | Write _ when (String.isNotNullOrEmpty m.WriteBeforeNewline) -> true
+                | Write _
+                | WriteComment _ when (String.isNotNullOrEmpty m.WriteBeforeNewline) -> true
                 | _ -> false
 
             let updatedInfos =
@@ -149,16 +159,24 @@ module WriterModel =
 module WriterEvents =
     let normalize ev =
         match ev with
-        | Write s when s.Contains("\n") ->
+        | Write s
+        | WriteComment s when s.Contains("\n") ->
             let writeLine =
                 match ev with
                 | CommentOrDefineEvent _ -> WriteLineInsideTrivia
                 | _ -> WriteLineInsideStringConst
 
+            // When splitting a multiline event into per-line events, preserve the
+            // original event kind so comment lines remain WriteComment (not Write).
+            let wrap =
+                match ev with
+                | WriteComment _ -> WriteComment
+                | _ -> Write
+
             // Trustworthy multiline string in the original AST can contain \r
             // Internally we process everything with \n and at the end we respect the .editorconfig end_of_line setting.
             s.Replace("\r", "").Split('\n')
-            |> Seq.map (fun x -> [ Write x ])
+            |> Seq.map (fun x -> [ wrap x ])
             |> Seq.reduce (fun x y -> x @ [ writeLine ] @ y)
             |> Seq.toList
         | _ -> [ ev ]
@@ -315,7 +333,8 @@ let writeEventsOnLastLine ctx =
         | WriteLineInsideStringConst -> false
         | _ -> true)
     |> Seq.choose (function
-        | Write w when (String.length w > 0) -> Some w
+        | Write w
+        | WriteComment w when (String.length w > 0) -> Some w
         | _ -> None)
 
 let lastWriteEventIsNewline ctx =
@@ -353,22 +372,31 @@ let (|EmptyHashDefineBlock|_|) (events: WriterEvent array) =
         if emptyLinesInBetween then Some events else None
     | _ -> None
 
-/// Validate if there is a complete blank line between the last write event and the last event
-let newlineBetweenLastWriteEvent ctx =
+/// Validate if there is a complete blank line between the last write event and the last event.
+/// Used by colWithNlnWhenItemIsMultiline to avoid inserting a double blank line when one
+/// already exists (e.g. from trivia-produced newlines).
+/// WriteComment events are treated as transparent here — a trailing comment on the previous
+/// node should not prevent us from seeing the blank line that follows it.
+/// WriteLineBecauseOfTrivia is counted alongside WriteLine because trivia-produced newlines
+/// are real blank lines in the output.
+let newlineBetweenLastWriteEvent (ctx: Context) : bool =
     ctx.WriterEvents
     |> Queue.rev
     |> Seq.takeWhile (function
         | EmptyWrite
         | WriteLine
+        | WriteLineBecauseOfTrivia
         | IndentBy _
         | UnIndentBy _
         | SetIndent _
         | RestoreIndent _
         | SetAtColumn _
-        | RestoreAtColumn _ -> true
+        | RestoreAtColumn _
+        | WriteComment _ -> true
         | _ -> false)
     |> Seq.filter (function
-        | WriteLine -> true
+        | WriteLine
+        | WriteLineBecauseOfTrivia -> true
         | _ -> false)
     |> Seq.length
     |> fun writeLines -> writeLines > 1

@@ -5,6 +5,12 @@ namespace Fantomas.Core
 [<Struct>]
 type WriterEvent =
     | Write of text: string
+    /// Emits text that originated from a comment (line comment, block comment, or XML doc line).
+    /// Distinguishing comments from regular code writes allows the formatting engine to recognise
+    /// comment events without fragile string-prefix checks (e.g. "starts with //").
+    /// This matters in Context.fs where we decide whether an event is trivia (and therefore does
+    /// not count towards multiline detection) or real output.
+    | WriteComment of text: string
     | WriteLine
     | WriteLineInsideStringConst
     | WriteBeforeNewline of content: string
