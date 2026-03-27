@@ -279,3 +279,31 @@ type ColMultilineItem = ColMultilineItem of expr: (Context -> Context) * node: N
 /// let c = CCCC
 val colWithNlnWhenItemIsMultiline: items: ColMultilineItem list -> ctx: Context -> Context
 val colWithNlnWhenItemIsMultilineUsingConfig: items: ColMultilineItem list -> ctx: Context -> Context
+
+/// Fold over a list applying f to each item and g to the last item.
+val foldExceptLast: f: ('t -> 'acc -> 'acc) -> g: ('t -> 'acc -> 'acc) -> acc: 'acc -> items: 't list -> 'acc
+
+/// Like col, but applies a different function to the last item.
+/// Used when the last item in an indented block needs special handling — e.g. to emit
+/// ContentAfter after an unindent so trailing comments appear at the closing bracket's
+/// indentation level rather than the content's.
+val colWithLast:
+    processItem: ('t -> Context -> Context) ->
+    separator: (Context -> Context) ->
+    lastItem: ('t -> Context -> Context) ->
+    items: 't list ->
+    ctx: Context ->
+        Context
+
+/// Takes a list of WriterEvents (captured via captureTrailingTriviaEvents after a
+/// ReleaseContentAfter call) and inserts an UnIndentBy before the final newline event,
+/// then applies all events to the context.
+/// This ensures that when the last item in an indented block (list, record, array) has a
+/// trailing comment, the unindent happens after the comment content but before the closing
+/// newline — so the closing bracket lands at the correct (reduced) indentation level.
+///
+/// Handles three trailing patterns:
+/// - WriteComment + WriteLineBecauseOfTrivia (single-line comment or block comment with newline after)
+/// - WriteBeforeNewline (line comment after source code)
+/// - WriteComment + Write " " (inline block comment without trailing newline)
+val insertUnindentBeforeTrailingNewline: events: WriterEvent list -> ctx: Context -> Context

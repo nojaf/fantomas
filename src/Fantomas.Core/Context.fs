@@ -136,8 +136,11 @@ module WriterModel =
             let nextCmdCausesMultiline =
                 match cmd with
                 | WriteLine
-                | WriteLineBecauseOfTrivia -> true
-                | WriteLineInsideStringConst -> true
+                | WriteLineBecauseOfTrivia
+                | WriteLineInsideStringConst
+                // A multiline block comment (e.g. (* \n *)) produces WriteLineInsideTrivia events.
+                // Without this, the short expression check doesn't see them as multiline.
+                | WriteLineInsideTrivia -> true
                 | Write _
                 | WriteComment _ when (String.isNotNullOrEmpty m.WriteBeforeNewline) -> true
                 | _ -> false
@@ -507,6 +510,26 @@ let colPost f2 f1 (c: 'T seq) f (ctx: Context) =
 /// Similar to col, apply one more function f2 at the beginning if the input sequence is not empty
 let colPre f2 f1 (c: 'T seq) f (ctx: Context) =
     if Seq.isEmpty c then ctx else col f1 c f (f2 ctx)
+
+[<TailCall>]
+let rec foldExceptLast f g acc items =
+    match items with
+    | [] -> acc
+    | [ lastItem ] -> g lastItem acc
+    | head :: tail -> foldExceptLast f g (f head acc) tail
+
+let colWithLast
+    (processItem: 't -> Context -> Context)
+    (separator: Context -> Context)
+    (lastItem: 't -> Context -> Context)
+    (items: 't list)
+    (ctx: Context)
+    : Context =
+    foldExceptLast
+        (fun (t: 't) (ctx: Context) -> processItem t ctx |> separator)
+        (fun (t: 't) (ctx: Context) -> lastItem t ctx)
+        ctx
+        items
 
 /// If there is a value, apply f and f' accordingly, otherwise do nothing
 let opt (f': Context -> _) o f (ctx: Context) =
@@ -1131,3 +1154,37 @@ let colWithNlnWhenItemIsMultilineUsingConfig (items: ColMultilineItem list) (ctx
         colWithNlnWhenItemIsMultiline items ctx
     else
         col sepNln items (fun (ColMultilineItem(expr, _)) -> expr) ctx
+
+/// Walks a list of WriterEvents and inserts UnIndentBy + WriteLineBecauseOfTrivia
+/// just before the trailing comment/newline boundary.
+[<TailCall>]
+let rec insertUnindent
+    (indentSize: int)
+    (continuation: WriterEvent list -> WriterEvent list)
+    (events: WriterEvent list)
+    =
+    match events with
+    | [] -> continuation []
+    // Single-line comment or block comment with trailing newline:
+    //     someItem
+    //     // comment
+    // ]
+    | [ WriteComment comment; WriteLineBecauseOfTrivia ] ->
+        continuation [ WriteComment comment; UnIndentBy indentSize; WriteLineBecauseOfTrivia ]
+    // Line comment after source code:
+    //     someItem // comment
+    // ]
+    | [ WriteBeforeNewline comment ] ->
+        continuation [ WriteBeforeNewline comment; UnIndentBy indentSize; WriteLineBecauseOfTrivia ]
+    // Inline block comment (no trailing newline):
+    //     someItem (*
+    //         comment
+    //     *)
+    // ]
+    | [ WriteComment comment; Write " " ] ->
+        continuation [ WriteComment comment; UnIndentBy indentSize; WriteLineBecauseOfTrivia ]
+    | head :: rest -> insertUnindent indentSize (fun current -> continuation (head :: current)) rest
+
+let insertUnindentBeforeTrailingNewline (events: WriterEvent list) (ctx: Context) : Context =
+    insertUnindent ctx.Config.IndentSize id events
+    |> List.fold (fun acc event -> writerEvent event acc) ctx

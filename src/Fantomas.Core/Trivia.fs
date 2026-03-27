@@ -279,20 +279,29 @@ let lineCommentAfterSourceCodeToTriviaInstruction (containerNode: Node) (trivia:
 /// Assigns a trivia node (comment, blank line, directive) to the appropriate child
 /// of containerNode as either ContentBefore or ContentAfter.
 ///
-/// The original logic always attached to the first child node starting after the trivia line.
-/// This failed for indented comments that logically belong to a preceding node at the same
-/// indentation level. For example:
+/// By default, trivia attaches as ContentBefore of the first child starting after the trivia line.
+/// For indented single-line comments (column > 0), we additionally search for a preceding node
+/// at the same column via findNodeBeforeWithMatchingColumn. This handles cases like:
 ///
 ///     let x =
 ///         try foo() with _ -> ()
 ///         // this comment belongs to the try-with above, not the let below
 ///     let y = 1
 ///
-/// The new logic uses column-matching: for indented single-line comments (column > 0),
-/// we search for a preceding node at the same column via findNodeBeforeWithMatchingColumn.
+/// The comment at column 8 matches the try-with (also column 8), so it becomes ContentAfter
+/// of the try-with rather than ContentBefore of `let y`.
+///
 /// When both a predecessor and successor exist, the predecessor wins only if the successor
-/// is at a different column — if they share the same column, they are siblings and the
-/// comment naturally belongs before the next sibling.
+/// is at a different column. If they share the same column, they are siblings and the comment
+/// belongs before the next sibling:
+///
+///     let a = 1
+///     // this is ContentBefore of `let b`, not ContentAfter of `let a`
+///     let b = 2
+///
+/// When trivia is attached as ContentAfter (to a child or descendant), we also mark the
+/// containerNode via MarkContentAfterOfLastDescendant so the printer can detect this in O(1)
+/// and adjust indentation when emitting closing brackets.
 let simpleTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
     let nodeAfter =
         containerNode.Children

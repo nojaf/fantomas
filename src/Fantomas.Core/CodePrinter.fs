@@ -81,7 +81,8 @@ let (|ParenExpr|_|) (e: Expr) =
     | Expr.Constant(Constant.Unit _) -> Some e
     | _ -> None
 
-let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
+/// Emits a single TriviaNode (comment, blank line, directive, cursor) to the context.
+let genTrivia (nodeRange: Fantomas.FCS.Text.range) (trivia: TriviaNode) (ctx: Context) =
     let currentLastLine = ctx.WriterModel.Lines |> List.tryHead
 
     // Some items like #if or Newline should be printed on a newline
@@ -117,7 +118,7 @@ let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
         | Cursor ->
             fun ctx ->
                 // TODO: this assumes the cursor is placed on the same line as the EndLine of the Node.
-                let originalColumnOffset = trivia.Range.EndColumn - node.Range.EndColumn
+                let originalColumnOffset = trivia.Range.EndColumn - nodeRange.EndColumn
 
                 let formattedCursor =
                     Fantomas.FCS.Text.Position.mkPos ctx.WriterModel.Lines.Length (ctx.Column + originalColumnOffset)
@@ -146,17 +147,42 @@ let recordCursorNode f (node: Node) (ctx: Context) =
             FormattedCursor = Some formattedCursor }
 
 let enterNode<'n when 'n :> Node> (n: 'n) =
-    col sepNone n.ContentBefore (genTrivia n)
+    col sepNone n.ContentBefore (genTrivia n.Range)
 
 let leaveNode<'n when 'n :> Node> (n: 'n) =
-    col sepNone n.ContentAfter (genTrivia n)
+    col sepNone n.ContentAfter (genTrivia n.Range)
 
-let genNode<'n when 'n :> Node> (n: 'n) (f: Context -> Context) =
-    onlyIfCtx (fun ctx -> ctx.DebugMode) (writerEvent (NodeStart(n.GetType().Name, sprintf "%O" n.Range)))
-    +> enterNode n
-    +> recordCursorNode f n
-    +> leaveNode n
-    +> onlyIfCtx (fun ctx -> ctx.DebugMode) (writerEvent (NodeEnd(n.GetType().Name, sprintf "%O" n.Range)))
+let genNode<'n when 'n :> Node> (node: 'n) (f: Context -> Context) : Context -> Context =
+    onlyIfCtx (fun ctx -> ctx.DebugMode) (writerEvent (NodeStart(node.GetType().Name, sprintf "%O" node.Range)))
+    +> enterNode node
+    +> recordCursorNode f node
+    +> leaveNode node
+    +> onlyIfCtx (fun ctx -> ctx.DebugMode) (writerEvent (NodeEnd(node.GetType().Name, sprintf "%O" node.Range)))
+
+/// Generates the WriterEvents for the given ContentAfter trivia on a dummy context,
+/// returning them as a list without applying them to the real context.
+/// Used together with ReleaseContentAfter: the caller first releases the trivia from the node
+/// (so the normal genExpr/leaveNode path doesn't emit it), then passes it here to capture the
+/// events. The caller can then feed the events through insertUnindentBeforeTrailingNewline
+/// to insert an UnIndentBy before the final newline, ensuring the closing bracket lands
+/// at the correct indentation level.
+let captureTrailingTriviaEvents
+    (nodeRange: Fantomas.FCS.Text.range)
+    (contentAfter: TriviaNode seq)
+    (currentCtx: Context)
+    : WriterEvent list =
+    let dummyCtx =
+        { currentCtx with
+            WriterModel =
+                { currentCtx.WriterModel with
+                    Mode = Dummy } }
+
+    let eventsBefore = dummyCtx.WriterEvents.Length
+    let ctxAfter = col sepNone contentAfter (genTrivia nodeRange) dummyCtx
+    let eventsAfter = ctxAfter.WriterEvents.Length
+    let take = eventsAfter - eventsBefore
+    // Rev() gives newest-first; truncate grabs our events; rev restores emission order.
+    ctxAfter.WriterEvents.Rev() |> Seq.truncate take |> Seq.rev |> Seq.toList
 
 let genSingleTextNode (node: SingleTextNode) = !-node.Text |> genNode node
 
@@ -399,7 +425,7 @@ let requiresMultilineToPreserveSemantics (exprs: Expr list) =
         |> List.take (exprs.Length - 1) // skip the last item: it can't swallow anything to its right
         |> List.exists isOpenEndedExpression
 
-let genExpr (e: Expr) =
+let genExpr (e: Expr) : Context -> Context =
     match e with
     | Expr.Lazy node ->
         let genInfixExpr (ctx: Context) =
@@ -1888,9 +1914,28 @@ let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
                 genSingleTextNode node.Opening
                 +> indent
                 +> sepNlnUnlessLastEventIsNewline
-                +> col sepNln node.Elements genExpr
-                +> unindent
-                +> sepNlnUnlessLastEventIsNewline
+                // When the last item has trailing trivia (e.g. a comment), we need the UnIndentBy
+                // to land between the comment and its trailing newline. We can't just do
+                // `genExpr lastItem +> unindent` because leaveNode emits the comment *inside*
+                // genExpr, and the unindent would come too late — after the trailing newline,
+                // causing the closing bracket to stay at the content's indentation.
+                // Instead: release the ContentAfter from the node, run genExpr (which now skips
+                // the trivia), capture the trivia events separately, and replay them with an
+                // UnIndentBy inserted before the final newline.
+                +> colWithLast
+                    genExpr
+                    sepNln
+                    (fun lastExpr ctx ->
+                        let node = Expr.Node lastExpr
+
+                        if not node.HasContentAfter then
+                            (genExpr lastExpr +> unindent +> sepNln) ctx
+                        else
+                            let contentAfter = node.ReleaseContentAfter()
+                            let ctxWithLastExpr = genExpr lastExpr ctx
+                            let events = captureTrailingTriviaEvents node.Range contentAfter ctxWithLastExpr
+                            insertUnindentBeforeTrailingNewline events ctxWithLastExpr)
+                    node.Elements
                 +> genSingleTextNode node.Closing
 
             let genMultiLineArrayOrListCramped =

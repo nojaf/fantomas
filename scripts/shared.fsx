@@ -13,7 +13,8 @@ let parseEditorConfigContent (content: string) : FormatConfig =
     Directory.CreateDirectory(tempDir) |> ignore
     let editorConfigPath = Path.Combine(tempDir, ".editorconfig")
     let fsharpFile = Path.Combine(tempDir, "temp.fs")
-    File.WriteAllText(editorConfigPath, $"root = true\n\n[*.fs]\n%s{content}")
+    let settings = content.Replace(",", "\n")
+    File.WriteAllText(editorConfigPath, $"root = true\n\n[*.{{fs,fsx,fsi}}]\n%s{settings}")
     File.WriteAllText(fsharpFile, "")
 
     try

@@ -56,6 +56,11 @@ type Node =
     /// True when a descendant has ContentAfter, set during trivia assignment.
     abstract HasContentAfterOfLastDescendant: bool
     abstract MarkContentAfterOfLastDescendant: unit -> unit
+    /// Returns all ContentAfter trivia and clears it from the node.
+    /// Used during formatting when the caller needs to control exactly when and how
+    /// trailing trivia is emitted — e.g. to insert an unindent before the final newline
+    /// so a closing bracket lands at the correct indentation level.
+    abstract ReleaseContentAfter: unit -> TriviaNode seq
 
 /// Base implementation of <see cref="Node"/> shared by all concrete Oak node types.
 /// Manages the mutable trivia queues (<c>ContentBefore</c> / <c>ContentAfter</c>) and
@@ -100,8 +105,13 @@ type NodeBase(range: range) =
     member x.MarkContentAfterOfLastDescendant() =
         x.HasContentAfterOfLastDescendant <- true
 
+    member _.ReleaseContentAfter() =
+        let after = nodesAfter |> Seq.toArray
+        nodesAfter.Clear()
+        after
+
     /// Renders the node tree for debugging. Trivia items are prefixed with arrows:
-    /// ↰ = ContentBefore (trivia attached before this node), ↱ = ContentAfter (trivia attached after).
+    /// ▼ = ContentBefore (trivia attached before this node), ▲ = ContentAfter (trivia attached after).
     /// This makes it easy to see where comments and blank lines ended up in the Oak.
     member private x.AppendToStringWithIndent(sb: StringBuilder, depth: int) =
         let indent = String.replicate depth "  "
@@ -119,7 +129,7 @@ type NodeBase(range: range) =
 
             if hasContentBefore then
                 for tn in x.ContentBefore do
-                    sb.Append(contentIndent).Append("↰ ").Append(tn.ToString()).AppendLine()
+                    sb.Append(contentIndent).Append("▼ ").Append(tn.ToString()).AppendLine()
                     |> ignore
 
             if hasChildren then
@@ -127,13 +137,13 @@ type NodeBase(range: range) =
                     match n with
                     | :? SingleTextNode as stn ->
                         for tn in stn.ContentBefore do
-                            sb.Append(contentIndent).Append("↰ ").Append(tn.ToString()).AppendLine()
+                            sb.Append(contentIndent).Append("▼ ").Append(tn.ToString()).AppendLine()
                             |> ignore
 
                         sb.Append(contentIndent).Append(stn.ToString()).AppendLine() |> ignore
 
                         for tn in stn.ContentAfter do
-                            sb.Append(contentIndent).Append("↱ ").Append(tn.ToString()).AppendLine()
+                            sb.Append(contentIndent).Append("▲ ").Append(tn.ToString()).AppendLine()
                             |> ignore
                     | :? NodeBase as nb ->
                         nb.AppendToStringWithIndent(sb, depth + 1)
@@ -142,7 +152,7 @@ type NodeBase(range: range) =
 
             if hasContentAfter then
                 for tn in x.ContentAfter do
-                    sb.Append(contentIndent).Append("↱ ").Append(tn.ToString()).AppendLine()
+                    sb.Append(contentIndent).Append("▲ ").Append(tn.ToString()).AppendLine()
                     |> ignore
 
             sb.Append(indent).Append(")") |> ignore
@@ -169,6 +179,7 @@ type NodeBase(range: range) =
         member x.TryGetCursor = x.TryGetCursor
         member x.HasContentAfterOfLastDescendant = x.HasContentAfterOfLastDescendant
         member x.MarkContentAfterOfLastDescendant() = x.MarkContentAfterOfLastDescendant()
+        member x.ReleaseContentAfter() : TriviaNode seq = x.ReleaseContentAfter()
 
 /// A leaf node holding a plain string value with no sub-nodes (e.g. a verbatim string token or source text fragment).
 type StringNode(content: string, range: range) =
@@ -1561,7 +1572,8 @@ type ElseIfNode(mElse: range, mIf: range, condition: Node, range) as elseIfNode 
             member _.AddCursor cursor = elseCursor <- Some cursor
             member _.TryGetCursor = elseCursor
             member _.HasContentAfterOfLastDescendant = false
-            member _.MarkContentAfterOfLastDescendant() = () }
+            member _.MarkContentAfterOfLastDescendant() = ()
+            member _.ReleaseContentAfter() : TriviaNode seq = Seq.empty }
 
     let ifNode =
         { new Node with
@@ -1584,7 +1596,8 @@ type ElseIfNode(mElse: range, mIf: range, condition: Node, range) as elseIfNode 
             member _.AddCursor cursor = ifCursor <- Some cursor
             member _.TryGetCursor = ifCursor
             member _.HasContentAfterOfLastDescendant = false
-            member _.MarkContentAfterOfLastDescendant() = () }
+            member _.MarkContentAfterOfLastDescendant() = ()
+            member _.ReleaseContentAfter() : TriviaNode seq = Seq.empty }
 
     interface Node with
         member _.ContentBefore: TriviaNode seq = nodesBefore
@@ -1616,6 +1629,11 @@ type ElseIfNode(mElse: range, mIf: range, condition: Node, range) as elseIfNode 
         member _.TryGetCursor = None
         member _.HasContentAfterOfLastDescendant = false
         member _.MarkContentAfterOfLastDescendant() = ()
+
+        member _.ReleaseContentAfter() : TriviaNode seq =
+            let after = nodesAfter |> Seq.toArray
+            nodesAfter.Clear()
+            after
 
 /// The leading keyword of an `if` expression: either a simple `if` token or an `else if` pair (see <see cref="ElseIfNode"/>).
 [<RequireQualifiedAccess; NoComparison>]
