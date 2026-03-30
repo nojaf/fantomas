@@ -88,7 +88,12 @@ let parseOptionsFromEditorConfig
         | true, MultilineFormatterType mft -> box mft
         | true, EndOfLineStyle eol -> box eol
         | true, BracketStyle bs -> box bs
-        | _ -> defaultValue)
+        | false, _ -> defaultValue
+        | true, invalidValue ->
+            eprintfn
+                $"warning: unrecognized value '%s{invalidValue}' for property '%s{editorConfigName}' in .editorconfig, using default."
+
+            defaultValue)
     |> fun newValues ->
 
         let formatConfigType = FormatConfig.Default.GetType()
