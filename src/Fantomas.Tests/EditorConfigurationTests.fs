@@ -543,3 +543,33 @@ fsharp_experimental_elmish = true
     let config = EditorConfig.readConfiguration fsharpFile.FSharpFile
 
     Assert.That(config.ExperimentalElmish, Is.True)
+
+[<Test>]
+let ``invalid editorconfig value emits warning to stderr and uses default`` () =
+    let rootDir = tempName ()
+
+    let editorConfig =
+        """
+[*.fs]
+fsharp_experimental_elmish = not_a_bool
+"""
+
+    use configFixture =
+        new ConfigurationFile(defaultConfig, rootDir, content = editorConfig)
+
+    use fsharpFile = new FSharpFile(rootDir)
+
+    let capturedErr = new System.IO.StringWriter()
+    let originalErr = Console.Error
+    Console.SetError(capturedErr)
+
+    let config =
+        try
+            EditorConfig.readConfiguration fsharpFile.FSharpFile
+        finally
+            Console.SetError(originalErr)
+
+    let output = capturedErr.ToString()
+    Assert.That(output, Does.Contain("fsharp_experimental_elmish"))
+    Assert.That(output, Does.Contain("not_a_bool"))
+    config.ExperimentalElmish == defaultConfig.ExperimentalElmish
