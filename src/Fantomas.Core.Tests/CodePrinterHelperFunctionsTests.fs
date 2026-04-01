@@ -877,3 +877,55 @@ let ``colWithNlnWhenItemIsMultiline adds blank line around multiline item`` () =
     let code = colWithNlnWhenItemIsMultiline items (mkLfCtx ()) |> dump
     // Blank line before and after the multiline item
     Assert.AreEqual("let a = 1\n\nlet b =\n    longBody\n\nlet c = 3", code)
+
+// =============================================================================
+// Trivia-before-unindent splice
+// =============================================================================
+
+[<Test>]
+let ``autoIndentAndNlnIfExpressionExceedsPageWidth splices unindent before trailing trivia`` () =
+    // Simulate an expression with trailing trivia (comment + WriteLineBecauseOfTrivia).
+    // The unindent should be spliced before the trailing newline so the newline
+    // uses the reduced indent level.
+    let exprWithTrailingComment =
+        !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> !-"// trailing comment"
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx =
+        { Context.Default with
+            Config =
+                { Context.Default.Config with
+                    MaxLineLength = 20
+                    EndOfLine = EndOfLineStyle.LF } }
+
+    let code =
+        (!-"let x ="
+         +> autoIndentAndNlnIfExpressionExceedsPageWidth exprWithTrailingComment)
+            ctx
+        |> dump
+
+    // The comment should be at indent 4, the newline after it at indent 0
+    Assert.AreEqual("let x =\n    someContent\n    // trailing comment\n", code)
+
+[<Test>]
+let ``autoIndentAndNlnIfExpressionExceedsPageWidth without trailing trivia still unindents normally`` () =
+    let expr = !-"a long expression that does not fit"
+
+    let ctx =
+        { Context.Default with
+            Config =
+                { Context.Default.Config with
+                    MaxLineLength = 20
+                    EndOfLine = EndOfLineStyle.LF } }
+
+    let code =
+        (!-"let x ="
+         +> autoIndentAndNlnIfExpressionExceedsPageWidth expr
+         +> sepNln
+         +> !-"next")
+            ctx
+        |> dump
+
+    Assert.AreEqual("let x =\n    a long expression that does not fit\nnext", code)

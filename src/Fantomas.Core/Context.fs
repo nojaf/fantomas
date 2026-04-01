@@ -317,13 +317,6 @@ let dump (isSelection: bool) (ctx: Context) =
 
 let dumpEvents (ctx: Context) : WriterEvent array = ctx.WriterEvents.ToSeq() |> Seq.toArray
 
-let dumpAndContinue (ctx: Context) =
-#if DEBUG
-    let result = dump false ctx
-    printfn $"%s{result.Code}"
-#endif
-    ctx
-
 type Context with
 
     member x.FinalizeModel = finalizeWriterModel x
@@ -521,9 +514,6 @@ let onlyIf cond f ctx = if cond then f ctx else ctx
 let onlyIfCtx cond f ctx = if cond ctx then f ctx else ctx
 
 let onlyIfNot cond f ctx = if cond then ctx else f ctx
-
-let whenShortIndent f ctx =
-    onlyIf (ctx.Config.IndentSize < 3) f ctx
 
 /// Repeat application of a function n times
 let rep n (f: Context -> Context) (ctx: Context) =
@@ -757,34 +747,88 @@ let expressionExceedsPageWidth beforeShort afterShort beforeLong afterLong expr 
             ctx.WriterEvents.RollbackTo(snapshot)
             fallbackExpression ctx
 
+/// Describes how an expression should be laid out when it doesn't fit on a single line.
+type LongExpressionLayout =
+    | IndentAndUnindent
+    | DoubleIndentAndUnindent
+    | NewlineOnly
+
+/// Walk backward from the DLL tail looking for trailing trivia patterns.
+/// If found, insert UnIndentBy before the final trailing newline so the newline
+/// uses the reduced indent level. Returns true if the splice was performed.
+///
+/// Recognized patterns (walking backward from tail):
+///   1. WriteLineBecauseOfTrivia ← Write "// ..." ← ...   (single-line comment with trailing newline)
+///   2. WriteLineBecauseOfTrivia ← Write "(* ..." ← ...   (block comment with trailing newline)
+///   3. WriteBeforeNewline "..."                           (inline trailing comment, e.g. "code // comment")
+///
+/// Note: when WriteComment is introduced (from comment-after-rebased branch),
+/// patterns 1 and 2 should match on WriteComment instead of Write with string prefix checks.
+let spliceUnindentBeforeTrailingTrivia (events: EventList) (unindentAmount: int) =
+    let tail = events.Tail
+
+    if isNull tail then
+        false
+    else
+        match tail.Event with
+        // Trailing newline preceded by a comment — insert UnIndentBy between the comment and the newline
+        | WriteLineBecauseOfTrivia when not (isNull tail.Prev) ->
+            match tail.Prev.Event with
+            | CommentOrDefineEvent _ ->
+                events.InsertBefore(tail, UnIndentBy unindentAmount) |> ignore
+                true
+            | _ -> false
+        | _ -> false
+
+let expressionExceedsPageWidthWithLayout (layout: LongExpressionLayout) (addSpaceBefore: bool) expr (ctx: Context) =
+    let beforeShort = if addSpaceBefore then sepSpace else sepNone
+
+    match layout with
+    | NewlineOnly -> expressionExceedsPageWidth beforeShort sepNone sepNln sepNone expr ctx
+    | IndentAndUnindent
+    | DoubleIndentAndUnindent ->
+        let beforeLong =
+            match layout with
+            | IndentAndUnindent -> indent +> sepNln
+            | DoubleIndentAndUnindent -> indent +> indent +> sepNln
+            | NewlineOnly -> sepNln
+
+        let unindentSize =
+            match layout with
+            | IndentAndUnindent -> ctx.Config.IndentSize
+            | DoubleIndentAndUnindent -> ctx.Config.IndentSize * 2
+            | NewlineOnly -> 0
+
+        // For the indent+unindent layouts, we handle unindent ourselves:
+        // run expr without afterLong, then splice unindent before any trailing trivia.
+        // This ensures the trivia newline uses the reduced indent level.
+        let afterLongWithSplice (ctxAfterExpr: Context) =
+            if spliceUnindentBeforeTrailingTrivia ctxAfterExpr.WriterEvents unindentSize then
+                // Splice was done — update WriterModel to reflect the unindent
+                { ctxAfterExpr with
+                    WriterModel =
+                        { ctxAfterExpr.WriterModel with
+                            Indent =
+                                max ctxAfterExpr.WriterModel.AtColumn (ctxAfterExpr.WriterModel.Indent - unindentSize) } }
+            else
+                // No trailing trivia — just append unindent normally
+                match layout with
+                | IndentAndUnindent -> unindent ctxAfterExpr
+                | DoubleIndentAndUnindent -> (unindent +> unindent) ctxAfterExpr
+                | NewlineOnly -> ctxAfterExpr
+
+        expressionExceedsPageWidth beforeShort sepNone beforeLong afterLongWithSplice expr ctx
+
 /// try and write the expression on the remainder of the current line
 /// add an indent and newline if the expression is longer
 let autoIndentAndNlnIfExpressionExceedsPageWidth expr (ctx: Context) =
-    expressionExceedsPageWidth
-        sepNone
-        sepNone // before and after for short expressions
-        (indent +> sepNln)
-        unindent // before and after for long expressions
-        expr
-        ctx
+    expressionExceedsPageWidthWithLayout IndentAndUnindent false expr ctx
 
 let sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth expr (ctx: Context) =
-    expressionExceedsPageWidth
-        sepSpace
-        sepNone // before and after for short expressions
-        (indent +> sepNln)
-        unindent // before and after for long expressions
-        expr
-        ctx
+    expressionExceedsPageWidthWithLayout IndentAndUnindent true expr ctx
 
 let sepSpaceOrDoubleIndentAndNlnIfExpressionExceedsPageWidth expr (ctx: Context) =
-    expressionExceedsPageWidth
-        sepSpace
-        sepNone // before and after for short expressions
-        (indent +> indent +> sepNln)
-        (unindent +> unindent) // before and after for long expressions
-        expr
-        ctx
+    expressionExceedsPageWidthWithLayout DoubleIndentAndUnindent true expr ctx
 
 let isStroustrupStyleExpr (config: FormatConfig) (e: Expr) =
     let isStroustrupEnabled = config.MultilineBracketStyle = Stroustrup
@@ -827,13 +871,7 @@ let sepSpaceOrIndentAndNlnIfTypeExceedsPageWidthUnlessStroustrup f (t: Type) (ct
         ctx
 
 let autoNlnIfExpressionExceedsPageWidth expr (ctx: Context) =
-    expressionExceedsPageWidth
-        sepNone
-        sepNone // before and after for short expressions
-        sepNln
-        sepNone // before and after for long expressions
-        expr
-        ctx
+    expressionExceedsPageWidthWithLayout NewlineOnly false expr ctx
 
 let autoParenthesisIfExpressionExceedsPageWidth expr (ctx: Context) =
     expressionFitsOnRestOfLine expr (sepOpenT +> expr +> sepCloseT) ctx

@@ -76,7 +76,6 @@ type ColMultilineItem = ColMultilineItem of expr: (Context -> Context) * sepNln:
 val writerEvent: e: WriterEvent -> ctx: Context -> Context
 val dump: isSelection: bool -> ctx: Context -> FormatResult
 val dumpEvents: ctx: Context -> WriterEvent array
-val dumpAndContinue: ctx: Context -> Context
 
 /// Function composition operator
 val (+>): ctx: (Context -> Context) -> f: (Context -> Context) -> x: Context -> Context
@@ -163,7 +162,6 @@ val ifElseCtx:
 val onlyIf: cond: bool -> f: ('a -> 'a) -> ctx: 'a -> 'a
 val onlyIfCtx: cond: ('a -> bool) -> f: ('a -> 'a) -> ctx: 'a -> 'a
 val onlyIfNot: cond: bool -> f: ('a -> 'a) -> ctx: 'a -> 'a
-val whenShortIndent: f: (Context -> Context) -> ctx: Context -> Context
 /// Repeat application of a function n times
 val rep: n: int -> f: (Context -> Context) -> ctx: Context -> Context
 
@@ -205,12 +203,12 @@ val colAutoNlnSkip0: f': (Context -> Context) -> c: 'a seq -> f: ('a -> Context 
 // Option handling
 // =============================================================================
 
-/// If there is a value, apply f and f' accordingly, otherwise do nothing
+/// If there is a // value, apply f and f' accordingly, otherwise do nothing
 val opt: f': (Context -> Context) -> o: 'a option -> f: ('a -> Context -> Context) -> ctx: Context -> Context
-/// similar to opt, only takes a single function f to apply when there is a value
+/// similar to opt, only takes a single function f to apply when there is a // value
 val optSingle: f: ('a -> 'b -> 'b) -> o: 'a option -> ctx: 'b -> 'b
 
-/// Similar to opt, but apply f2 at the beginning if there is a value
+/// Similar to opt, but apply f2 at the beginning if there is a // value
 val optPre:
     f2: (Context -> Context) ->
     f1: (Context -> Context) ->
@@ -243,6 +241,22 @@ val isSmallExpression:
 val getListOrArrayExprSize: ctx: Context -> maxWidth: Num -> xs: 'a list -> Size
 val getRecordSize: ctx: Context -> fields: 'a list -> Size
 
+/// Describes how an expression should be laid out when it doesn't fit on a single line.
+/// Used by expressionExceedsPageWidth to centralize indentation and unindentation logic.
+type LongExpressionLayout =
+    /// indent +> sepNln +> expr +> unindent
+    | IndentAndUnindent
+    /// indent +> indent +> sepNln +> expr +> unindent +> unindent
+    | DoubleIndentAndUnindent
+    /// sepNln +> expr (no indentation change)
+    | NewlineOnly
+
+/// Try to write the expression on a single line.
+/// If it doesn't fit, fall back to the given long layout.
+/// `addSpaceBefore`: when true, adds a space before the expression on the short path.
+val expressionExceedsPageWidthWithLayout:
+    layout: LongExpressionLayout -> addSpaceBefore: bool -> expr: (Context -> Context) -> ctx: Context -> Context
+
 /// try and write the expression on the remainder of the current line
 /// add an indent and newline if the expression is longer
 val autoIndentAndNlnIfExpressionExceedsPageWidth: expr: (Context -> Context) -> ctx: Context -> Context
@@ -251,7 +265,7 @@ val sepSpaceOrDoubleIndentAndNlnIfExpressionExceedsPageWidth: expr: (Context -> 
 val autoParenthesisIfExpressionExceedsPageWidth: expr: (Context -> Context) -> ctx: Context -> Context
 
 val futureNlnCheck: f: (Context -> Context) -> ctx: Context -> bool
-/// similar to futureNlnCheck but validates whether the expression is going over the max page width
+/// similar to futureNlnCheck but // validates whether the expression is going over the max page width
 /// This functions is does not use any caching
 val exceedsWidth: maxWidth: int -> f: (Context -> Context) -> ctx: Context -> bool
 
