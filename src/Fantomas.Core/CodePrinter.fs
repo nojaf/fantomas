@@ -82,19 +82,16 @@ let (|ParenExpr|_|) (e: Expr) =
     | _ -> None
 
 let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
-    let currentLastLine = ctx.WriterModel.Lines |> List.tryHead
+    let currentLineContent = ctx.WriterEvents.CurrentLineContent()
 
     // Some items like #if or Newline should be printed on a newline
     // It is hard to always get this right in CodePrinter, so we detect it based on the current code.
-    let addNewline =
-        currentLastLine
-        |> Option.map (fun line -> line.Trim().Length > 0)
-        |> Option.defaultValue false
+    let addNewline = currentLineContent.Trim().Length > 0
 
     let addSpace =
-        currentLastLine
-        |> Option.bind (fun line -> Seq.tryLast line |> Option.map (fun lastChar -> lastChar <> ' '))
-        |> Option.defaultValue false
+        match Seq.tryLast currentLineContent with
+        | None -> false
+        | Some lastChar -> lastChar <> ' '
 
     let gen =
         match trivia.Content with
@@ -116,7 +113,7 @@ let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
                 let originalColumnOffset = trivia.Range.EndColumn - node.Range.EndColumn
 
                 let formattedCursor =
-                    Fantomas.FCS.Text.Position.mkPos ctx.WriterModel.Lines.Length (ctx.Column + originalColumnOffset)
+                    Fantomas.FCS.Text.Position.mkPos (ctx.WriterModel.LineCount + 1) (ctx.Column + originalColumnOffset)
 
                 { ctx with
                     FormattedCursor = Some formattedCursor }
@@ -129,7 +126,7 @@ let recordCursorNode f (node: Node) (ctx: Context) =
     | Some cursor ->
         // TODO: this currently assume the node fits on a single line.
         // This won't be accurate in case of a multiline string.
-        let currentStartLine = ctx.WriterModel.Lines.Length
+        let currentStartLine = ctx.WriterModel.LineCount + 1
         let currentStartColumn = ctx.Column
 
         let ctxAfter = f ctx
@@ -2202,7 +2199,7 @@ let genMultilineInfixExpr (node: ExprInfixAppNode) =
             let ctxAfterMatch = genExpr node.LeftHandSide ctx
 
             let lastClauseIsSingleLine =
-                Queue.rev ctxAfterMatch.WriterEvents
+                ctxAfterMatch.WriterEvents.ToRevSeq()
                 |> Seq.skipWhile (fun e ->
                     match e with
                     | RestoreIndent _
@@ -4063,8 +4060,14 @@ let genModule (m: ModuleOrNamespaceNode) =
     +> colWithNlnWhenMappedNodeIsMultiline false ModuleDecl.Node genModuleDecl m.Declarations
     |> genNode m
 
-let addFinalNewline ctx =
-    let lastEvent = ctx.WriterEvents.TryHead
+let addFinalNewline (ctx: Context) =
+    let lastTailNode = ctx.WriterEvents.Tail
+
+    let lastEvent =
+        if isNull lastTailNode then
+            None
+        else
+            Some lastTailNode.Event
 
     match lastEvent with
     | Some WriteLineBecauseOfTrivia ->
@@ -4072,11 +4075,12 @@ let addFinalNewline ctx =
             ctx
         else
             // Due to trivia the last event is a newline, if insert_final_newline is false, we need to remove it.
+            ctx.WriterEvents.Remove(lastTailNode)
+
             { ctx with
-                WriterEvents = ctx.WriterEvents.Tail
                 WriterModel =
                     { ctx.WriterModel with
-                        Lines = List.tail ctx.WriterModel.Lines } }
+                        LineCount = max 0 (ctx.WriterModel.LineCount - 1) } }
     | _ -> onlyIf ctx.Config.InsertFinalNewline sepNln ctx
 
 let genFile (oak: Oak) =

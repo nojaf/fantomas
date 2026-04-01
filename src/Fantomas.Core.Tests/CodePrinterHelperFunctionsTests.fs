@@ -20,14 +20,14 @@ let ``!- add a single WriterEvent.Write`` () =
         !- "one new event" context
 
     let contextBefore: Context = Context.Default
-    Assert.That(contextBefore.WriterEvents, Is.Empty)
+    Assert.That(contextBefore.WriterEvents.ToSeq() |> Seq.isEmpty, Is.True)
 
     // Calling function `f` with an empty context will add a single event to the context.
     let contextAfter: Context = f contextBefore
-    Assert.That(1, Is.EqualTo contextAfter.WriterEvents.Length)
-    // The events are stored in a custom collection type called `Queue`.
-    // Checkout `Queue.fs` to learn more about this collection type.
-    let events = Queue.toSeq contextAfter.WriterEvents |> Seq.toList
+    // The events are stored in a mutable doubly-linked list called `EventList`.
+    // Checkout `EventList.fs` to learn more about this collection type.
+    let events = contextAfter.WriterEvents.ToSeq() |> Seq.toList
+    Assert.That(1, Is.EqualTo events.Length)
 
     match events with
     | [ Write "one new event" ] -> Assert.Pass()
@@ -45,12 +45,13 @@ let ``+> will compose two functions`` () =
         (f +> g) context
 
     let contextBefore: Context = Context.Default
-    Assert.That(contextBefore.WriterEvents, Is.Empty)
+    Assert.That(contextBefore.WriterEvents.ToSeq() |> Seq.isEmpty, Is.True)
 
     let contextAfter: Context = h contextBefore
     // We expect two events to be added to the context.
     // "f - long" and "g - long"
-    Assert.That(contextAfter.WriterEvents.Length, Is.EqualTo 2)
+    let events = contextAfter.WriterEvents.ToSeq() |> Seq.toList
+    Assert.That(events.Length, Is.EqualTo 2)
     let code = dump contextAfter
     Assert.AreEqual("f and g", code)
 
@@ -69,7 +70,8 @@ let ``partially application when composing function`` () =
     let contextBefore: Context = Context.Default
     let contextAfter: Context = h contextBefore
 
-    Assert.That(2, Is.EqualTo contextAfter.WriterEvents.Length)
+    let events = contextAfter.WriterEvents.ToSeq() |> Seq.toList
+    Assert.That(2, Is.EqualTo events.Length)
     let code = dump contextAfter
     Assert.AreEqual("f and g", code)
 
@@ -144,29 +146,29 @@ let ``newlines and indentation`` () =
     let f = !-"first line" +> sepNln +> indent +> !-"second line"
     // The dump function will respect the newline from the configuration.
     // For this test we will set it to `EndOfLineStyle.LF`
-    let ctx =
+    let mkCtx () =
         { Context.Default with
             Config =
                 { Context.Default.Config with
                     EndOfLine = EndOfLineStyle.LF } }
 
-    let code = f ctx |> dump
+    let code = f (mkCtx ()) |> dump
     Assert.AreEqual("first line\nsecond line", code)
     // There is no indentation because that would only kick in after the second line.
 
     let g = !-"first line" +> indent +> sepNln +> !-"second line" +> unindent
-    let indentedCode = g ctx |> dump
+    let indentedCode = g (mkCtx ()) |> dump
     Assert.AreEqual("first line\n    second line", indentedCode)
 
     // Using `indent` typically goes together with and `unindent` call.
     // This is a very common pattern in CodePrinter, so the use of `indentSepNlnUnindent` is encouraged.
     // Forgetting to `unindent` can be a nasty bug in Fantomas.
     let h = !-"first line" +> indentSepNlnUnindent (!-"second line")
-    let indentedCtx = h ctx
+    let indentedCtx = h (mkCtx ())
     let indentedCode = dump indentedCtx
     Assert.AreEqual("first line\n    second line", indentedCode)
 
-    let events = Queue.toSeq indentedCtx.WriterEvents |> Seq.toList
+    let events = indentedCtx.WriterEvents.ToSeq() |> Seq.toList
 
     match events with
     | [ Write "first line"; IndentBy 4; WriteLine; Write "second line"; UnIndentBy 4 ] -> Assert.Pass()
@@ -270,13 +272,13 @@ let a =
             +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth (genExpr bindingNode.Expr)
         | _ -> !-"error"
 
-    let ctx =
+    let mkCtx () =
         { Context.Default with
             Config =
                 { Context.Default.Config with
                     EndOfLine = EndOfLineStyle.LF } }
 
-    let codeWithoutTriviaPrinting = f genExpr tree ctx |> dump
+    let codeWithoutTriviaPrinting = f genExpr tree (mkCtx ()) |> dump
     Assert.AreEqual("let a = b", codeWithoutTriviaPrinting)
 
     // The problem now is that our tree doesn't contain the code comment.
@@ -308,7 +310,7 @@ let a =
             firstComment +> !-identNode.Text
         | _ -> !-"error"
 
-    let codeWithTriviaPrinting = f genExprWithTrivia tree ctx |> dump
+    let codeWithTriviaPrinting = f genExprWithTrivia tree (mkCtx ()) |> dump
     Assert.AreEqual("let a =\n    // code comment\n    b", codeWithTriviaPrinting)
 
 [<Test>]
@@ -397,13 +399,13 @@ let b = 2
 
         | _ -> !-"error"
 
-    let ctx =
+    let mkCtx () =
         { Context.Default with
             Config =
                 { Context.Default.Config with
                     EndOfLine = EndOfLineStyle.LF } }
 
-    let formattedCode = f tree ctx |> dump
+    let formattedCode = f tree (mkCtx ()) |> dump
     Assert.AreEqual("let a = 1\n\nlet b = 2", formattedCode)
 
     // This worked fine, but the next time we will format there will be a TriviaNode for the blank line.
@@ -412,7 +414,7 @@ let b = 2
     | ModuleDecl.TopLevelBinding binding -> binding.AddBefore(TriviaNode(TriviaContent.Newline, zeroRange))
     | _ -> ()
 
-    let formattedCodeWithTrivia = f tree ctx |> dump
+    let formattedCodeWithTrivia = f tree (mkCtx ()) |> dump
     // Notice that we now have two blank lines.
     // One from the trivia, and one from the fixed sepNln inside `f`.
     Assert.AreEqual("let a = 1\n\n\nlet b = 2", formattedCodeWithTrivia)
@@ -460,7 +462,7 @@ let b = 2
 
         | _ -> !-"error"
 
-    let finalCode = g tree ctx |> dump
+    let finalCode = g tree (mkCtx ()) |> dump
     Assert.AreEqual("let a = 1\n\nlet b = 2", finalCode)
 
 [<Test>]
@@ -484,7 +486,7 @@ let ``locking the indentation at a fixed column`` () =
     // Notice the space before the "second line", it is there because of the line will start at column 1.
     Assert.AreEqual("(first line\n second line)", code)
 
-    let events = (Queue.toSeq >> Seq.toList) ctxAfter.WriterEvents
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
 
     match events with
     | [ WriterEvent.Write "("

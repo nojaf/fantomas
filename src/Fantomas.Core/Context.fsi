@@ -21,8 +21,8 @@ type WriteModelMode =
 
 type WriterModel =
     {
-        /// lines of resulting text, in reverse order (to allow more efficient adding line to end)
-        Lines: string list
+        /// number of lines produced so far
+        LineCount: int
         /// current indentation
         Indent: int
         /// helper indentation information, if AtColumn > Indent after NewLine, Indent will be set to AtColumn
@@ -42,7 +42,7 @@ type Context =
     {
         Config: FormatConfig
         WriterModel: WriterModel
-        WriterEvents: Queue<WriterEvent>
+        WriterEvents: EventList
         FormattedCursor: pos option
         /// When enabled, genNode emits NodeStart/NodeEnd WriterEvents around each Oak node.
         /// Only used by CodeFormatter.GetWriterEventsAsync for diagnostic output.
@@ -52,7 +52,10 @@ type Context =
     /// Initialize with a string writer and use space as delimiter
     static member Default: Context
     static member Create: config: FormatConfig -> Context
-    member WithDummy: writerCommands: Queue<WriterEvent> * ?keepPageWidth: bool -> Context
+    /// Run a probe function in dummy mode for speculative formatting (e.g. futureNlnCheck, exceedsWidth).
+    /// Creates a backup point, runs `f` with Mode=Dummy, rolls back the event list,
+    /// and returns the resulting context so the caller can inspect WriterModel metadata.
+    member WithDummy: f: (Context -> Context) * ?keepPageWidth: bool -> Context
     member WithShortExpression: maxWidth: int * ?startColumn: int -> Context
     member Column: int
 
