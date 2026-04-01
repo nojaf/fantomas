@@ -282,9 +282,10 @@ let rec findNodeBeforeWithMatchingColumn (node: Node) (triviaRange: range) : Nod
 ///         // this comment belongs to the try-with above
 ///     let y = 1
 ///
-/// When both a predecessor and successor exist, the predecessor wins only if the successor
-/// is at a different column. If they share the same column, the comment is ContentBefore
-/// of the next sibling.
+/// When both a predecessor and successor exist, the predecessor wins if:
+///   - the successor is at a different column, OR
+///   - the successor is a leaf node (no children, e.g. closing brackets like `|}`, `]`, `)`)
+/// Leaf nodes are syntactic delimiters, not content — the comment belongs to the preceding content.
 let assignTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
     let nodeAfter =
         containerNode.Children
@@ -298,6 +299,11 @@ let assignTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) :
 
     match nodeBefore, nodeAfter with
     | Some before, Some after when after.Range.StartColumn <> trivia.Range.StartColumn -> before.AddAfter(trivia)
+    | Some before, Some after when
+        after.Range.StartColumn = trivia.Range.StartColumn
+        && Array.isEmpty after.Children
+        ->
+        before.AddAfter(trivia)
     | Some _, Some after -> after.AddBefore(trivia)
     | Some before, None -> before.AddAfter(trivia)
     | None, Some after -> after.AddBefore(trivia)

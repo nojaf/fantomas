@@ -1680,7 +1680,7 @@ let genMultilineRecordCopyExpr (addAdditionalIndent: bool) fieldsExpr copyExpr =
     +> sepNln
     +> fieldsExpr
     +> onlyIf addAdditionalIndent unindent
-    +> unindent
+    +> unindentWithTriviaAwareness
 
 /// Special case for record fields in Cramped mode.
 /// The caller should have already verified that the settings do indeed specify Cramped.
@@ -1781,7 +1781,7 @@ let genMultilineRecord (node: ExprRecordNode) (ctx: Context) =
                 sepNlnWhenWriteBeforeNewlineNotEmpty // comment after curly brace
             +> genMultilineRecordCopyExpr additionalIndent fieldsExpr ci
             +> onlyIfCtx (fun ctx -> ctx.Config.IsStroustrupStyle) unindent
-            +> sepNln
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.ClosingBrace
         | None ->
             genSingleTextNode node.OpeningBrace

@@ -590,8 +590,6 @@ let wordAnd = sepSpace +> !-"and "
 let wordAndFixed = !-"and"
 let wordOf = sepSpace +> !-"of "
 
-let indentSepNlnUnindent f = indent +> sepNln +> f +> unindent
-
 let shortExpressionWithFallback
     (shortExpression: Context -> Context)
     fallbackExpression
@@ -823,6 +821,9 @@ let unindentWithTriviaAwareness (ctx: Context) =
             WriterModel = WriterModel.update ctx.Config.MaxLineLength (UnIndentBy unindentAmount) ctx.WriterModel }
     else
         writerEvent (UnIndentBy unindentAmount) ctx
+
+let indentSepNlnUnindent f =
+    indent +> sepNln +> f +> unindentWithTriviaAwareness
 
 let expressionExceedsPageWidthWithLayout (layout: LongExpressionLayout) (addSpaceBefore: bool) expr (ctx: Context) =
     let beforeShort = if addSpaceBefore then sepSpace else sepNone
