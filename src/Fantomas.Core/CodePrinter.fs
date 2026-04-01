@@ -1908,7 +1908,7 @@ let genMultilineFunctionApplicationArguments (argExpr: Expr) =
     let argsInsideParenthesis (parenNode: ExprParenNode) f =
         genSingleTextNode parenNode.OpeningParen
         +> indentSepNlnUnindent f
-        +> sepNln
+        +> sepNlnUnlessLastEventIsNewline
         +> genSingleTextNode parenNode.ClosingParen
         |> genNode parenNode
 
