@@ -216,3 +216,41 @@ Big bang on a branch:
 8. Refactor `colWithNlnWhenItemIsMultiline` to use `Start`/`Placeholder` markers
 
 The test suite is the validation — if all tests pass, we're done.
+
+## Roadmap after initial setup
+
+The initial setup (steps 1–6 above) is done: `EventList` replaces `Queue`, `WriterModel.Lines` is gone, `dump` walks the DLL, `CodePrinterHelperFunctionsTests` all pass. ~538 of ~2776 tests fail. The work below is ordered from lowest risk to highest complexity.
+
+### Arc 1–4: helper function test coverage ✅
+
+Done. `CodePrinterHelperFunctionsTests.fs` now has 48 tests (47 passing, 1 skipped) covering:
+
+- **dump edge cases**: `WriteBeforeNewline`, `WriteLineInsideStringConst`, `WriteLineInsideTrivia`, trailing space trimming, leading blank line stripping (normal + selection mode)
+- **Separator helpers**: `sepSpace` dedup, `sepNlnForTrivia`, `sepNlnUnlessLastEventIsNewline`, `lastWriteEventIsNewline`
+- **WriteBeforeNewline-aware helpers**: `sepNlnWhenWriteBeforeNewlineNotEmpty` both paths
+- **Speculative formatting probes**: `futureNlnCheck` (true/false/no-trace), `exceedsWidth` (true/false/no-trace)
+- **Speculative formatting rollback**: `expressionFitsOnRestOfLine` fits path, `isShortExpression` both paths, `isSmallExpression` both paths, `autoIndentAndNlnIfExpressionExceedsPageWidth` both paths, `sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth` both paths
+- **Leading expression inspection**: `leadingExpressionResult` coordinates, `leadingExpressionIsMultiline` multiline/single-line
+
+The `Context.fsi` signature file was also reorganized into logical groups: Types, Core event machinery, Indentation, Separators, Conditionals and combinators, Collection traversal, Option handling, Speculative formatting, Leading expression inspection, Multiline item handling, WriteBeforeNewline-aware helpers, Stroustrup-specific.
+
+### Arc 5: `colWithNlnWhenItemIsMultiline` replay fix (high risk, most failures)
+
+This is likely the biggest source of test failures. The function has a replay path: when both the current and previous items are single-line, it discards the optimistic events and replays `expr` on `acc.Context`. But with the mutable DLL, the optimistic events (from lines 1102–1110) are still in the list when the replay happens at line 1116.
+
+This needs a `CreateBackupPoint` before the optimistic path and `RollbackTo` before the replay. Add tests for:
+
+- All items single-line → separators are just `sepNln`
+- One multiline item → extra blank line around it
+- Mix of single and multiline items
+- Items with leading trivia newlines (the `newlineBetweenLastWriteEvent` check)
+
+Once this replay is fixed, a large batch of failures should resolve.
+
+### Arc 6: `expressionExceedsPageWidth` → `LongExpressionLayout` DU (the actual goal)
+
+Once all tests pass with the current architecture, refactor `expressionExceedsPageWidth` to use the structured `LongExpressionLayout` DU. This replaces the 4 opaque `Context -> Context` parameters and centralizes the trivia-before-unindent splice logic. This is the payoff that motivated the whole rethink.
+
+### Arc 7: `colWithNlnWhenItemIsMultiline` → `Start`/`Placeholder` markers (the other goal)
+
+Replace the current "run, check multiline, maybe replay" pattern with the marker-based approach: emit `Start`, emit `Placeholder` between items, then resolve all placeholders in a single backward pass. No re-execution needed.
