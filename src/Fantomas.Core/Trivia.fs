@@ -244,12 +244,67 @@ let lineCommentAfterSourceCodeToTriviaInstruction (containerNode: Node) (trivia:
         let node = visitLastChildNode node
         node.AddAfter(trivia))
 
-let simpleTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
-    containerNode.Children
-    |> Array.tryFind (fun node -> node.Range.StartLine > trivia.Range.StartLine)
-    |> Option.map (fun n -> n.AddBefore)
-    |> Option.orElseWith (fun () -> Array.tryLast containerNode.Children |> Option.map (fun n -> n.AddAfter))
-    |> Option.iter (fun f -> f trivia)
+/// Find a node that ended before the trivia and whose start column matches the trivia's column.
+/// Searches depth-first to find the deepest (most specific) match.
+///
+/// Used for indented single-line comments that sit between a parent's children.
+/// For example, in:
+///     try ... with exn -> ()
+///     // comment here
+/// The comment at column 4 should attach to the try-with (which also starts at column 4),
+/// not to the next top-level binding at column 0.
+let rec findNodeBeforeWithMatchingColumn (node: Node) (triviaRange: range) : Node option =
+    let triviaColumn = triviaRange.StartColumn
+    let triviaLine = triviaRange.StartLine
+
+    node.Children
+    |> Array.filter (fun child -> child.Range.EndLine < triviaLine)
+    |> Array.tryFindBack (fun _ -> true)
+    |> Option.bind (fun child ->
+        let deeperMatch = findNodeBeforeWithMatchingColumn child triviaRange
+
+        match deeperMatch with
+        | Some _ -> deeperMatch
+        | None ->
+            if child.Range.StartColumn = triviaColumn then
+                Some child
+            else
+                None)
+
+/// Assigns a trivia node (comment, blank line, directive) to the appropriate child
+/// of containerNode as either ContentBefore or ContentAfter.
+///
+/// For indented single-line comments (column > 0), we search for a preceding node
+/// at the same column. This handles cases like:
+///
+///     let x =
+///         try foo() with _ -> ()
+///         // this comment belongs to the try-with above
+///     let y = 1
+///
+/// When both a predecessor and successor exist, the predecessor wins only if the successor
+/// is at a different column. If they share the same column, the comment is ContentBefore
+/// of the next sibling.
+let assignTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
+    let nodeAfter =
+        containerNode.Children
+        |> Array.tryFind (fun node -> node.Range.StartLine > trivia.Range.StartLine)
+
+    let nodeBefore =
+        match trivia.Content with
+        | CommentOnSingleLine _ when trivia.Range.StartColumn > 0 ->
+            findNodeBeforeWithMatchingColumn containerNode trivia.Range
+        | _ -> None
+
+    match nodeBefore, nodeAfter with
+    | Some before, Some after when after.Range.StartColumn <> trivia.Range.StartColumn -> before.AddAfter(trivia)
+    | Some _, Some after -> after.AddBefore(trivia)
+    | Some before, None -> before.AddAfter(trivia)
+    | None, Some after -> after.AddBefore(trivia)
+    | None, None ->
+        containerNode.Children
+        |> Array.tryLast
+        |> Option.iter (fun n -> n.AddAfter(trivia))
 
 let blockCommentToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
     let nodeAfter =
@@ -304,7 +359,7 @@ let addToTree (tree: Oak) (trivia: TriviaNode seq) =
             | LineCommentAfterSourceCode _ -> lineCommentAfterSourceCodeToTriviaInstruction parentNode trivia
             | CommentOnSingleLine _
             | Newline
-            | Directive _ -> simpleTriviaToTriviaInstruction parentNode trivia
+            | Directive _ -> assignTriviaToTriviaInstruction parentNode trivia
             | BlockComment _
             | Cursor -> blockCommentToTriviaInstruction parentNode trivia
 

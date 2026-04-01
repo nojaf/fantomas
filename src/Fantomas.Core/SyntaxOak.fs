@@ -109,19 +109,22 @@ type NodeBase(range: range) =
 
             if hasContentBefore then
                 for tn in x.ContentBefore do
-                    sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                    sb.Append(contentIndent).Append("▼ ").Append(tn.ToString()).AppendLine()
+                    |> ignore
 
             if hasChildren then
                 for n in x.Children do
                     match n with
                     | :? SingleTextNode as stn ->
                         for tn in stn.ContentBefore do
-                            sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                            sb.Append(contentIndent).Append("▼ ").Append(tn.ToString()).AppendLine()
+                            |> ignore
 
                         sb.Append(contentIndent).Append(stn.ToString()).AppendLine() |> ignore
 
                         for tn in stn.ContentAfter do
-                            sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                            sb.Append(contentIndent).Append("▲ ").Append(tn.ToString()).AppendLine()
+                            |> ignore
                     | :? NodeBase as nb ->
                         nb.AppendToStringWithIndent(sb, depth + 1)
                         sb.AppendLine() |> ignore
@@ -129,7 +132,8 @@ type NodeBase(range: range) =
 
             if hasContentAfter then
                 for tn in x.ContentAfter do
-                    sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                    sb.Append(contentIndent).Append("▲ ").Append(tn.ToString()).AppendLine()
+                    |> ignore
 
             sb.Append(indent).Append(")") |> ignore
         else

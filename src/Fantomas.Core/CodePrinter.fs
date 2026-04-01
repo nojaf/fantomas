@@ -101,11 +101,11 @@ let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
         | BlockComment(comment, before, after) ->
             ifElse (before && addNewline) sepNlnForTrivia sepNone
             +> sepSpace
-            +> !-comment
+            +> writeTrivia comment
             +> sepSpace
             +> ifElse after sepNlnForTrivia sepNone
         | CommentOnSingleLine s
-        | Directive s -> (ifElse addNewline sepNlnForTrivia sepNone) +> !-s +> sepNlnForTrivia
+        | Directive s -> ifElse addNewline sepNlnForTrivia sepNone +> writeTrivia s +> sepNlnForTrivia
         | Newline -> (ifElse addNewline (sepNlnForTrivia +> sepNlnForTrivia) sepNlnForTrivia)
         | Cursor ->
             fun ctx ->
@@ -188,7 +188,7 @@ let genAccessOpt (nodeOpt: SingleTextNode option) =
 let genXml (node: XmlDocNode option) =
     match node with
     | None -> sepNone
-    | Some node -> col sepNln node.Lines (!-) +> sepNln |> genNode node
+    | Some node -> col sepNln node.Lines writeTrivia +> sepNln |> genNode node
 
 let addSpaceBeforeParenInPattern (node: IdentListNode) (ctx: Context) =
     node.Content
@@ -1879,7 +1879,7 @@ let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
                 +> indent
                 +> sepNlnUnlessLastEventIsNewline
                 +> col sepNln node.Elements genExpr
-                +> unindent
+                +> unindentWithTriviaAwareness
                 +> sepNlnUnlessLastEventIsNewline
                 +> genSingleTextNode node.Closing
 

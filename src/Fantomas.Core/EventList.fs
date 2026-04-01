@@ -96,7 +96,8 @@ type EventList() =
             | WriteLine
             | WriteLineBecauseOfTrivia
             | WriteLineInsideStringConst -> current <- null // stop
-            | Write w ->
+            | Write w
+            | WriteTrivia w ->
                 writes.Add(w)
                 current <- current.Prev
             | _ -> current <- current.Prev

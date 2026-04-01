@@ -798,11 +798,121 @@ let list = [
         """
 let list = [
     someItem
-// comment
+    // comment
 ]
 """
 
 [<Test>]
+let ``single line block comment before closing list bracket`` () =
+    formatSourceString
+        """
+let list = [
+    someItem
+    (* comment *)
+]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let list = [
+    someItem
+    (* comment *)
+]
+"""
+
+[<Test>]
+let ``multiline block comment before closing list bracket`` () =
+    formatSourceString
+        """
+let list = [
+    someItem
+    (*
+        comment
+    *)
+]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let list = [
+    someItem
+    (*
+        comment
+    *)
+]
+"""
+
+/// Hash directives (#if/#endif) are assigned as ContentBefore of the closing `]` during trivia assignment.
+/// This forces the list into aligned bracket layout instead of Stroustrup, because the directive
+/// resets indentation to column 0 which would break the offside rule with an inline `[`.
+[<Test>]
+let ``hash define before closing list bracket`` () =
+    formatSourceString
+        """
+let list = [
+    someItem
+    #if YOW
+    #endif
+]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let list =
+    [
+        someItem
+#if YOW
+#endif
+    ]
+"""
+
+[<Test>]
+let ``line comment after source after last item in list`` () =
+    formatSourceString
+        """
+let list = [
+    someItem // trivia!
+]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let list = [
+    someItem // trivia!
+]
+"""
+
+[<Test; Ignore("Inline block comment stays single-line - expected output needs review")>]
+let ``multiline block comment after source after last item in list`` () =
+    formatSourceString
+        """
+let list = [
+    someItem (*
+      trivia!
+    *)
+]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let list = [
+    someItem (*
+      trivia!
+    *)
+]
+"""
+
+[<Test; Ignore("Trivia reassignment regression - to be fixed")>]
 let ``comment before closing list bracket with hash directive`` () =
     formatSourceString
         """

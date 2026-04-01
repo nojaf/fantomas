@@ -7,16 +7,13 @@ open Fantomas.Core.SyntaxOak
 
 let (|CommentOrDefineEvent|_|) we =
     match we with
-    | Write w when (String.startsWithOrdinal "//" w) -> Some we
-    | Write w when (String.startsWithOrdinal "#if" w) -> Some we
-    | Write w when (String.startsWithOrdinal "#else" w) -> Some we
-    | Write w when (String.startsWithOrdinal "#endif" w) -> Some we
-    | Write w when (String.startsWithOrdinal "(*" w) -> Some we
+    | WriteTrivia _ -> Some we
     | _ -> None
 
 let (|EmptyWrite|_|) (we: WriterEvent) =
     match we with
-    | Write v -> if String.IsNullOrWhiteSpace v then Some() else None
+    | Write v
+    | WriteTrivia v -> if String.IsNullOrWhiteSpace v then Some() else None
     | _ -> None
 
 type ShortExpressionInfo =
@@ -67,6 +64,9 @@ module WriterModel =
           Mode = Standard
           Column = 0 }
 
+    /// Process a single WriterEvent and return the updated WriterModel.
+    /// This only tracks lightweight metadata (line count, column, indent) — no string building.
+    /// String materialization happens later in `dump` by walking the EventList.
     let update maxPageWidth cmd m =
         let doNewline m =
             let m =
@@ -90,7 +90,8 @@ module WriterModel =
                 { m with
                     LineCount = m.LineCount + 1
                     Column = 0 }
-            | Write s ->
+            | Write s
+            | WriteTrivia s ->
                 { m with
                     Column = m.Column + (String.length s) }
             | WriteBeforeNewline s -> { m with WriteBeforeNewline = s }
@@ -123,7 +124,8 @@ module WriterModel =
                 | WriteLine
                 | WriteLineBecauseOfTrivia -> true
                 | WriteLineInsideStringConst -> true
-                | Write _ when (String.isNotNullOrEmpty m.WriteBeforeNewline) -> true
+                | Write _
+                | WriteTrivia _ when (String.isNotNullOrEmpty m.WriteBeforeNewline) -> true
                 | _ -> false
 
             let updatedInfos =
@@ -143,16 +145,23 @@ module WriterModel =
 module WriterEvents =
     let normalize ev =
         match ev with
-        | Write s when s.Contains("\n") ->
+        | Write s
+        | WriteTrivia s when s.Contains("\n") ->
             let writeLine =
                 match ev with
                 | CommentOrDefineEvent _ -> WriteLineInsideTrivia
                 | _ -> WriteLineInsideStringConst
 
+            // Preserve the event kind so comment lines remain WriteTrivia
+            let wrap =
+                match ev with
+                | WriteTrivia _ -> WriteTrivia
+                | _ -> Write
+
             // Trustworthy multiline string in the original AST can contain \r
             // Internally we process everything with \n and at the end we respect the .editorconfig end_of_line setting.
             s.Replace("\r", "").Split('\n')
-            |> Seq.map (fun x -> [ Write x ])
+            |> Seq.map (fun x -> [ wrap x ])
             |> Seq.reduce (fun x y -> x @ [ writeLine ] @ y)
             |> Seq.toList
         | _ -> [ ev ]
@@ -287,7 +296,8 @@ let dump (isSelection: bool) (ctx: Context) =
 
     for ev in ctx.WriterEvents.ToSeq() do
         match ev with
-        | Write s -> sb.Append(s) |> ignore
+        | Write s
+        | WriteTrivia s -> sb.Append(s) |> ignore
         | WriteLine
         | WriteLineBecauseOfTrivia -> doNewline ()
         | WriteLineInsideStringConst -> sb.Append(newline) |> ignore
@@ -331,7 +341,8 @@ let writeEventsOnLastLine ctx =
         | WriteLineInsideStringConst -> false
         | _ -> true)
     |> Seq.choose (function
-        | Write w when (String.length w > 0) -> Some w
+        | Write w
+        | WriteTrivia w when (String.length w > 0) -> Some w
         | _ -> None)
 
 let lastWriteEventIsNewline ctx =
@@ -425,6 +436,7 @@ let (+>) (ctx: Context -> Context) (f: _ -> Context) x =
     | _ -> f y
 
 let (!-) (str: string) = writerEvent (Write str)
+let writeTrivia (s: string) = writerEvent (WriteTrivia s)
 
 /// Similar to col, and supply index as well
 let coli f' (c: 'T seq) f (ctx: Context) =
@@ -753,32 +765,64 @@ type LongExpressionLayout =
     | DoubleIndentAndUnindent
     | NewlineOnly
 
-/// Walk backward from the DLL tail looking for trailing trivia patterns.
-/// If found, insert UnIndentBy before the final trailing newline so the newline
-/// uses the reduced indent level. Returns true if the splice was performed.
-///
-/// Recognized patterns (walking backward from tail):
-///   1. WriteLineBecauseOfTrivia ← Write "// ..." ← ...   (single-line comment with trailing newline)
-///   2. WriteLineBecauseOfTrivia ← Write "(* ..." ← ...   (block comment with trailing newline)
-///   3. WriteBeforeNewline "..."                           (inline trailing comment, e.g. "code // comment")
-///
-/// Note: when WriteComment is introduced (from comment-after-rebased branch),
-/// patterns 1 and 2 should match on WriteComment instead of Write with string prefix checks.
-let spliceUnindentBeforeTrailingTrivia (events: EventList) (unindentAmount: int) =
-    let tail = events.Tail
+/// Walk backward from a node, skipping events that don't represent user-visible content
+/// (restore/unindent/indent events that unwind surrounding contexts).
+/// Returns the node where trailing trivia ends, or null if no trivia is found.
+let findTrailingTriviaNewline (events: EventList) : EventNode =
+    let mutable current = events.Tail
 
-    if isNull tail then
-        false
+    // Skip past trailing non-content events (restore, unindent, indent, newlines from the outer context)
+    while not (isNull current)
+          && (match current.Event with
+              | RestoreIndent _
+              | RestoreAtColumn _
+              | UnIndentBy _
+              | IndentBy _
+              | WriteLine -> true
+              | _ -> false) do
+        current <- current.Prev
+
+    if isNull current then
+        null
     else
-        match tail.Event with
-        // Trailing newline preceded by a comment — insert UnIndentBy between the comment and the newline
-        | WriteLineBecauseOfTrivia when not (isNull tail.Prev) ->
-            match tail.Prev.Event with
-            | CommentOrDefineEvent _ ->
-                events.InsertBefore(tail, UnIndentBy unindentAmount) |> ignore
-                true
-            | _ -> false
-        | _ -> false
+        match current.Event with
+        | WriteLineBecauseOfTrivia ->
+            let mutable check = current.Prev
+            let mutable foundTrivia = false
+
+            while not (isNull check) && not foundTrivia do
+                match check.Event with
+                // Block comment internals — keep walking
+                | WriteLineInsideTrivia -> check <- check.Prev
+                // Single-line comment, block comment, XML doc, or directive
+                | WriteTrivia _ -> foundTrivia <- true
+                // Hit something that isn't part of trivia — stop
+                | _ -> check <- null
+
+            if foundTrivia then current else null
+        | _ -> null
+
+/// Unindent that is aware of trailing trivia (comments before closing brackets).
+/// Walks backward from the DLL tail to find trailing trivia (comments, directives).
+/// If found, splices UnIndentBy before the trailing newline so it uses the reduced indent level.
+/// Otherwise, falls back to a normal unindent.
+///
+/// This replaces the pattern of `+> unindent` after expressions that may have trailing trivia,
+/// centralizing the splice + WriterModel update in one place.
+let unindentWithTriviaAwareness (ctx: Context) =
+    let unindentAmount = ctx.Config.IndentSize
+    let triviaNewline = findTrailingTriviaNewline ctx.WriterEvents
+
+    if not (isNull triviaNewline) then
+        // Splice the UnIndentBy into the DLL before the trailing trivia newline,
+        // and update the WriterModel using the same logic as WriterModel.update.
+        ctx.WriterEvents.InsertBefore(triviaNewline, UnIndentBy unindentAmount)
+        |> ignore
+
+        { ctx with
+            WriterModel = WriterModel.update ctx.Config.MaxLineLength (UnIndentBy unindentAmount) ctx.WriterModel }
+    else
+        writerEvent (UnIndentBy unindentAmount) ctx
 
 let expressionExceedsPageWidthWithLayout (layout: LongExpressionLayout) (addSpaceBefore: bool) expr (ctx: Context) =
     let beforeShort = if addSpaceBefore then sepSpace else sepNone
@@ -793,31 +837,13 @@ let expressionExceedsPageWidthWithLayout (layout: LongExpressionLayout) (addSpac
             | DoubleIndentAndUnindent -> indent +> indent +> sepNln
             | NewlineOnly -> sepNln
 
-        let unindentSize =
+        let afterLong =
             match layout with
-            | IndentAndUnindent -> ctx.Config.IndentSize
-            | DoubleIndentAndUnindent -> ctx.Config.IndentSize * 2
-            | NewlineOnly -> 0
+            | IndentAndUnindent -> unindentWithTriviaAwareness
+            | DoubleIndentAndUnindent -> unindentWithTriviaAwareness +> unindentWithTriviaAwareness
+            | NewlineOnly -> sepNone
 
-        // For the indent+unindent layouts, we handle unindent ourselves:
-        // run expr without afterLong, then splice unindent before any trailing trivia.
-        // This ensures the trivia newline uses the reduced indent level.
-        let afterLongWithSplice (ctxAfterExpr: Context) =
-            if spliceUnindentBeforeTrailingTrivia ctxAfterExpr.WriterEvents unindentSize then
-                // Splice was done — update WriterModel to reflect the unindent
-                { ctxAfterExpr with
-                    WriterModel =
-                        { ctxAfterExpr.WriterModel with
-                            Indent =
-                                max ctxAfterExpr.WriterModel.AtColumn (ctxAfterExpr.WriterModel.Indent - unindentSize) } }
-            else
-                // No trailing trivia — just append unindent normally
-                match layout with
-                | IndentAndUnindent -> unindent ctxAfterExpr
-                | DoubleIndentAndUnindent -> (unindent +> unindent) ctxAfterExpr
-                | NewlineOnly -> ctxAfterExpr
-
-        expressionExceedsPageWidth beforeShort sepNone beforeLong afterLongWithSplice expr ctx
+        expressionExceedsPageWidth beforeShort sepNone beforeLong afterLong expr ctx
 
 /// try and write the expression on the remainder of the current line
 /// add an indent and newline if the expression is longer

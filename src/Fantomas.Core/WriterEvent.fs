@@ -6,6 +6,10 @@ namespace Fantomas.Core
 type WriterEvent =
     /// Append literal text to the current line.
     | Write of text: string
+    /// Emit text that originated from trivia (comments, XML doc lines, or compiler directives).
+    /// Behaves identically to Write in dump output, but allows the formatting engine to recognise
+    /// trivia events without fragile string-prefix checks (e.g. "starts with //").
+    | WriteTrivia of trivia: string
     /// End the current line and start a new one at the current indentation level.
     | WriteLine
     /// Newline inside a multiline string constant — no indentation is applied.

@@ -80,6 +80,7 @@ val dumpEvents: ctx: Context -> WriterEvent array
 /// Function composition operator
 val (+>): ctx: (Context -> Context) -> f: (Context -> Context) -> x: Context -> Context
 val (!-): str: string -> (Context -> Context)
+val writeTrivia: s: string -> (Context -> Context)
 
 // =============================================================================
 // Indentation
@@ -240,6 +241,11 @@ val isSmallExpression:
 
 val getListOrArrayExprSize: ctx: Context -> maxWidth: Num -> xs: 'a list -> Size
 val getRecordSize: ctx: Context -> fields: 'a list -> Size
+
+/// Unindent that is aware of trailing trivia (comments before closing brackets).
+/// If the DLL tail ends with a comment followed by WriteLineBecauseOfTrivia,
+/// splice the UnIndentBy before that trailing newline. Otherwise, fall back to normal unindent.
+val unindentWithTriviaAwareness: ctx: Context -> Context
 
 /// Describes how an expression should be laid out when it doesn't fit on a single line.
 /// Used by expressionExceedsPageWidth to centralize indentation and unindentation logic.

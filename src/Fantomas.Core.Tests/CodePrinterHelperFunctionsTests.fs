@@ -879,7 +879,137 @@ let ``colWithNlnWhenItemIsMultiline adds blank line around multiline item`` () =
     Assert.AreEqual("let a = 1\n\nlet b =\n    longBody\n\nlet c = 3", code)
 
 // =============================================================================
-// Trivia-before-unindent splice
+// unindentWithTriviaAwareness
+// =============================================================================
+
+[<Test>]
+let ``unindentWithTriviaAwareness splices before line comment`` () =
+    let f =
+        indent
+        +> !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "// comment")
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "someContent"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "// comment"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness splices before block comment`` () =
+    let f =
+        indent
+        +> !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "(* block comment *)")
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "someContent"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "(* block comment *)"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness falls back to normal unindent without trailing trivia`` () =
+    let f = indent +> !-"someContent"
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4; Write "someContent"; UnIndentBy 4 ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness falls back when WriteLineBecauseOfTrivia not preceded by comment`` () =
+    let f = indent +> !-"someContent" +> writerEvent WriteLineBecauseOfTrivia
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4; Write "someContent"; WriteLineBecauseOfTrivia; UnIndentBy 4 ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness splices before multiline block comment`` () =
+    // Multiline block comment gets split by WriterEvents.normalize into
+    // WriteTrivia per line with WriteLineInsideTrivia between them
+    let f =
+        indent
+        +> !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "(*")
+        +> writerEvent WriteLineInsideTrivia
+        +> writerEvent (WriteTrivia "        comment")
+        +> writerEvent WriteLineInsideTrivia
+        +> writerEvent (WriteTrivia "    *)")
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "someContent"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "(*"
+        WriteLineInsideTrivia
+        WriteTrivia "        comment"
+        WriteLineInsideTrivia
+        WriteTrivia "    *)"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness finds trivia past trailing restore events`` () =
+    // Simulates the try-with pattern where restore/unindent events follow the trivia
+    let f =
+        indent
+        +> !-"content"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "// trailing comment")
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (RestoreAtColumn 0)
+        +> writerEvent (RestoreIndent 0)
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "content"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "// trailing comment"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia
+        RestoreAtColumn 0
+        RestoreIndent 0 ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+// =============================================================================
+// Trivia-before-unindent integration
 // =============================================================================
 
 [<Test>]
