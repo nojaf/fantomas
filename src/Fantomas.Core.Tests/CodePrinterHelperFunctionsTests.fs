@@ -857,9 +857,7 @@ let ``leadingExpressionIsMultiline detects single line`` () =
 // Multiline item handling
 // =============================================================================
 
-// Known bug: the replay path in colWithNlnWhenItemIsMultiline doesn't roll back
-// optimistic events before replaying. See Arc 5 in writer-events-rethink.md.
-[<Test; Ignore("Requires rollback fix in colWithNlnWhenItemIsMultiline replay path")>]
+[<Test>]
 let ``colWithNlnWhenItemIsMultiline with all single-line items`` () =
     let items =
         [ ColMultilineItem(!-"let a = 1", sepNln)

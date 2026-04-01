@@ -1096,9 +1096,11 @@ let colWithNlnWhenItemIsMultiline (items: ColMultilineItem list) (ctx: Context) 
                 match items with
                 | [] -> acc.Context
                 | ColMultilineItem(expr, sepNlnItem) :: rest ->
-                    // Assume the current item will be multiline or the previous was.
-                    // If this is the case, we have already processed the correct stream of event (with additional newline)
-                    // It is cheaper to replay the current expression if it (and its predecessor) turned out to be single lines.
+                    // Optimistic path: assume the item (or its predecessor) is multiline,
+                    // so emit an extra blank line separator before running the expression.
+                    // If both turn out to be single-line, we roll back and replay without the extra blank line.
+                    let backupPoint = acc.Context.WriterEvents.CreateBackupPoint()
+
                     let ctxAfterNln =
                         (ifElseCtx
                             newlineBetweenLastWriteEvent
@@ -1111,8 +1113,10 @@ let colWithNlnWhenItemIsMultiline (items: ColMultilineItem list) (ctx: Context) 
 
                     let nextCtx =
                         if not isMultiline && not acc.LastBlockMultiline then
-                            // both the previous and current items are single line expressions
-                            // replay the current item as a fallback
+                            // Both the previous and current items are single-line.
+                            // The optimistic blank line was wrong — roll back those events
+                            // and replay with just the regular separator.
+                            acc.Context.WriterEvents.RollbackTo(backupPoint)
                             (sepNlnItem +> expr) acc.Context
                         else
                             nextCtx

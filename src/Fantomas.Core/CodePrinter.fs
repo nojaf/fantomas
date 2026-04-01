@@ -2196,6 +2196,10 @@ let genMultilineInfixExpr (node: ExprInfixAppNode) =
         | IsIfThenElse _ when (ctx.Config.IndentSize - 1 <= node.Operator.Text.Length) ->
             autoParenthesisIfExpressionExceedsPageWidth (genExpr node.LeftHandSide) ctx
         | Expr.Match _ when (ctx.Config.IndentSize - 1 <= node.Operator.Text.Length) ->
+            // Format the match expression speculatively.
+            // If the last clause is multiline, we need to wrap in parentheses instead,
+            // so we save a backup point to roll back to if that's the case.
+            let backupPoint = ctx.WriterEvents.CreateBackupPoint()
             let ctxAfterMatch = genExpr node.LeftHandSide ctx
 
             let lastClauseIsSingleLine =
@@ -2215,6 +2219,9 @@ let genMultilineInfixExpr (node: ExprInfixAppNode) =
             if lastClauseIsSingleLine then
                 ctxAfterMatch
             else
+                // Last clause was multiline — discard the speculative output
+                // and re-format the match expression wrapped in parentheses.
+                ctx.WriterEvents.RollbackTo(backupPoint)
                 autoParenthesisIfExpressionExceedsPageWidth (genExpr node.LeftHandSide) ctx
         | lhsExpr -> genExpr lhsExpr ctx
 
