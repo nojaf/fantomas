@@ -360,24 +360,28 @@ let lastWriteEventIsNewline ctx =
         | _ -> false)
     |> Option.defaultValue false
 
-/// Validate if there is a complete blank line between the last write event and the last event
-let newlineBetweenLastWriteEvent ctx =
-    ctx.WriterEvents.ToRevSeq()
-    |> Seq.takeWhile (function
-        | EmptyWrite
+/// Check if the DLL tail has a complete blank line (two or more newline events)
+/// before any content. Walks backward, skipping indent/restore events.
+let hasBlankLineBeforeLastWrite ctx =
+    let mutable current = ctx.WriterEvents.Tail
+    let mutable newlineCount = 0
+
+    while not (isNull current) do
+        match current.Event with
         | WriteLine
+        | WriteLineBecauseOfTrivia ->
+            newlineCount <- newlineCount + 1
+            current <- current.Prev
+        | EmptyWrite
         | IndentBy _
         | UnIndentBy _
         | SetIndent _
         | RestoreIndent _
         | SetAtColumn _
-        | RestoreAtColumn _ -> true
-        | _ -> false)
-    |> Seq.filter (function
-        | WriteLine -> true
-        | _ -> false)
-    |> Seq.length
-    |> fun writeLines -> writeLines > 1
+        | RestoreAtColumn _ -> current <- current.Prev
+        | _ -> current <- null
+
+    newlineCount > 1
 
 let lastWriteEventOnLastLine ctx =
     writeEventsOnLastLine ctx |> Seq.tryHead
@@ -1168,7 +1172,7 @@ let colWithNlnWhenItemIsMultiline (items: ColMultilineItem list) (ctx: Context) 
 
                     let ctxAfterNln =
                         (ifElseCtx
-                            newlineBetweenLastWriteEvent
+                            hasBlankLineBeforeLastWrite
                             sepNone // don't add extra newline if there already is a full blank line at the end of the stream.
                             sepNln
                          +> sepNlnItem)
@@ -1182,7 +1186,7 @@ let colWithNlnWhenItemIsMultiline (items: ColMultilineItem list) (ctx: Context) 
                             // The optimistic blank line was wrong — roll back those events
                             // and replay with just the regular separator.
                             acc.Context.WriterEvents.RollbackTo(backupPoint)
-                            (sepNlnItem +> expr) acc.Context
+                            (sepNlnUnlessLastEventIsNewline +> expr) acc.Context
                         else
                             nextCtx
 

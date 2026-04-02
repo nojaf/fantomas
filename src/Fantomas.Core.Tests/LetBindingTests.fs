@@ -381,11 +381,32 @@ let ``comment trivia before simple sequence doesn't force remaining to get offse
     b
 """
         config
+    |> prepend newline
     |> should
         equal
-        """let a () =
+        """
+let a () =
     let q = 1
     // comment
+    q
+    b
+"""
+
+[<Test>]
+let ``line comment after let binding in sequence does not produce blank line`` () =
+    formatSourceString
+        """let a() =
+    let q = 1 // inline comment
+    q
+    b
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let a () =
+    let q = 1 // inline comment
     q
     b
 """
