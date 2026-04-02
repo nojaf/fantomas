@@ -1009,7 +1009,7 @@ let ``paren lambda, long list of parameters`` () =
     g ->
     //
     ()
-//
+    //
 )
 """
 
