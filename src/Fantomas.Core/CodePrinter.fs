@@ -714,7 +714,7 @@ let genExpr (e: Expr) =
                     (isMultiline
                      && ctx.Config.MultiLineLambdaClosingNewline
                      && not (isStroustrupStyleExpr ctx.Config node.Lambda.Expr))
-                    sepNln
+                    sepNlnUnlessLastEventIsNewline
                     ctx)
         +> genSingleTextNode node.ClosingParen
         |> genNode node
