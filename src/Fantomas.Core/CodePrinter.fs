@@ -1887,7 +1887,7 @@ let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
                 genSingleTextNodeSuffixDelimiter node.Opening
                 +> atCurrentColumnIndent (
                     sepNlnWhenWriteBeforeNewlineNotEmpty
-                    +> col sepNln node.Elements genExpr
+                    +> col sepNlnUnlessLastEventIsNewline node.Elements genExpr
                     +> (enterNode node.Closing
                         +> (fun ctx ->
                             let isFixed = lastWriteEventIsNewline ctx
