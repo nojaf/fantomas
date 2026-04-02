@@ -270,9 +270,36 @@ Html.a [ prop.className "navbar-item" ]  // the trivia events make this "multili
     (* block comment *)                   // → forces multiline layout unnecessarily
 ```
 
-This affects Elmish-style expressions in particular, where list items with trailing comments get expanded to multiline when they would otherwise fit on one line. The formatted output is valid F# but more verbose than necessary.
+This affects multiple code patterns:
 
-Possible solutions:
+**Elmish-style expressions**: list items with trailing comments get expanded to multiline when they would otherwise fit on one line.
+
+**Let bindings**: a single-line binding like `let a = b` with a trailing comment becomes multiline because the speculative check in `genBinding` (via `sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth`) sees the trivia events and decides the expression doesn't fit. This forces `b` onto the next line with indentation:
+
+```fsharp
+// Input:
+let a =     b
+            // yozora
+c
+
+// Output (b is pushed to next line because trivia makes it "multiline"):
+let a =
+    b
+    // yozora
+
+c
+
+// If the short path is forced, b stays inline but the comment doesn't align:
+let a = b
+// yozora        ← at column 0, not aligned with b at column 8
+c
+```
+
+Neither outcome is ideal. The binding expression is simultaneously single-line (the code `b`) and multiline (the code + trailing trivia). The formatter cannot currently distinguish these perspectives.
+
+The formatted output is valid F# and idempotent in all cases, but more verbose than necessary. This is an accepted limitation of the trivia reassignment improvement — the indentation correctness gains (comments at the right column before closing brackets) outweigh the occasional unnecessary multiline expansion.
+
+Possible future solutions:
 - **Trim trailing trivia from width checks**: `isSmallExpression` / `futureNlnCheck` could stop counting events after the last non-trivia content, similar to how `isMultilineItem` skips leading trivia.
 - **Separate content width from trivia width**: Track the "content column" (before trivia) separately in `WriterModel`, so width checks use the content width.
 - **Defer trivia emission**: Don't emit ContentAfter trivia during `genExpr` — capture it and replay after the width check. This is essentially the `captureTrailingTriviaEvents` approach from the `comment-after-rebased` branch, but applied to width checks rather than unindent splicing.
