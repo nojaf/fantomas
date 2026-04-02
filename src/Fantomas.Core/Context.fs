@@ -1174,7 +1174,7 @@ let colWithNlnWhenItemIsMultiline (items: ColMultilineItem list) (ctx: Context) 
                         (ifElseCtx
                             hasBlankLineBeforeLastWrite
                             sepNone // don't add extra newline if there already is a full blank line at the end of the stream.
-                            sepNln
+                            sepNlnUnlessLastEventIsNewline // trivia may have already produced a newline
                          +> sepNlnItem)
                             acc.Context
 
@@ -1203,4 +1203,4 @@ let colWithNlnWhenItemIsMultilineUsingConfig (items: ColMultilineItem list) (ctx
     if ctx.Config.BlankLinesAroundNestedMultilineExpressions then
         colWithNlnWhenItemIsMultiline items ctx
     else
-        col sepNln items (fun (ColMultilineItem(expr, _)) -> expr) ctx
+        col sepNlnUnlessLastEventIsNewline items (fun (ColMultilineItem(expr, _)) -> expr) ctx

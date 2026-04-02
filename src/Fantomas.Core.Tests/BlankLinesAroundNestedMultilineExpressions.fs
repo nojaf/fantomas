@@ -258,6 +258,25 @@ and private Cmd'<'msg> = Send<'msg> -> unit
 """
 
 [<Test>]
+let ``trailing comment on top-level binding does not produce extra blank line`` () =
+    formatSourceString
+        """
+let a =     b
+            // yozora
+c
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let a =
+    b
+    // yozora
+c
+"""
+
+[<Test>]
 let ``multiline recursive types`` () =
     formatSourceString
         """
