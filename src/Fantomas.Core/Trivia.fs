@@ -298,12 +298,42 @@ let assignTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) :
         | _ -> None
 
     match nodeBefore, nodeAfter with
+    // Predecessor at a different column than the comment — the comment is indented relative to the successor.
+    // Example: try-with where the comment is at the same column as the try body, not the next top-level binding:
+    //     let x =
+    //         try foo() with _ -> ()
+    //         // comment here (column 8, matches try-with)
+    //     let y = 1              (column 4, different)
     | Some before, Some after when after.Range.StartColumn <> trivia.Range.StartColumn -> before.AddAfter(trivia)
-    | Some before, Some after when
-        after.Range.StartColumn = trivia.Range.StartColumn
-        && Array.isEmpty after.Children
-        ->
-        before.AddAfter(trivia)
+
+    // Both predecessor and successor are at the same column as the comment.
+    // Use node size as a tiebreaker: the larger node is content, the smaller is typically a delimiter.
+    //
+    // List/record with comment before closing bracket — predecessor wins (larger):
+    //     let list = [
+    //         someItem           ← predecessor: "someItem" (8 chars) — larger
+    //         // comment
+    //     ]                      ← successor: "]" (1 char) — smaller
+    //
+    // Infix expression with comment between operator and operand — successor wins (equal size):
+    //     5 =                    ← predecessor: "=" (1 char)
+    //       // comment
+    //       5                    ← successor: "5" (1 char) — same size, defaults to ContentBefore
+    //
+    // Same-column siblings — successor wins (equal size):
+    //     let a = 1              ← predecessor
+    //     // comment             ← same column, same size → ContentBefore of next sibling
+    //     let b = 2              ← successor
+    | Some before, Some after when after.Range.StartColumn = trivia.Range.StartColumn ->
+        let beforeLines = before.Range.EndLine - before.Range.StartLine
+        let afterLines = after.Range.EndLine - after.Range.StartLine
+        let beforeWidth = before.Range.EndColumn - before.Range.StartColumn
+        let afterWidth = after.Range.EndColumn - after.Range.StartColumn
+
+        if beforeLines > afterLines || (beforeLines = afterLines && beforeWidth > afterWidth) then
+            before.AddAfter(trivia)
+        else
+            after.AddBefore(trivia)
     | Some _, Some after -> after.AddBefore(trivia)
     | Some before, None -> before.AddAfter(trivia)
     | None, Some after -> after.AddBefore(trivia)
