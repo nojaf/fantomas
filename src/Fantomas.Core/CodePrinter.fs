@@ -3132,7 +3132,7 @@ let genExternBinding (externNode: ExternBindingNode) =
     |> genNode externNode
 
 let genOpenList (openList: OpenListNode) =
-    col sepNln openList.Opens (function
+    col sepNlnUnlessLastEventIsNewline openList.Opens (function
         | Open.ModuleOrNamespace node -> !-"open " +> genIdentListNode node.Name |> genNode node
         | Open.Target node -> !-"open type " +> genType node.Target |> genNode node)
     |> genNode openList
