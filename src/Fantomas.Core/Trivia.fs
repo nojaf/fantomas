@@ -6,6 +6,8 @@ open Fantomas.FCS.SyntaxTrivia
 open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 
+let closingDelimiters = Set.ofList [ "]"; "}"; "|}"; ")"; "|)" ]
+
 type CommentTrivia with
 
     member x.Range =
@@ -307,30 +309,31 @@ let assignTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) :
     | Some before, Some after when after.Range.StartColumn <> trivia.Range.StartColumn -> before.AddAfter(trivia)
 
     // Both predecessor and successor are at the same column as the comment.
-    // Use node size as a tiebreaker: the larger node is content, the smaller is typically a delimiter.
+    // Prefer the predecessor only when the successor is a closing delimiter (], }, |}, ), |)).
+    // These are syntactic brackets, not content — the comment belongs to the preceding content.
     //
-    // List/record with comment before closing bracket — predecessor wins (larger):
+    // List/record with comment before closing bracket — predecessor wins:
     //     let list = [
-    //         someItem           ← predecessor: "someItem" (8 chars) — larger
+    //         someItem           ← predecessor
     //         // comment
-    //     ]                      ← successor: "]" (1 char) — smaller
+    //     ]                      ← successor: closing delimiter → comment goes to predecessor
     //
-    // Infix expression with comment between operator and operand — successor wins (equal size):
-    //     5 =                    ← predecessor: "=" (1 char)
-    //       // comment
-    //       5                    ← successor: "5" (1 char) — same size, defaults to ContentBefore
-    //
-    // Same-column siblings — successor wins (equal size):
+    // Same-column content siblings — successor wins (default):
     //     let a = 1              ← predecessor
-    //     // comment             ← same column, same size → ContentBefore of next sibling
+    //     // comment             ← ContentBefore of next sibling
     //     let b = 2              ← successor
+    //
+    // Type arguments at same column — successor wins (default):
+    //     System.DateTime array, ← predecessor
+    //     //                     ← ContentBefore of next type arg
+    //     int                    ← successor
     | Some before, Some after when after.Range.StartColumn = trivia.Range.StartColumn ->
-        let beforeLines = before.Range.EndLine - before.Range.StartLine
-        let afterLines = after.Range.EndLine - after.Range.StartLine
-        let beforeWidth = before.Range.EndColumn - before.Range.StartColumn
-        let afterWidth = after.Range.EndColumn - after.Range.StartColumn
+        let isClosingDelimiter =
+            match after with
+            | :? SingleTextNode as stn -> Set.contains stn.Text closingDelimiters
+            | _ -> false
 
-        if beforeLines > afterLines || (beforeLines = afterLines && beforeWidth > afterWidth) then
+        if isClosingDelimiter then
             before.AddAfter(trivia)
         else
             after.AddBefore(trivia)
