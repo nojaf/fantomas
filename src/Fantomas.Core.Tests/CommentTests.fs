@@ -2791,3 +2791,32 @@ let something () =
         // return "baz"
     }
 """
+
+[<Test>]
+let ``comment after try-with clause retains indentation, 1233`` () =
+    formatSourceString
+        """
+type CustomCancelSource() =
+    interface IDisposable with
+        member self.Dispose() =
+            try
+                self.Cancel()
+            with
+            | :? ObjectDisposedException ->
+                ()
+            // TODO: cleanup also subscribed handlers?
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type CustomCancelSource() =
+    interface IDisposable with
+        member self.Dispose() =
+            try
+                self.Cancel()
+            with :? ObjectDisposedException ->
+                ()
+            // TODO: cleanup also subscribed handlers?
+"""
