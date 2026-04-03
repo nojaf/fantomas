@@ -2580,3 +2580,33 @@ seq {
     // hi!
 }
 """
+
+[<Test>]
+let ``multiple lines comments after body of computation expression, 2362`` () =
+    formatSourceString
+        """
+let getBlah _ =
+    async {
+        do! Async.Sleep 5000
+        return CurrentLoanRetrieved None
+        // The comments are indented before
+        // return CurrentLoanRetrieved (Some { A = 14; B =  })
+        // return CurrentLoanRetrievalFailed "blah balh"
+    }
+    |> Cmd.ofAsyncMsg
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let getBlah _ =
+    async {
+        do! Async.Sleep 5000
+        return CurrentLoanRetrieved None
+        // The comments are indented before
+        // return CurrentLoanRetrieved (Some { A = 14; B =  })
+        // return CurrentLoanRetrievalFailed "blah balh"
+    }
+    |> Cmd.ofAsyncMsg
+"""
