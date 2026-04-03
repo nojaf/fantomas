@@ -317,7 +317,7 @@ func (
     0, // def
     // ghi
     1 // jkl
-// mno
+    // mno
 )
 """
 

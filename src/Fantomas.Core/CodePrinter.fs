@@ -82,19 +82,16 @@ let (|ParenExpr|_|) (e: Expr) =
     | _ -> None
 
 let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
-    let currentLastLine = ctx.WriterModel.Lines |> List.tryHead
+    let currentLineContent = ctx.WriterEvents.CurrentLineContent()
 
     // Some items like #if or Newline should be printed on a newline
     // It is hard to always get this right in CodePrinter, so we detect it based on the current code.
-    let addNewline =
-        currentLastLine
-        |> Option.map (fun line -> line.Trim().Length > 0)
-        |> Option.defaultValue false
+    let addNewline = currentLineContent.Trim().Length > 0
 
     let addSpace =
-        currentLastLine
-        |> Option.bind (fun line -> Seq.tryLast line |> Option.map (fun lastChar -> lastChar <> ' '))
-        |> Option.defaultValue false
+        match Seq.tryLast currentLineContent with
+        | None -> false
+        | Some lastChar -> lastChar <> ' '
 
     let gen =
         match trivia.Content with
@@ -104,11 +101,16 @@ let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
         | BlockComment(comment, before, after) ->
             ifElse (before && addNewline) sepNlnForTrivia sepNone
             +> sepSpace
-            +> !-comment
+            +> writeTrivia comment
             +> sepSpace
             +> ifElse after sepNlnForTrivia sepNone
         | CommentOnSingleLine s
-        | Directive s -> (ifElse addNewline sepNlnForTrivia sepNone) +> !-s +> sepNlnForTrivia
+        | Directive s -> ifElse addNewline sepNlnForTrivia sepNone +> writeTrivia s +> sepNlnForTrivia
+        | CommentOnSingleLineWithLeadingNewlines(n, s) ->
+            // n is the number of Newline trivia (blank lines) before the comment.
+            // When addNewline is true, we need an extra newline to end the current content line.
+            let totalNewlines = n + if addNewline then 1 else 0
+            rep totalNewlines sepNlnForTrivia +> writeTrivia s +> sepNlnForTrivia
         | Newline -> (ifElse addNewline (sepNlnForTrivia +> sepNlnForTrivia) sepNlnForTrivia)
         | Cursor ->
             fun ctx ->
@@ -116,7 +118,7 @@ let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
                 let originalColumnOffset = trivia.Range.EndColumn - node.Range.EndColumn
 
                 let formattedCursor =
-                    Fantomas.FCS.Text.Position.mkPos ctx.WriterModel.Lines.Length (ctx.Column + originalColumnOffset)
+                    Fantomas.FCS.Text.Position.mkPos (ctx.WriterModel.LineCount + 1) (ctx.Column + originalColumnOffset)
 
                 { ctx with
                     FormattedCursor = Some formattedCursor }
@@ -129,7 +131,7 @@ let recordCursorNode f (node: Node) (ctx: Context) =
     | Some cursor ->
         // TODO: this currently assume the node fits on a single line.
         // This won't be accurate in case of a multiline string.
-        let currentStartLine = ctx.WriterModel.Lines.Length
+        let currentStartLine = ctx.WriterModel.LineCount + 1
         let currentStartColumn = ctx.Column
 
         let ctxAfter = f ctx
@@ -191,7 +193,7 @@ let genAccessOpt (nodeOpt: SingleTextNode option) =
 let genXml (node: XmlDocNode option) =
     match node with
     | None -> sepNone
-    | Some node -> col sepNln node.Lines (!-) +> sepNln |> genNode node
+    | Some node -> col sepNln node.Lines writeTrivia +> sepNln |> genNode node
 
 let addSpaceBeforeParenInPattern (node: IdentListNode) (ctx: Context) =
     node.Content
@@ -673,7 +675,7 @@ let genExpr (e: Expr) =
             +> sepSpace
             +> genSingleTextNode node.OpeningBrace
             +> indentSepNlnUnindent (genExpr node.Body)
-            +> sepNln
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.ClosingBrace
 
         expressionFitsOnRestOfLine short long |> genNode node
@@ -717,7 +719,7 @@ let genExpr (e: Expr) =
                     (isMultiline
                      && ctx.Config.MultiLineLambdaClosingNewline
                      && not (isStroustrupStyleExpr ctx.Config node.Lambda.Expr))
-                    sepNln
+                    sepNlnUnlessLastEventIsNewline
                     ctx)
         +> genSingleTextNode node.ClosingParen
         |> genNode node
@@ -1280,11 +1282,8 @@ let genExpr (e: Expr) =
 
         atCurrentColumn (
             genSingleTextNode node.Try
-            +> indent
-            +> sepNln
-            +> genExpr node.TryExpr
-            +> unindent
-            +> sepNln
+            +> indentSepNlnUnindent (genExpr node.TryExpr)
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.With
             +> sepSpace
             +> genClause
@@ -1293,11 +1292,8 @@ let genExpr (e: Expr) =
     | Expr.TryWith node ->
         atCurrentColumn (
             genSingleTextNode node.Try
-            +> indent
-            +> sepNln
-            +> genExpr node.TryExpr
-            +> unindent
-            +> sepNln
+            +> indentSepNlnUnindent (genExpr node.TryExpr)
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.With
             +> sepNln
             +> col sepNln node.Clauses (genClause false)
@@ -1417,7 +1413,7 @@ let genExpr (e: Expr) =
                 node.Else
 
         let longExpr =
-            col sepNln node.Branches (fun (node: ExprIfThenNode) ->
+            col sepNlnUnlessLastEventIsNewline node.Branches (fun (node: ExprIfThenNode) ->
                 genControlExpressionStartCore (Choice2Of2 node.If) node.IfExpr node.Then
                 +> indentSepNlnUnindent (genExpr node.ThenExpr)
                 |> genNode node)
@@ -1683,7 +1679,7 @@ let genMultilineRecordCopyExpr (addAdditionalIndent: bool) fieldsExpr copyExpr =
     +> sepNln
     +> fieldsExpr
     +> onlyIf addAdditionalIndent unindent
-    +> unindent
+    +> unindentWithTriviaAwareness
 
 /// Special case for record fields in Cramped mode.
 /// The caller should have already verified that the settings do indeed specify Cramped.
@@ -1784,7 +1780,7 @@ let genMultilineRecord (node: ExprRecordNode) (ctx: Context) =
                 sepNlnWhenWriteBeforeNewlineNotEmpty // comment after curly brace
             +> genMultilineRecordCopyExpr additionalIndent fieldsExpr ci
             +> onlyIfCtx (fun ctx -> ctx.Config.IsStroustrupStyle) unindent
-            +> sepNln
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.ClosingBrace
         | None ->
             genSingleTextNode node.OpeningBrace
@@ -1882,7 +1878,7 @@ let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
                 +> indent
                 +> sepNlnUnlessLastEventIsNewline
                 +> col sepNln node.Elements genExpr
-                +> unindent
+                +> unindentWithTriviaAwareness
                 +> sepNlnUnlessLastEventIsNewline
                 +> genSingleTextNode node.Closing
 
@@ -1890,7 +1886,7 @@ let genArrayOrList (preferMultilineCramped: bool) (node: ExprArrayOrListNode) =
                 genSingleTextNodeSuffixDelimiter node.Opening
                 +> atCurrentColumnIndent (
                     sepNlnWhenWriteBeforeNewlineNotEmpty
-                    +> col sepNln node.Elements genExpr
+                    +> col sepNlnUnlessLastEventIsNewline node.Elements genExpr
                     +> (enterNode node.Closing
                         +> (fun ctx ->
                             let isFixed = lastWriteEventIsNewline ctx
@@ -1911,7 +1907,7 @@ let genMultilineFunctionApplicationArguments (argExpr: Expr) =
     let argsInsideParenthesis (parenNode: ExprParenNode) f =
         genSingleTextNode parenNode.OpeningParen
         +> indentSepNlnUnindent f
-        +> sepNln
+        +> sepNlnUnlessLastEventIsNewline
         +> genSingleTextNode parenNode.ClosingParen
         |> genNode parenNode
 
@@ -2199,10 +2195,14 @@ let genMultilineInfixExpr (node: ExprInfixAppNode) =
         | IsIfThenElse _ when (ctx.Config.IndentSize - 1 <= node.Operator.Text.Length) ->
             autoParenthesisIfExpressionExceedsPageWidth (genExpr node.LeftHandSide) ctx
         | Expr.Match _ when (ctx.Config.IndentSize - 1 <= node.Operator.Text.Length) ->
+            // Format the match expression speculatively.
+            // If the last clause is multiline, we need to wrap in parentheses instead,
+            // so we save a backup point to roll back to if that's the case.
+            let backupPoint = ctx.WriterEvents.CreateBackupPoint()
             let ctxAfterMatch = genExpr node.LeftHandSide ctx
 
             let lastClauseIsSingleLine =
-                Queue.rev ctxAfterMatch.WriterEvents
+                ctxAfterMatch.WriterEvents.ToRevSeq()
                 |> Seq.skipWhile (fun e ->
                     match e with
                     | RestoreIndent _
@@ -2218,6 +2218,9 @@ let genMultilineInfixExpr (node: ExprInfixAppNode) =
             if lastClauseIsSingleLine then
                 ctxAfterMatch
             else
+                // Last clause was multiline — discard the speculative output
+                // and re-format the match expression wrapped in parentheses.
+                ctx.WriterEvents.RollbackTo(backupPoint)
                 autoParenthesisIfExpressionExceedsPageWidth (genExpr node.LeftHandSide) ctx
         | lhsExpr -> genExpr lhsExpr ctx
 
@@ -3128,7 +3131,7 @@ let genExternBinding (externNode: ExternBindingNode) =
     |> genNode externNode
 
 let genOpenList (openList: OpenListNode) =
-    col sepNln openList.Opens (function
+    col sepNlnUnlessLastEventIsNewline openList.Opens (function
         | Open.ModuleOrNamespace node -> !-"open " +> genIdentListNode node.Name |> genNode node
         | Open.Target node -> !-"open type " +> genType node.Target |> genNode node)
     |> genNode openList
@@ -3555,8 +3558,8 @@ let genTypeDefn (td: TypeDefn) =
         let multilineExpression (ctx: Context) =
             let genRecordFields =
                 genSingleTextNode node.OpeningBrace
-                +> indentSepNlnUnindent (atCurrentColumn (col sepNln node.Fields genField))
-                +> sepNln
+                +> indentSepNlnUnindent (col sepNlnUnlessLastEventIsNewline node.Fields genField)
+                +> sepNlnUnlessLastEventIsNewline
                 +> genSingleTextNode node.ClosingBrace
 
             let genMembers =
@@ -4063,8 +4066,14 @@ let genModule (m: ModuleOrNamespaceNode) =
     +> colWithNlnWhenMappedNodeIsMultiline false ModuleDecl.Node genModuleDecl m.Declarations
     |> genNode m
 
-let addFinalNewline ctx =
-    let lastEvent = ctx.WriterEvents.TryHead
+let addFinalNewline (ctx: Context) =
+    let lastTailNode = ctx.WriterEvents.Tail
+
+    let lastEvent =
+        if isNull lastTailNode then
+            None
+        else
+            Some lastTailNode.Event
 
     match lastEvent with
     | Some WriteLineBecauseOfTrivia ->
@@ -4072,12 +4081,17 @@ let addFinalNewline ctx =
             ctx
         else
             // Due to trivia the last event is a newline, if insert_final_newline is false, we need to remove it.
+            ctx.WriterEvents.Remove(lastTailNode)
+
             { ctx with
-                WriterEvents = ctx.WriterEvents.Tail
                 WriterModel =
                     { ctx.WriterModel with
-                        Lines = List.tail ctx.WriterModel.Lines } }
-    | _ -> onlyIf ctx.Config.InsertFinalNewline sepNln ctx
+                        LineCount = max 0 (ctx.WriterModel.LineCount - 1) } }
+    | _ ->
+        if not ctx.Config.InsertFinalNewline then
+            ctx
+        else
+            sepNlnUnlessLastEventIsNewline ctx
 
 let genFile (oak: Oak) =
     (col sepNln oak.ParsedHashDirectives genParsedHashDirective

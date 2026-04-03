@@ -31,6 +31,36 @@ type V = {
 """
 
 [<Test>]
+let ``comment after last record field, 2482`` () =
+    formatSourceString
+        """
+type UserInfo = {
+    /// A unique identifier assigned to this user.
+    UserId: UserId.T
+    AcsId: AcsId.T
+    // Roles: Role list
+    // NetworkStatus: UserStatus
+    // ancillary info
+    // Descr: UserDetails
+}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type UserInfo = {
+    /// A unique identifier assigned to this user.
+    UserId: UserId.T
+    AcsId: AcsId.T
+    // Roles: Role list
+    // NetworkStatus: UserStatus
+    // ancillary info
+    // Descr: UserDetails
+}
+"""
+
+[<Test>]
 let ``anonymous record type alias`` () =
     formatSourceString
         """

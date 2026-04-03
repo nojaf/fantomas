@@ -11,6 +11,13 @@ open Fantomas.FCS.Text
 /// caret position during formatting.
 type TriviaContent =
     | CommentOnSingleLine of string
+    /// A single-line comment preceded by one or more blank lines in the source.
+    /// Unlike a plain CommentOnSingleLine + separate Newline trivia, this combined case
+    /// ensures the blank lines and comment are assigned to the same Oak node during
+    /// trivia assignment. Without this, the Newline (at column 0) and the indented comment
+    /// (at column > 0) would be assigned to different nodes via different matching paths,
+    /// causing the blank line to be lost or misplaced after formatting.
+    | CommentOnSingleLineWithLeadingNewlines of newlines: int * comment: string
     | LineCommentAfterSourceCode of comment: string
     | BlockComment of comment: string * newlineBefore: bool * newlineAfter: bool
     | Newline
@@ -29,6 +36,8 @@ type TriviaNode(content: TriviaContent, range: range) =
 
         match x.Content with
         | CommentOnSingleLine s -> $"CommentOnSingleLine(%s{rangeStr}, \"%s{s}\")"
+        | CommentOnSingleLineWithLeadingNewlines(n, s) ->
+            $"CommentOnSingleLineWithLeadingNewlines(%s{rangeStr}, newlines: %d{n}, \"%s{s}\")"
         | LineCommentAfterSourceCode s -> $"LineCommentAfterSourceCode(%s{rangeStr}, \"%s{s}\")"
         | BlockComment(s, before, after) ->
             $"BlockComment(%s{rangeStr}, \"%s{s}\", newlineBefore: %b{before}, newlineAfter: %b{after})"
@@ -109,19 +118,22 @@ type NodeBase(range: range) =
 
             if hasContentBefore then
                 for tn in x.ContentBefore do
-                    sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                    sb.Append(contentIndent).Append("▼ ").Append(tn.ToString()).AppendLine()
+                    |> ignore
 
             if hasChildren then
                 for n in x.Children do
                     match n with
                     | :? SingleTextNode as stn ->
                         for tn in stn.ContentBefore do
-                            sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                            sb.Append(contentIndent).Append("▼ ").Append(tn.ToString()).AppendLine()
+                            |> ignore
 
                         sb.Append(contentIndent).Append(stn.ToString()).AppendLine() |> ignore
 
                         for tn in stn.ContentAfter do
-                            sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                            sb.Append(contentIndent).Append("▲ ").Append(tn.ToString()).AppendLine()
+                            |> ignore
                     | :? NodeBase as nb ->
                         nb.AppendToStringWithIndent(sb, depth + 1)
                         sb.AppendLine() |> ignore
@@ -129,7 +141,8 @@ type NodeBase(range: range) =
 
             if hasContentAfter then
                 for tn in x.ContentAfter do
-                    sb.Append(contentIndent).Append(tn.ToString()).AppendLine() |> ignore
+                    sb.Append(contentIndent).Append("▲ ").Append(tn.ToString()).AppendLine()
+                    |> ignore
 
             sb.Append(indent).Append(")") |> ignore
         else

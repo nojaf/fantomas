@@ -1,5 +1,20 @@
 # Changelog
 
+## [8.0.0-alpha-009] - 2026-04-03
+
+### Fixed
+
+- Comment without code after it in the current scope should retain their "parent" indentation. [#2286](https://github.com/fsprojects/fantomas/issues/2286)
+- Code comment after expression is assigned to parenthesis. [#1864](https://github.com/fsprojects/fantomas/issues/1864)
+- Misaligned comment in MultiLineBlockBracket. [#1716](https://github.com/fsprojects/fantomas/issues/1716)
+- Comment unindented after DU cases. [#2606](https://github.com/fsprojects/fantomas/issues/2606)
+- Comment on last match case has wrong indentation. [#2653](https://github.com/fsprojects/fantomas/issues/2653)
+- Commented line inside of record should be indented at the same level as the fields [#2482](https://github.com/fsprojects/fantomas/issues/2482)
+- Unindentation of comment before end of computation expression. [#2476](https://github.com/fsprojects/fantomas/issues/2476)
+- Comments lost the indented after formatting. [#2362](https://github.com/fsprojects/fantomas/issues/2362)
+- Comments can be lost or shifted when at the end of expressions. [#932](https://github.com/fsprojects/fantomas/issues/932)
+- Should not move the starting point of a single-line comment. [#1233](https://github.com/fsprojects/fantomas/issues/1233)
+
 ## [8.0.0-alpha-008] - 2026-03-25
 
 ### Added

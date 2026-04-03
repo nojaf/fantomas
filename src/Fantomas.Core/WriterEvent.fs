@@ -4,17 +4,44 @@ namespace Fantomas.Core
 /// The sequence of writer events captures how the formatter produces its output.
 [<Struct>]
 type WriterEvent =
+    /// Append literal text to the current line.
     | Write of text: string
+    /// Emit text that originated from trivia (comments, XML doc lines, or compiler directives).
+    /// Behaves identically to Write in dump output, but allows the formatting engine to recognise
+    /// trivia events without fragile string-prefix checks (e.g. "starts with //").
+    | WriteTrivia of trivia: string
+    /// End the current line and start a new one at the current indentation level.
     | WriteLine
+    /// Newline inside a multiline string constant — no indentation is applied.
     | WriteLineInsideStringConst
+    /// Queue text to be appended just before the next newline (e.g. trailing line comments).
     | WriteBeforeNewline of content: string
+    /// Newline introduced by trivia (comments, directives) rather than by the formatter itself.
+    /// Distinguished from WriteLine so colWithNlnWhenItemIsMultiline can ignore trivia-induced newlines.
     | WriteLineBecauseOfTrivia
+    /// Newline inside a trivia block (e.g. inside a block comment or directive).
     | WriteLineInsideTrivia
+    /// Increase indentation by the given number of spaces. Takes effect on the next newline.
     | IndentBy of indent: int
+    /// Decrease indentation by the given number of spaces.
     | UnIndentBy of unindent: int
+    /// Set indentation to an absolute column position.
     | SetIndent of setIndent: int
+    /// Restore indentation to a previously saved value.
     | RestoreIndent of restoreIndent: int
+    /// Set the AtColumn value — the minimum indentation floor for subsequent newlines.
     | SetAtColumn of setAtColumn: int
+    /// Restore AtColumn to a previously saved value.
     | RestoreAtColumn of restoreAtColumn: int
+    /// Diagnostic marker: beginning of an Oak node. Only emitted when DebugMode is enabled.
     | NodeStart of nodeType: string * range: string
+    /// Diagnostic marker: end of an Oak node. Only emitted when DebugMode is enabled.
     | NodeEnd of endNodeType: string * endRange: string
+    /// Marks the beginning of a colWithNlnWhenItemIsMultiline block.
+    /// No-op during WriterModel.update and dump — used only as a DLL position marker.
+    | Start
+    /// Placeholder separator between items in a colWithNlnWhenItemIsMultiline block.
+    /// After all items are emitted, each Placeholder is inspected to determine if the item
+    /// that follows it was multiline, and then replaced with the appropriate separator.
+    /// No-op during WriterModel.update and dump.
+    | Placeholder

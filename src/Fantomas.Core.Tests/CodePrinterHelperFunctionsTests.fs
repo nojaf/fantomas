@@ -20,14 +20,14 @@ let ``!- add a single WriterEvent.Write`` () =
         !- "one new event" context
 
     let contextBefore: Context = Context.Default
-    Assert.That(contextBefore.WriterEvents, Is.Empty)
+    Assert.That(contextBefore.WriterEvents.ToSeq() |> Seq.isEmpty, Is.True)
 
     // Calling function `f` with an empty context will add a single event to the context.
     let contextAfter: Context = f contextBefore
-    Assert.That(1, Is.EqualTo contextAfter.WriterEvents.Length)
-    // The events are stored in a custom collection type called `Queue`.
-    // Checkout `Queue.fs` to learn more about this collection type.
-    let events = Queue.toSeq contextAfter.WriterEvents |> Seq.toList
+    // The events are stored in a mutable doubly-linked list called `EventList`.
+    // Checkout `EventList.fs` to learn more about this collection type.
+    let events = contextAfter.WriterEvents.ToSeq() |> Seq.toList
+    Assert.That(1, Is.EqualTo events.Length)
 
     match events with
     | [ Write "one new event" ] -> Assert.Pass()
@@ -45,12 +45,13 @@ let ``+> will compose two functions`` () =
         (f +> g) context
 
     let contextBefore: Context = Context.Default
-    Assert.That(contextBefore.WriterEvents, Is.Empty)
+    Assert.That(contextBefore.WriterEvents.ToSeq() |> Seq.isEmpty, Is.True)
 
     let contextAfter: Context = h contextBefore
     // We expect two events to be added to the context.
     // "f - long" and "g - long"
-    Assert.That(contextAfter.WriterEvents.Length, Is.EqualTo 2)
+    let events = contextAfter.WriterEvents.ToSeq() |> Seq.toList
+    Assert.That(events.Length, Is.EqualTo 2)
     let code = dump contextAfter
     Assert.AreEqual("f and g", code)
 
@@ -69,7 +70,8 @@ let ``partially application when composing function`` () =
     let contextBefore: Context = Context.Default
     let contextAfter: Context = h contextBefore
 
-    Assert.That(2, Is.EqualTo contextAfter.WriterEvents.Length)
+    let events = contextAfter.WriterEvents.ToSeq() |> Seq.toList
+    Assert.That(2, Is.EqualTo events.Length)
     let code = dump contextAfter
     Assert.AreEqual("f and g", code)
 
@@ -144,29 +146,29 @@ let ``newlines and indentation`` () =
     let f = !-"first line" +> sepNln +> indent +> !-"second line"
     // The dump function will respect the newline from the configuration.
     // For this test we will set it to `EndOfLineStyle.LF`
-    let ctx =
+    let mkCtx () =
         { Context.Default with
             Config =
                 { Context.Default.Config with
                     EndOfLine = EndOfLineStyle.LF } }
 
-    let code = f ctx |> dump
+    let code = f (mkCtx ()) |> dump
     Assert.AreEqual("first line\nsecond line", code)
     // There is no indentation because that would only kick in after the second line.
 
     let g = !-"first line" +> indent +> sepNln +> !-"second line" +> unindent
-    let indentedCode = g ctx |> dump
+    let indentedCode = g (mkCtx ()) |> dump
     Assert.AreEqual("first line\n    second line", indentedCode)
 
     // Using `indent` typically goes together with and `unindent` call.
     // This is a very common pattern in CodePrinter, so the use of `indentSepNlnUnindent` is encouraged.
     // Forgetting to `unindent` can be a nasty bug in Fantomas.
     let h = !-"first line" +> indentSepNlnUnindent (!-"second line")
-    let indentedCtx = h ctx
+    let indentedCtx = h (mkCtx ())
     let indentedCode = dump indentedCtx
     Assert.AreEqual("first line\n    second line", indentedCode)
 
-    let events = Queue.toSeq indentedCtx.WriterEvents |> Seq.toList
+    let events = indentedCtx.WriterEvents.ToSeq() |> Seq.toList
 
     match events with
     | [ Write "first line"; IndentBy 4; WriteLine; Write "second line"; UnIndentBy 4 ] -> Assert.Pass()
@@ -270,13 +272,13 @@ let a =
             +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth (genExpr bindingNode.Expr)
         | _ -> !-"error"
 
-    let ctx =
+    let mkCtx () =
         { Context.Default with
             Config =
                 { Context.Default.Config with
                     EndOfLine = EndOfLineStyle.LF } }
 
-    let codeWithoutTriviaPrinting = f genExpr tree ctx |> dump
+    let codeWithoutTriviaPrinting = f genExpr tree (mkCtx ()) |> dump
     Assert.AreEqual("let a = b", codeWithoutTriviaPrinting)
 
     // The problem now is that our tree doesn't contain the code comment.
@@ -308,7 +310,7 @@ let a =
             firstComment +> !-identNode.Text
         | _ -> !-"error"
 
-    let codeWithTriviaPrinting = f genExprWithTrivia tree ctx |> dump
+    let codeWithTriviaPrinting = f genExprWithTrivia tree (mkCtx ()) |> dump
     Assert.AreEqual("let a =\n    // code comment\n    b", codeWithTriviaPrinting)
 
 [<Test>]
@@ -397,13 +399,13 @@ let b = 2
 
         | _ -> !-"error"
 
-    let ctx =
+    let mkCtx () =
         { Context.Default with
             Config =
                 { Context.Default.Config with
                     EndOfLine = EndOfLineStyle.LF } }
 
-    let formattedCode = f tree ctx |> dump
+    let formattedCode = f tree (mkCtx ()) |> dump
     Assert.AreEqual("let a = 1\n\nlet b = 2", formattedCode)
 
     // This worked fine, but the next time we will format there will be a TriviaNode for the blank line.
@@ -412,7 +414,7 @@ let b = 2
     | ModuleDecl.TopLevelBinding binding -> binding.AddBefore(TriviaNode(TriviaContent.Newline, zeroRange))
     | _ -> ()
 
-    let formattedCodeWithTrivia = f tree ctx |> dump
+    let formattedCodeWithTrivia = f tree (mkCtx ()) |> dump
     // Notice that we now have two blank lines.
     // One from the trivia, and one from the fixed sepNln inside `f`.
     Assert.AreEqual("let a = 1\n\n\nlet b = 2", formattedCodeWithTrivia)
@@ -460,7 +462,7 @@ let b = 2
 
         | _ -> !-"error"
 
-    let finalCode = g tree ctx |> dump
+    let finalCode = g tree (mkCtx ()) |> dump
     Assert.AreEqual("let a = 1\n\nlet b = 2", finalCode)
 
 [<Test>]
@@ -484,7 +486,7 @@ let ``locking the indentation at a fixed column`` () =
     // Notice the space before the "second line", it is there because of the line will start at column 1.
     Assert.AreEqual("(first line\n second line)", code)
 
-    let events = (Queue.toSeq >> Seq.toList) ctxAfter.WriterEvents
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
 
     match events with
     | [ WriterEvent.Write "("
@@ -503,3 +505,557 @@ let ``locking the indentation at a fixed column`` () =
 
 // In general, you want to avoid using `atCurrentColumn` and `atCurrentColumnIndent` as it breaks the "indentation flow".
 // "indentation flow" is a made up term to indicate that every indent is a multitude of the `indent_size`.
+
+// ============================================================================
+// WriterEvent handling in dump
+// These tests verify that specific event patterns produce the expected output.
+// ============================================================================
+
+let private mkLfCtx () =
+    { Context.Default with
+        Config =
+            { Context.Default.Config with
+                EndOfLine = EndOfLineStyle.LF } }
+
+[<Test>]
+let ``WriteLineInsideStringConst produces a raw newline without indentation`` () =
+    // Even when indented, WriteLineInsideStringConst should not add indentation.
+    // This is how multiline strings are preserved verbatim.
+    let f =
+        !-"let s = \""
+        +> indent
+        +> writerEvent WriteLineInsideStringConst
+        +> !-"second line of string"
+
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("let s = \"\nsecond line of string", code)
+
+[<Test>]
+let ``WriteLineInsideTrivia produces a raw newline without indentation`` () =
+    let f = !-"(* comment" +> writerEvent WriteLineInsideTrivia +> !-"   continued *)"
+
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("(* comment\n   continued *)", code)
+
+[<Test>]
+let ``WriteBeforeNewline queues text that appears before the next newline`` () =
+    // WriteBeforeNewline is used for trailing line comments: "code // comment\n"
+    let f =
+        !-"code"
+        +> writerEvent (WriteBeforeNewline " // trailing")
+        +> sepNln
+        +> !-"next line"
+
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("code // trailing\nnext line", code)
+
+[<Test>]
+let ``WriteBeforeNewline without a following newline is flushed by finalizeWriterModel`` () =
+    let f = !-"code" +> writerEvent (WriteBeforeNewline " // trailing")
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("code // trailing", code)
+
+[<Test>]
+let ``trailing spaces are trimmed on each line`` () =
+    let f = !-"hello   " +> sepNln +> !-"world   "
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("hello\nworld", code)
+
+[<Test>]
+let ``leading blank lines are stripped in non-selection mode`` () =
+    let f = sepNln +> sepNln +> !-"content"
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("content", code)
+
+[<Test>]
+let ``leading blank lines are preserved in selection mode`` () =
+    let f = sepNln +> sepNln +> !-"content"
+    let ctx = f (mkLfCtx ())
+    let code = (Context.dump true ctx).Code
+    Assert.AreEqual("\n\ncontent", code)
+
+// =============================================================================
+// Separator helpers
+// =============================================================================
+
+[<Test>]
+let ``sepSpace does not duplicate trailing space`` () =
+    let f = !-"a " +> sepSpace +> !-"b"
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("a b", code)
+
+[<Test>]
+let ``sepNlnForTrivia emits WriteLineBecauseOfTrivia`` () =
+    let f = !-"code" +> sepNlnForTrivia +> !-"trivia line"
+    let ctx = f (mkLfCtx ())
+    let code = dump ctx
+    Assert.AreEqual("code\ntrivia line", code)
+
+    let events = ctx.WriterEvents.ToSeq() |> Seq.toList
+
+    let hasTriviaNln =
+        events
+        |> List.exists (function
+            | WriteLineBecauseOfTrivia -> true
+            | _ -> false)
+
+    Assert.That(hasTriviaNln, Is.True, "Expected WriteLineBecauseOfTrivia event")
+
+[<Test>]
+let ``sepNlnUnlessLastEventIsNewline skips newline after existing newline`` () =
+    let f = !-"line" +> sepNln +> sepNlnUnlessLastEventIsNewline +> !-"next"
+    let code = f (mkLfCtx ()) |> dump
+    // Only one newline, the second one is skipped
+    Assert.AreEqual("line\nnext", code)
+
+[<Test>]
+let ``sepNlnUnlessLastEventIsNewline adds newline when last event is not newline`` () =
+    let f = !-"line" +> sepNlnUnlessLastEventIsNewline +> !-"next"
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("line\nnext", code)
+
+[<Test>]
+let ``lastWriteEventIsNewline returns true after newline`` () =
+    let ctx = (!-"a" +> sepNln) (mkLfCtx ())
+    Assert.That(lastWriteEventIsNewline ctx, Is.True)
+
+[<Test>]
+let ``lastWriteEventIsNewline returns false after write`` () =
+    let ctx = (!-"a" +> sepNln +> !-"b") (mkLfCtx ())
+    Assert.That(lastWriteEventIsNewline ctx, Is.False)
+
+[<Test>]
+let ``lastWriteEventIsNewline skips trailing restore events`` () =
+    let ctx = (!-"a" +> indentSepNlnUnindent (!-"b")) (mkLfCtx ())
+    let events = ctx.WriterEvents.ToSeq() |> Seq.toList
+
+    // Verify the events end with UnIndentBy after the Write
+    match events with
+    | [ Write "a"; IndentBy 4; WriteLine; Write "b"; UnIndentBy 4 ] ->
+        // lastWriteEventIsNewline should skip UnIndentBy and find Write, returning false
+        Assert.That(lastWriteEventIsNewline ctx, Is.False)
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+// =============================================================================
+// WriteBeforeNewline-aware helpers
+// =============================================================================
+
+[<Test>]
+let ``sepNlnWhenWriteBeforeNewlineNotEmpty emits newline when content is queued`` () =
+    let f =
+        !-"code"
+        +> writerEvent (WriteBeforeNewline " // comment")
+        +> sepNlnWhenWriteBeforeNewlineNotEmpty
+        +> !-"next"
+
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("code // comment\nnext", code)
+
+[<Test>]
+let ``sepNlnWhenWriteBeforeNewlineNotEmpty is no-op when nothing is queued`` () =
+    let f = !-"code" +> sepNlnWhenWriteBeforeNewlineNotEmpty +> !-" more"
+    let code = f (mkLfCtx ()) |> dump
+    Assert.AreEqual("code more", code)
+
+// =============================================================================
+// Speculative formatting / line-length checks
+// =============================================================================
+
+[<Test>]
+let ``futureNlnCheck returns true for multiline expression`` () =
+    let multiline = !-"first" +> sepNln +> !-"second"
+    let ctx = mkLfCtx ()
+    Assert.That(futureNlnCheck multiline ctx, Is.True)
+
+[<Test>]
+let ``futureNlnCheck returns false for single-line expression`` () =
+    let singleLine = !-"short"
+    let ctx = mkLfCtx ()
+    Assert.That(futureNlnCheck singleLine ctx, Is.False)
+
+[<Test>]
+let ``futureNlnCheck leaves no trace in the event list`` () =
+    let ctx = (!-"prefix") (mkLfCtx ())
+    let eventsBefore = ctx.WriterEvents.ToSeq() |> Seq.toList
+    let _ = futureNlnCheck (!-"probe" +> sepNln +> !-"more") ctx
+    let eventsAfter = ctx.WriterEvents.ToSeq() |> Seq.toList
+    Assert.AreEqual(eventsBefore, eventsAfter)
+
+[<Test>]
+let ``exceedsWidth returns true when expression is wider than allowed`` () =
+    let wide = !-"this is a long expression"
+    let ctx = mkLfCtx ()
+    Assert.That(exceedsWidth 5 wide ctx, Is.True)
+
+[<Test>]
+let ``exceedsWidth returns false when expression fits`` () =
+    let narrow = !-"ok"
+    let ctx = mkLfCtx ()
+    Assert.That(exceedsWidth 50 narrow ctx, Is.False)
+
+[<Test>]
+let ``exceedsWidth leaves no trace in the event list`` () =
+    let ctx = (!-"prefix") (mkLfCtx ())
+    let eventsBefore = ctx.WriterEvents.ToSeq() |> Seq.toList
+    let _ = exceedsWidth 5 (!-"probe content") ctx
+    let eventsAfter = ctx.WriterEvents.ToSeq() |> Seq.toList
+    Assert.AreEqual(eventsBefore, eventsAfter)
+
+[<Test>]
+let ``expressionFitsOnRestOfLine keeps events when expression fits`` () =
+    let short = !-"fits"
+    let long = !-"does not" +> sepNln +> !-"fit"
+    let ctx = mkLfCtx ()
+    let code = expressionFitsOnRestOfLine short long ctx |> dump
+    Assert.AreEqual("fits", code)
+
+[<Test>]
+let ``isShortExpression uses maxWidth to decide`` () =
+    let short = !-"ab"
+    let long = !-"fallback"
+    // maxWidth of 5: "ab" (length 2) fits within 5
+    let code = isShortExpression 5 short long (mkLfCtx ()) |> dump
+    Assert.AreEqual("ab", code)
+
+[<Test>]
+let ``isShortExpression falls back when expression exceeds maxWidth`` () =
+    let short = !-"this is too long for the width"
+    let long = !-"fallback"
+    // maxWidth of 5: the short expression exceeds it
+    let code = isShortExpression 5 short long (mkLfCtx ()) |> dump
+    Assert.AreEqual("fallback", code)
+
+[<Test>]
+let ``isSmallExpression with NumberOfItems falls back when item count exceeds max`` () =
+    let short = !-"short"
+    let long = !-"long"
+    let size = Size.NumberOfItems(items = 10, maxItems = 3)
+    let code = isSmallExpression size short long (mkLfCtx ()) |> dump
+    Assert.AreEqual("long", code)
+
+[<Test>]
+let ``isSmallExpression with NumberOfItems uses expressionFitsOnRestOfLine when under max`` () =
+    let short = !-"short"
+    let long = !-"long"
+    let size = Size.NumberOfItems(items = 2, maxItems = 3)
+    let code = isSmallExpression size short long (mkLfCtx ()) |> dump
+    Assert.AreEqual("short", code)
+
+[<Test>]
+let ``autoIndentAndNlnIfExpressionExceedsPageWidth indents when expression is too long`` () =
+    let expr = !-"a long expression that will not fit"
+
+    let ctx =
+        { Context.Default with
+            Config =
+                { Context.Default.Config with
+                    MaxLineLength = 20
+                    EndOfLine = EndOfLineStyle.LF } }
+
+    let code =
+        (!-"let x =" +> autoIndentAndNlnIfExpressionExceedsPageWidth expr) ctx |> dump
+
+    Assert.AreEqual("let x =\n    a long expression that will not fit", code)
+
+[<Test>]
+let ``autoIndentAndNlnIfExpressionExceedsPageWidth keeps inline when it fits`` () =
+    let expr = !-"1"
+
+    let code =
+        (!-"let x = " +> autoIndentAndNlnIfExpressionExceedsPageWidth expr) (mkLfCtx ())
+        |> dump
+
+    Assert.AreEqual("let x = 1", code)
+
+[<Test>]
+let ``sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth adds space when it fits`` () =
+    let expr = !-"1"
+
+    let code =
+        (!-"let x =" +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth expr) (mkLfCtx ())
+        |> dump
+
+    Assert.AreEqual("let x = 1", code)
+
+[<Test>]
+let ``sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth indents when too long`` () =
+    let expr = !-"a long expression"
+
+    let ctx =
+        { Context.Default with
+            Config =
+                { Context.Default.Config with
+                    MaxLineLength = 15
+                    EndOfLine = EndOfLineStyle.LF } }
+
+    let code =
+        (!-"let x =" +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth expr) ctx
+        |> dump
+
+    Assert.AreEqual("let x =\n    a long expression", code)
+
+// =============================================================================
+// Leading expression inspection
+// =============================================================================
+
+[<Test>]
+let ``leadingExpressionResult reports line count and column`` () =
+    let leading = !-"first" +> sepNln +> !-"second"
+
+    let mutable lineBefore = -1
+    let mutable colBefore = -1
+    let mutable lineAfter = -1
+    let mutable colAfter = -1
+
+    let _ctx =
+        leadingExpressionResult
+            leading
+            (fun ((lb, cb), (la, ca)) ctx ->
+                lineBefore <- lb
+                colBefore <- cb
+                lineAfter <- la
+                colAfter <- ca
+                ctx)
+            (mkLfCtx ())
+
+    Assert.AreEqual(0, lineBefore)
+    Assert.AreEqual(0, colBefore)
+    Assert.AreEqual(1, lineAfter)
+    Assert.AreEqual(6, colAfter) // "second" = 6 chars
+
+[<Test>]
+let ``leadingExpressionIsMultiline detects multiline`` () =
+    let leading = !-"first" +> sepNln +> !-"second"
+    let mutable result = false
+
+    let _ctx =
+        leadingExpressionIsMultiline
+            leading
+            (fun isMulti ctx ->
+                result <- isMulti
+                ctx)
+            (mkLfCtx ())
+
+    Assert.That(result, Is.True)
+
+[<Test>]
+let ``leadingExpressionIsMultiline detects single line`` () =
+    let leading = !-"single line"
+    let mutable result = true
+
+    let _ctx =
+        leadingExpressionIsMultiline
+            leading
+            (fun isMulti ctx ->
+                result <- isMulti
+                ctx)
+            (mkLfCtx ())
+
+    Assert.That(result, Is.False)
+
+// =============================================================================
+// Multiline item handling
+// =============================================================================
+
+[<Test>]
+let ``colWithNlnWhenItemIsMultiline with all single-line items`` () =
+    let items =
+        [ ColMultilineItem(!-"let a = 1", sepNln)
+          ColMultilineItem(!-"let b = 2", sepNln)
+          ColMultilineItem(!-"let c = 3", sepNln) ]
+
+    let code = colWithNlnWhenItemIsMultiline items (mkLfCtx ()) |> dump
+    Assert.AreEqual("let a = 1\nlet b = 2\nlet c = 3", code)
+
+[<Test>]
+let ``colWithNlnWhenItemIsMultiline adds blank line around multiline item`` () =
+    let items =
+        [ ColMultilineItem(!-"let a = 1", sepNln)
+          ColMultilineItem(!-"let b =" +> indentSepNlnUnindent (!-"longBody"), sepNln)
+          ColMultilineItem(!-"let c = 3", sepNln) ]
+
+    let code = colWithNlnWhenItemIsMultiline items (mkLfCtx ()) |> dump
+    // Blank line before and after the multiline item
+    Assert.AreEqual("let a = 1\n\nlet b =\n    longBody\n\nlet c = 3", code)
+
+// =============================================================================
+// unindentWithTriviaAwareness
+// =============================================================================
+
+[<Test>]
+let ``unindentWithTriviaAwareness splices before line comment`` () =
+    let f =
+        indent
+        +> !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "// comment")
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "someContent"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "// comment"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness splices before block comment`` () =
+    let f =
+        indent
+        +> !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "(* block comment *)")
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "someContent"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "(* block comment *)"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness falls back to normal unindent without trailing trivia`` () =
+    let f = indent +> !-"someContent"
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4; Write "someContent"; UnIndentBy 4 ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness falls back when WriteLineBecauseOfTrivia not preceded by comment`` () =
+    let f = indent +> !-"someContent" +> writerEvent WriteLineBecauseOfTrivia
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4; Write "someContent"; WriteLineBecauseOfTrivia; UnIndentBy 4 ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness splices before multiline block comment`` () =
+    // Multiline block comment gets split by WriterEvents.normalize into
+    // WriteTrivia per line with WriteLineInsideTrivia between them
+    let f =
+        indent
+        +> !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "(*")
+        +> writerEvent WriteLineInsideTrivia
+        +> writerEvent (WriteTrivia "        comment")
+        +> writerEvent WriteLineInsideTrivia
+        +> writerEvent (WriteTrivia "    *)")
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "someContent"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "(*"
+        WriteLineInsideTrivia
+        WriteTrivia "        comment"
+        WriteLineInsideTrivia
+        WriteTrivia "    *)"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+[<Test>]
+let ``unindentWithTriviaAwareness finds trivia past trailing restore events`` () =
+    // Simulates the try-with pattern where restore/unindent events follow the trivia
+    let f =
+        indent
+        +> !-"content"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (WriteTrivia "// trailing comment")
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> writerEvent (RestoreAtColumn 0)
+        +> writerEvent (RestoreIndent 0)
+
+    let ctx = f (mkLfCtx ())
+    let ctxAfter = unindentWithTriviaAwareness ctx
+    let events = ctxAfter.WriterEvents.ToSeq() |> Seq.toList
+
+    match events with
+    | [ IndentBy 4
+        Write "content"
+        WriteLineBecauseOfTrivia
+        WriteTrivia "// trailing comment"
+        UnIndentBy 4
+        WriteLineBecauseOfTrivia
+        RestoreAtColumn 0
+        RestoreIndent 0 ] -> Assert.Pass()
+    | _ -> Assert.Fail $"Unexpected events: %A{events}"
+
+// =============================================================================
+// Trivia-before-unindent integration
+// =============================================================================
+
+[<Test>]
+let ``autoIndentAndNlnIfExpressionExceedsPageWidth splices unindent before trailing trivia`` () =
+    // Simulate an expression with trailing trivia (comment + WriteLineBecauseOfTrivia).
+    // The unindent should be spliced before the trailing newline so the newline
+    // uses the reduced indent level.
+    let exprWithTrailingComment =
+        !-"someContent"
+        +> writerEvent WriteLineBecauseOfTrivia
+        +> !-"// trailing comment"
+        +> writerEvent WriteLineBecauseOfTrivia
+
+    let ctx =
+        { Context.Default with
+            Config =
+                { Context.Default.Config with
+                    MaxLineLength = 20
+                    EndOfLine = EndOfLineStyle.LF } }
+
+    let code =
+        (!-"let x ="
+         +> autoIndentAndNlnIfExpressionExceedsPageWidth exprWithTrailingComment)
+            ctx
+        |> dump
+
+    // The comment should be at indent 4, the newline after it at indent 0
+    Assert.AreEqual("let x =\n    someContent\n    // trailing comment\n", code)
+
+[<Test>]
+let ``autoIndentAndNlnIfExpressionExceedsPageWidth without trailing trivia still unindents normally`` () =
+    let expr = !-"a long expression that does not fit"
+
+    let ctx =
+        { Context.Default with
+            Config =
+                { Context.Default.Config with
+                    MaxLineLength = 20
+                    EndOfLine = EndOfLineStyle.LF } }
+
+    let code =
+        (!-"let x ="
+         +> autoIndentAndNlnIfExpressionExceedsPageWidth expr
+         +> sepNln
+         +> !-"next")
+            ctx
+        |> dump
+
+    Assert.AreEqual("let x =\n    a long expression that does not fit\nnext", code)

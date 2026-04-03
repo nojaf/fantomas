@@ -555,13 +555,14 @@ Target.create "Install" (fun _ ->
     |> should
         equal
         """
-Target.create "Install" (fun _ -> Yarn.install (fun o -> { o with WorkingDirectory = clientDir })
-// Paket restore will already happen when the build.fsx dependencies are restored
+Target.create "Install" (fun _ ->
+    Yarn.install (fun o -> { o with WorkingDirectory = clientDir })
+    // Paket restore will already happen when the build.fsx dependencies are restored
 )
 """
 
 [<Test>]
-let ``trivia before closing parenthesis of lambda`` () =
+let ``trivia before closing parenthesis of lambda, 1864`` () =
     formatSourceString
         """
 Target.create "Install" (fun x ->
@@ -574,8 +575,9 @@ Target.create "Install" (fun x ->
     |> should
         equal
         """
-Target.create "Install" (fun x -> Yarn.install (fun o -> { o with WorkingDirectory = clientDir })
-// Paket restore will already happen when the build.fsx dependencies are restored
+Target.create "Install" (fun x ->
+    Yarn.install (fun o -> { o with WorkingDirectory = clientDir })
+    // Paket restore will already happen when the build.fsx dependencies are restored
 )
 """
 

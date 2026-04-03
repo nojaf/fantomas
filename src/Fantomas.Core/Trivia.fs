@@ -6,6 +6,8 @@ open Fantomas.FCS.SyntaxTrivia
 open Fantomas.FCS.Text
 open Fantomas.Core.SyntaxOak
 
+let closingDelimiters = Set.ofList [ "]"; "}"; "|}"; ")"; "|)" ]
+
 type CommentTrivia with
 
     member x.Range =
@@ -244,12 +246,105 @@ let lineCommentAfterSourceCodeToTriviaInstruction (containerNode: Node) (trivia:
         let node = visitLastChildNode node
         node.AddAfter(trivia))
 
-let simpleTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
-    containerNode.Children
-    |> Array.tryFind (fun node -> node.Range.StartLine > trivia.Range.StartLine)
-    |> Option.map (fun n -> n.AddBefore)
-    |> Option.orElseWith (fun () -> Array.tryLast containerNode.Children |> Option.map (fun n -> n.AddAfter))
-    |> Option.iter (fun f -> f trivia)
+/// Find a node that ended before the trivia and whose start column matches the trivia's column.
+/// Searches depth-first to find the deepest (most specific) match.
+///
+/// Used for indented single-line comments that sit between a parent's children.
+/// For example, in:
+///     try ... with exn -> ()
+///     // comment here
+/// The comment at column 4 should attach to the try-with (which also starts at column 4),
+/// not to the next top-level binding at column 0.
+let rec findNodeBeforeWithMatchingColumn (node: Node) (triviaRange: range) : Node option =
+    let triviaColumn = triviaRange.StartColumn
+    let triviaLine = triviaRange.StartLine
+
+    node.Children
+    |> Array.filter (fun child -> child.Range.EndLine < triviaLine)
+    |> Array.tryLast
+    |> Option.bind (fun child ->
+        let deeperMatch = findNodeBeforeWithMatchingColumn child triviaRange
+
+        match deeperMatch with
+        | Some _ -> deeperMatch
+        | None ->
+            if child.Range.StartColumn = triviaColumn then
+                Some child
+            else
+                None)
+
+/// Assigns a trivia node (comment, blank line, directive) to the appropriate child
+/// of containerNode as either ContentBefore or ContentAfter.
+///
+/// For indented single-line comments (column > 0), we search for a preceding node
+/// at the same column. This handles cases like:
+///
+///     let x =
+///         try foo() with _ -> ()
+///         // this comment belongs to the try-with above
+///     let y = 1
+///
+/// When both a predecessor and successor exist, the predecessor wins if:
+///   - the successor is at a different column, OR
+///   - the successor is a leaf node (no children, e.g. closing brackets like `|}`, `]`, `)`)
+/// Leaf nodes are syntactic delimiters, not content — the comment belongs to the preceding content.
+let assignTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
+    let nodeAfter =
+        containerNode.Children
+        |> Array.tryFind (fun node -> node.Range.StartLine > trivia.Range.StartLine)
+
+    let nodeBefore =
+        match trivia.Content with
+        | CommentOnSingleLine _
+        | CommentOnSingleLineWithLeadingNewlines _ when trivia.Range.StartColumn > 0 ->
+            findNodeBeforeWithMatchingColumn containerNode trivia.Range
+        | _ -> None
+
+    match nodeBefore, nodeAfter with
+    // Predecessor at a different column than the comment — the comment is indented relative to the successor.
+    // Example: try-with where the comment is at the same column as the try body, not the next top-level binding:
+    //     let x =
+    //         try foo() with _ -> ()
+    //         // comment here (column 8, matches try-with)
+    //     let y = 1              (column 4, different)
+    | Some before, Some after when after.Range.StartColumn <> trivia.Range.StartColumn -> before.AddAfter(trivia)
+
+    // Both predecessor and successor are at the same column as the comment.
+    // Prefer the predecessor only when the successor is a closing delimiter (], }, |}, ), |)).
+    // These are syntactic brackets, not content — the comment belongs to the preceding content.
+    //
+    // List/record with comment before closing bracket — predecessor wins:
+    //     let list = [
+    //         someItem           ← predecessor
+    //         // comment
+    //     ]                      ← successor: closing delimiter → comment goes to predecessor
+    //
+    // Same-column content siblings — successor wins (default):
+    //     let a = 1              ← predecessor
+    //     // comment             ← ContentBefore of next sibling
+    //     let b = 2              ← successor
+    //
+    // Type arguments at same column — successor wins (default):
+    //     System.DateTime array, ← predecessor
+    //     //                     ← ContentBefore of next type arg
+    //     int                    ← successor
+    | Some before, Some after when after.Range.StartColumn = trivia.Range.StartColumn ->
+        let isClosingDelimiter =
+            match after with
+            | :? SingleTextNode as stn -> Set.contains stn.Text closingDelimiters
+            | _ -> false
+
+        if isClosingDelimiter then
+            before.AddAfter(trivia)
+        else
+            after.AddBefore(trivia)
+    | Some _, Some after -> after.AddBefore(trivia)
+    | Some before, None -> before.AddAfter(trivia)
+    | None, Some after -> after.AddBefore(trivia)
+    | None, None ->
+        containerNode.Children
+        |> Array.tryLast
+        |> Option.iter (fun n -> n.AddAfter(trivia))
 
 let blockCommentToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) : unit =
     let nodeAfter =
@@ -293,7 +388,47 @@ let blockCommentToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) :
             na.AddBefore(triviaWith false false)
     | _ -> ()
 
-let addToTree (tree: Oak) (trivia: TriviaNode seq) =
+/// Pre-process the trivia sequence: when consecutive Newline trivia are followed by a
+/// CommentOnSingleLine at column > 0, promote them into a single CommentOnSingleLineWithLeadingNewlines.
+/// This ensures the blank lines and comment are assigned to the same node.
+/// See https://github.com/fsprojects/fantomas/issues/2286
+let promoteNewlinesBeforeComments (trivia: TriviaNode array) : TriviaNode array =
+    let result: ResizeArray<TriviaNode> = ResizeArray(trivia.Length)
+    let pendingNewlines: ResizeArray<TriviaNode> = ResizeArray()
+
+    let flushPendingNewlines () =
+        for nl in pendingNewlines do
+            result.Add(nl)
+
+        pendingNewlines.Clear()
+
+    let lastPendingNewlineIsAdjacentTo (line: int) =
+        pendingNewlines.Count > 0
+        && pendingNewlines.[pendingNewlines.Count - 1].Range.StartLine + 1 = line
+
+    for t in trivia do
+        match t.Content with
+        | Newline ->
+            // Only accumulate if this newline is adjacent to the previous one (consecutive blank lines).
+            // If there's a gap, flush the pending newlines — they belong to a different location.
+            if
+                pendingNewlines.Count > 0
+                && not (lastPendingNewlineIsAdjacentTo t.Range.StartLine)
+            then
+                flushPendingNewlines ()
+
+            pendingNewlines.Add(t)
+        | CommentOnSingleLine comment when lastPendingNewlineIsAdjacentTo t.Range.StartLine && t.Range.StartColumn > 0 ->
+            result.Add(TriviaNode(CommentOnSingleLineWithLeadingNewlines(pendingNewlines.Count, comment), t.Range))
+            pendingNewlines.Clear()
+        | _ ->
+            flushPendingNewlines ()
+            result.Add(t)
+
+    flushPendingNewlines ()
+    result.ToArray()
+
+let addToTree (tree: Oak) (trivia: TriviaNode array) =
     for trivia in trivia do
         let smallestNodeThatContainsTrivia = findNodeWhereRangeFitsIn tree trivia.Range
 
@@ -303,8 +438,9 @@ let addToTree (tree: Oak) (trivia: TriviaNode seq) =
             match trivia.Content with
             | LineCommentAfterSourceCode _ -> lineCommentAfterSourceCodeToTriviaInstruction parentNode trivia
             | CommentOnSingleLine _
+            | CommentOnSingleLineWithLeadingNewlines _
             | Newline
-            | Directive _ -> simpleTriviaToTriviaInstruction parentNode trivia
+            | Directive _ -> assignTriviaToTriviaInstruction parentNode trivia
             | BlockComment _
             | Cursor -> blockCommentToTriviaInstruction parentNode trivia
 
@@ -358,7 +494,7 @@ let enrichTree (config: FormatConfig) (sourceText: ISourceText) (ast: ParsedInpu
         [| yield! comments; yield! newlines; yield! directives |]
         |> Array.sortBy (fun n -> n.Range.Start.Line, n.Range.Start.Column)
 
-    addToTree tree trivia
+    addToTree tree (promoteNewlinesBeforeComments trivia)
     tree
 
 let insertCursor (tree: Oak) (cursor: pos) =

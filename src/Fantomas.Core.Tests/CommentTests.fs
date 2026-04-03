@@ -1679,7 +1679,7 @@ with
 try
     try
         ()
-    // xxx
+        // xxx
     with _ ->
         ()
 with _ ->
@@ -2621,4 +2621,202 @@ let ``doc comment without associated declaration should not be duplicated, 2499`
     |> should
         equal
         """/// Returns `unit` if validation was successful otherwise will throw an `Exception`.
+"""
+
+[<Test>]
+let ``comment with one leading blank line should retain indentation and blank line, 2286`` () =
+    formatSourceString
+        """
+module Test
+
+let generateBinding () =
+    if true then
+        // Update the Femto metadata
+        ()
+
+    // Otherwise, do nothing
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module Test
+
+let generateBinding () =
+    if true then
+        // Update the Femto metadata
+        ()
+
+    // Otherwise, do nothing
+"""
+
+[<Test>]
+let ``comment with multiple leading blank lines should retain indentation and blank lines`` () =
+    formatSourceString
+        """
+let f () =
+    let x = 1
+
+
+    // two blank lines before this comment
+    x + 1
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let f () =
+    let x = 1
+
+
+    // two blank lines before this comment
+    x + 1
+"""
+
+[<Test>]
+let ``comment inside aligned bracket list retains content indentation, 1716`` () =
+    formatSourceString
+        """
+module I =
+    let f =
+        [
+            ""
+            // hi
+        ]
+"""
+        { config with
+            MultilineBracketStyle = Aligned }
+    |> prepend newline
+    |> should
+        equal
+        """
+module I =
+    let f =
+        [
+            ""
+            // hi
+        ]
+"""
+
+[<Test>]
+let ``trailing comment after last DU case retains indentation, 2606`` () =
+    formatSourceString
+        """
+type Frame =
+    | A
+    | B
+    | C
+    // TODO: Add D
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type Frame =
+    | A
+    | B
+    | C
+    // TODO: Add D
+"""
+
+[<Test>]
+let ``commented-out match case retains indentation, 2653`` () =
+    formatSourceString
+        """
+let test x =
+    match x with
+    | Value1 -> 1
+    // | Value2 -> 2
+    | Value3 -> 3
+
+let test2 x =
+    match x with
+    | Value1 -> 1
+    | Value2 -> 2
+    // | Value3 -> 3
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let test x =
+    match x with
+    | Value1 -> 1
+    // | Value2 -> 2
+    | Value3 -> 3
+
+let test2 x =
+    match x with
+    | Value1 -> 1
+    | Value2 -> 2
+    // | Value3 -> 3
+"""
+
+[<Test>]
+let ``comment after let binding body expression, 932`` () =
+    formatSourceString
+        """
+let value = 
+    // comment on the front
+    let x = 2
+    x * x
+    // comment on the back
+
+let something () = 
+    async {
+        // return "foo"
+        return "bar"
+        // return "baz"
+    }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let value =
+    // comment on the front
+    let x = 2
+    x * x
+    // comment on the back
+
+let something () =
+    async {
+        // return "foo"
+        return "bar"
+        // return "baz"
+    }
+"""
+
+[<Test>]
+let ``comment after try-with clause retains indentation, 1233`` () =
+    formatSourceString
+        """
+type CustomCancelSource() =
+    interface IDisposable with
+        member self.Dispose() =
+            try
+                self.Cancel()
+            with
+            | :? ObjectDisposedException ->
+                ()
+            // TODO: cleanup also subscribed handlers?
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type CustomCancelSource() =
+    interface IDisposable with
+        member self.Dispose() =
+            try
+                self.Cancel()
+            with :? ObjectDisposedException ->
+                ()
+            // TODO: cleanup also subscribed handlers?
 """

@@ -1366,7 +1366,28 @@ let f
 """
 
 [<Test>]
-let ``comment in bracket ranges of anonymous type, 2566`` () =
+let ``comment before closing anonymous record bracket`` () =
+    formatSourceString
+        """
+let y = {|
+    Y = 42
+    // test
+|}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let y =
+    {|
+        Y = 42
+        // test
+    |}
+"""
+
+[<Test>]
+let ``inline comment after opening and trailing comment before closing anon record, 2566`` () =
     formatSourceString
         """
 let x = {| // test1
@@ -1375,16 +1396,62 @@ let x = {| // test1
     Foo = "Bar"
     // test2
     |}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let x =
+    {| // test1
+        Y = 42
+        Z = "string"
+        Foo = "Bar"
+        // test2
+    |}
+"""
 
+[<Test>]
+let ``trailing comment before closing anon record`` () =
+    formatSourceString
+        """
 let y = {|
     Y = 42
     // test
 |}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let y =
+    {|
+        Y = 42
+        // test
+    |}
+"""
 
+[<Test>]
+let ``anon record without trailing comment`` () =
+    formatSourceString
+        """
 let z = {|
     Y = 42
 |}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let z = {| Y = 42 |}
+"""
 
+[<Test>]
+let ``copy expression with inline and trailing comment in anon record`` () =
+    formatSourceString
+        """
 let a = {| // test1
     foo with
         Level = 7
@@ -1397,28 +1464,12 @@ let a = {| // test1
     |> should
         equal
         """
-let x =
-    {| // test1
-        Y = 42
-        Z = "string"
-        Foo = "Bar"
-    // test2
-    |}
-
-let y =
-    {|
-        Y = 42
-    // test
-    |}
-
-let z = {| Y = 42 |}
-
 let a =
     {| // test1
     foo with
         Level = 7
         Square = 9
-    // test2
+        // test2
     |}
 """
 
