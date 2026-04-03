@@ -419,7 +419,15 @@ let promoteNewlinesBeforeComments (trivia: TriviaNode array) : TriviaNode array 
 
             pendingNewlines.Add(t)
         | CommentOnSingleLine comment when lastPendingNewlineIsAdjacentTo t.Range.StartLine && t.Range.StartColumn > 0 ->
-            result.Add(TriviaNode(CommentOnSingleLineWithLeadingNewlines(pendingNewlines.Count, comment), t.Range))
+            let startPos =
+                Position.mkPos pendingNewlines.[0].Range.StartLine t.Range.StartColumn
+
+            let combinedRange = Range.mkFileIndexRange t.Range.FileIndex startPos t.Range.End
+
+            result.Add(
+                TriviaNode(CommentOnSingleLineWithLeadingNewlines(pendingNewlines.Count, comment), combinedRange)
+            )
+
             pendingNewlines.Clear()
         | _ ->
             flushPendingNewlines ()
