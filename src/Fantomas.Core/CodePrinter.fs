@@ -1277,11 +1277,8 @@ let genExpr (e: Expr) =
 
         atCurrentColumn (
             genSingleTextNode node.Try
-            +> indent
-            +> sepNln
-            +> genExpr node.TryExpr
-            +> unindent
-            +> sepNln
+            +> indentSepNlnUnindent (genExpr node.TryExpr)
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.With
             +> sepSpace
             +> genClause
@@ -1290,11 +1287,8 @@ let genExpr (e: Expr) =
     | Expr.TryWith node ->
         atCurrentColumn (
             genSingleTextNode node.Try
-            +> indent
-            +> sepNln
-            +> genExpr node.TryExpr
-            +> unindent
-            +> sepNln
+            +> indentSepNlnUnindent (genExpr node.TryExpr)
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.With
             +> sepNln
             +> col sepNln node.Clauses (genClause false)
