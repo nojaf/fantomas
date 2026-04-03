@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Comment without code after it in the current scope should retain their "parent" indentation. [#2286](https://github.com/fsprojects/fantomas/issues/2286)
+
 ## [8.0.0-alpha-008] - 2026-03-25
 
 ### Added

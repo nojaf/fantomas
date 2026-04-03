@@ -11,6 +11,13 @@ open Fantomas.FCS.Text
 /// caret position during formatting.
 type TriviaContent =
     | CommentOnSingleLine of string
+    /// A single-line comment preceded by one or more blank lines in the source.
+    /// Unlike a plain CommentOnSingleLine + separate Newline trivia, this combined case
+    /// ensures the blank lines and comment are assigned to the same Oak node during
+    /// trivia assignment. Without this, the Newline (at column 0) and the indented comment
+    /// (at column > 0) would be assigned to different nodes via different matching paths,
+    /// causing the blank line to be lost or misplaced after formatting.
+    | CommentOnSingleLineWithLeadingNewlines of newlines: int * comment: string
     | LineCommentAfterSourceCode of comment: string
     | BlockComment of comment: string * newlineBefore: bool * newlineAfter: bool
     | Newline
@@ -29,6 +36,8 @@ type TriviaNode(content: TriviaContent, range: range) =
 
         match x.Content with
         | CommentOnSingleLine s -> $"CommentOnSingleLine(%s{rangeStr}, \"%s{s}\")"
+        | CommentOnSingleLineWithLeadingNewlines(n, s) ->
+            $"CommentOnSingleLineWithLeadingNewlines(%s{rangeStr}, newlines: %d{n}, \"%s{s}\")"
         | LineCommentAfterSourceCode s -> $"LineCommentAfterSourceCode(%s{rangeStr}, \"%s{s}\")"
         | BlockComment(s, before, after) ->
             $"BlockComment(%s{rangeStr}, \"%s{s}\", newlineBefore: %b{before}, newlineAfter: %b{after})"

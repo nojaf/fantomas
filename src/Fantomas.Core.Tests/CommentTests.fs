@@ -2622,3 +2622,55 @@ let ``doc comment without associated declaration should not be duplicated, 2499`
         equal
         """/// Returns `unit` if validation was successful otherwise will throw an `Exception`.
 """
+
+[<Test>]
+let ``comment with one leading blank line should retain indentation and blank line, 2286`` () =
+    formatSourceString
+        """
+module Test
+
+let generateBinding () =
+    if true then
+        // Update the Femto metadata
+        ()
+
+    // Otherwise, do nothing
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+module Test
+
+let generateBinding () =
+    if true then
+        // Update the Femto metadata
+        ()
+
+    // Otherwise, do nothing
+"""
+
+[<Test>]
+let ``comment with multiple leading blank lines should retain indentation and blank lines`` () =
+    formatSourceString
+        """
+let f () =
+    let x = 1
+
+
+    // two blank lines before this comment
+    x + 1
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let f () =
+    let x = 1
+
+
+    // two blank lines before this comment
+    x + 1
+"""

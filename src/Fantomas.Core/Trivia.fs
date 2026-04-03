@@ -295,7 +295,8 @@ let assignTriviaToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) :
 
     let nodeBefore =
         match trivia.Content with
-        | CommentOnSingleLine _ when trivia.Range.StartColumn > 0 ->
+        | CommentOnSingleLine _
+        | CommentOnSingleLineWithLeadingNewlines _ when trivia.Range.StartColumn > 0 ->
             findNodeBeforeWithMatchingColumn containerNode trivia.Range
         | _ -> None
 
@@ -387,7 +388,47 @@ let blockCommentToTriviaInstruction (containerNode: Node) (trivia: TriviaNode) :
             na.AddBefore(triviaWith false false)
     | _ -> ()
 
-let addToTree (tree: Oak) (trivia: TriviaNode seq) =
+/// Pre-process the trivia sequence: when consecutive Newline trivia are followed by a
+/// CommentOnSingleLine at column > 0, promote them into a single CommentOnSingleLineWithLeadingNewlines.
+/// This ensures the blank lines and comment are assigned to the same node.
+/// See https://github.com/fsprojects/fantomas/issues/2286
+let promoteNewlinesBeforeComments (trivia: TriviaNode array) : TriviaNode array =
+    let result: ResizeArray<TriviaNode> = ResizeArray(trivia.Length)
+    let pendingNewlines: ResizeArray<TriviaNode> = ResizeArray()
+
+    let flushPendingNewlines () =
+        for nl in pendingNewlines do
+            result.Add(nl)
+
+        pendingNewlines.Clear()
+
+    let lastPendingNewlineIsAdjacentTo (line: int) =
+        pendingNewlines.Count > 0
+        && pendingNewlines.[pendingNewlines.Count - 1].Range.StartLine + 1 = line
+
+    for t in trivia do
+        match t.Content with
+        | Newline ->
+            // Only accumulate if this newline is adjacent to the previous one (consecutive blank lines).
+            // If there's a gap, flush the pending newlines — they belong to a different location.
+            if
+                pendingNewlines.Count > 0
+                && not (lastPendingNewlineIsAdjacentTo t.Range.StartLine)
+            then
+                flushPendingNewlines ()
+
+            pendingNewlines.Add(t)
+        | CommentOnSingleLine comment when lastPendingNewlineIsAdjacentTo t.Range.StartLine && t.Range.StartColumn > 0 ->
+            result.Add(TriviaNode(CommentOnSingleLineWithLeadingNewlines(pendingNewlines.Count, comment), t.Range))
+            pendingNewlines.Clear()
+        | _ ->
+            flushPendingNewlines ()
+            result.Add(t)
+
+    flushPendingNewlines ()
+    result.ToArray()
+
+let addToTree (tree: Oak) (trivia: TriviaNode array) =
     for trivia in trivia do
         let smallestNodeThatContainsTrivia = findNodeWhereRangeFitsIn tree trivia.Range
 
@@ -397,6 +438,7 @@ let addToTree (tree: Oak) (trivia: TriviaNode seq) =
             match trivia.Content with
             | LineCommentAfterSourceCode _ -> lineCommentAfterSourceCodeToTriviaInstruction parentNode trivia
             | CommentOnSingleLine _
+            | CommentOnSingleLineWithLeadingNewlines _
             | Newline
             | Directive _ -> assignTriviaToTriviaInstruction parentNode trivia
             | BlockComment _
@@ -452,7 +494,7 @@ let enrichTree (config: FormatConfig) (sourceText: ISourceText) (ast: ParsedInpu
         [| yield! comments; yield! newlines; yield! directives |]
         |> Array.sortBy (fun n -> n.Range.Start.Line, n.Range.Start.Column)
 
-    addToTree tree trivia
+    addToTree tree (promoteNewlinesBeforeComments trivia)
     tree
 
 let insertCursor (tree: Oak) (cursor: pos) =

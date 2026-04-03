@@ -106,6 +106,11 @@ let genTrivia (node: Node) (trivia: TriviaNode) (ctx: Context) =
             +> ifElse after sepNlnForTrivia sepNone
         | CommentOnSingleLine s
         | Directive s -> ifElse addNewline sepNlnForTrivia sepNone +> writeTrivia s +> sepNlnForTrivia
+        | CommentOnSingleLineWithLeadingNewlines(n, s) ->
+            // n is the number of Newline trivia (blank lines) before the comment.
+            // When addNewline is true, we need an extra newline to end the current content line.
+            let totalNewlines = n + if addNewline then 1 else 0
+            rep totalNewlines sepNlnForTrivia +> writeTrivia s +> sepNlnForTrivia
         | Newline -> (ifElse addNewline (sepNlnForTrivia +> sepNlnForTrivia) sepNlnForTrivia)
         | Cursor ->
             fun ctx ->
