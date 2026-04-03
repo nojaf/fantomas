@@ -2755,3 +2755,39 @@ let test2 x =
     | Value2 -> 2
     // | Value3 -> 3
 """
+
+[<Test>]
+let ``comment after let binding body expression, 932`` () =
+    formatSourceString
+        """
+let value = 
+    // comment on the front
+    let x = 2
+    x * x
+    // comment on the back
+
+let something () = 
+    async {
+        // return "foo"
+        return "bar"
+        // return "baz"
+    }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let value =
+    // comment on the front
+    let x = 2
+    x * x
+    // comment on the back
+
+let something () =
+    async {
+        // return "foo"
+        return "bar"
+        // return "baz"
+    }
+"""

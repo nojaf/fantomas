@@ -11,7 +11,8 @@
 - Comment on last match case has wrong indentation. [#2653](https://github.com/fsprojects/fantomas/issues/2653)
 - Commented line inside of record should be indented at the same level as the fields [#2482](https://github.com/fsprojects/fantomas/issues/2482)
 - Unindentation of comment before end of computation expression. [#2476](https://github.com/fsprojects/fantomas/issues/2476)
-- Comments lost the indented after formatting [#2362](https://github.com/fsprojects/fantomas/issues/2362)
+- Comments lost the indented after formatting. [#2362](https://github.com/fsprojects/fantomas/issues/2362)
+- Comments can be lost or shifted when at the end of expressions. [#932](https://github.com/fsprojects/fantomas/issues/932)
 
 ## [8.0.0-alpha-008] - 2026-03-25
 
