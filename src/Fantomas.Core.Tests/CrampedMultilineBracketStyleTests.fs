@@ -2182,7 +2182,7 @@ type ExprFolder<'State> =
 """
 
 [<Test>]
-let ``comment in bracket ranges of anonymous type`` () =
+let ``inline comment after opening and trailing comment before closing anon record, cramped`` () =
     formatSourceString
         """
 let x = {| // test1
@@ -2191,22 +2191,6 @@ let x = {| // test1
     Foo = "Bar"
     // test2
     |}
-
-let y = {|
-    Y = 42
-    // test
-|}
-
-let z = {|
-    Y = 42
-|}
-
-let a = {| // test1
-    foo with
-        Level = 7
-        Square = 9
-        // test2
-|}
 """
         config
     |> prepend newline
@@ -2220,20 +2204,66 @@ let x =
        Foo = "Bar"
     // test2
     |}
+"""
 
+[<Test>]
+let ``trailing comment before closing anon record, cramped`` () =
+    formatSourceString
+        """
+let y = {|
+    Y = 42
+    // test
+|}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
 let y =
     {| Y = 42
     // test
     |}
+"""
 
+[<Test>]
+let ``anon record without trailing comment, cramped`` () =
+    formatSourceString
+        """
+let z = {|
+    Y = 42
+|}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
 let z = {| Y = 42 |}
+"""
 
+[<Test>]
+let ``copy expression with inline and trailing comment in anon record, cramped`` () =
+    formatSourceString
+        """
+let a = {| // test1
+    foo with
+        Level = 7
+        Square = 9
+        // test2
+|}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
 let a =
     {| // test1
     foo with
         Level = 7
         Square = 9
-    // test2
+        // test2
     |}
 """
 
