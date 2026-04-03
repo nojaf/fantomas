@@ -562,7 +562,7 @@ Target.create "Install" (fun _ ->
 """
 
 [<Test>]
-let ``trivia before closing parenthesis of lambda`` () =
+let ``trivia before closing parenthesis of lambda, 1864`` () =
     formatSourceString
         """
 Target.create "Install" (fun x ->
