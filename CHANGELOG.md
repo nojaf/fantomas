@@ -9,6 +9,7 @@
 - Misaligned comment in MultiLineBlockBracket. [#1716](https://github.com/fsprojects/fantomas/issues/1716)
 - Comment unindented after DU cases. [#2606](https://github.com/fsprojects/fantomas/issues/2606)
 - Comment on last match case has wrong indentation. [#2653](https://github.com/fsprojects/fantomas/issues/2653)
+- Commented line inside of record should be indented at the same level as the fields [#2482](https://github.com/fsprojects/fantomas/issues/2482)
 
 ## [8.0.0-alpha-008] - 2026-03-25
 

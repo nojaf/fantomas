@@ -3558,8 +3558,8 @@ let genTypeDefn (td: TypeDefn) =
         let multilineExpression (ctx: Context) =
             let genRecordFields =
                 genSingleTextNode node.OpeningBrace
-                +> indentSepNlnUnindent (atCurrentColumn (col sepNln node.Fields genField))
-                +> sepNln
+                +> indentSepNlnUnindent (col sepNlnUnlessLastEventIsNewline node.Fields genField)
+                +> sepNlnUnlessLastEventIsNewline
                 +> genSingleTextNode node.ClosingBrace
 
             let genMembers =
