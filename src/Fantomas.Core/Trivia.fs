@@ -261,7 +261,7 @@ let rec findNodeBeforeWithMatchingColumn (node: Node) (triviaRange: range) : Nod
 
     node.Children
     |> Array.filter (fun child -> child.Range.EndLine < triviaLine)
-    |> Array.tryFindBack (fun _ -> true)
+    |> Array.tryLast
     |> Option.bind (fun child ->
         let deeperMatch = findNodeBeforeWithMatchingColumn child triviaRange
 

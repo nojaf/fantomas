@@ -22,8 +22,8 @@ type ShortExpressionInfo =
       ConfirmedMultiline: bool }
 
     member x.IsTooLong maxPageWidth currentColumn =
-        currentColumn - x.StartColumn > x.MaxWidth // expression is not too long according to MaxWidth
-        || (currentColumn > maxPageWidth) // expression at current position is not going over the page width
+        currentColumn - x.StartColumn > x.MaxWidth // expression exceeds MaxWidth
+        || (currentColumn > maxPageWidth) // expression goes over the page width
 
 type Size =
     | CharacterWidth of maxWidth: Num
@@ -1144,8 +1144,7 @@ let isMultilineItem (expr: Context -> Context) (ctx: Context) : bool * Context =
                 | WriteLine
                 | WriteLineBecauseOfTrivia -> current <- current.Next
                 | _ -> skipping <- false
-
-            if not skipping then
+            else
                 match current.Event with
                 | WriteLine
                 | WriteLineInsideStringConst -> found <- true

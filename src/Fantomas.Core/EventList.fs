@@ -71,6 +71,9 @@ type EventList() =
         else
             this.Tail <- node.Prev
 
+        node.Prev <- null
+        node.Next <- null
+
     /// O(1) — mark the current end of the list so we can later discard everything appended after it.
     /// Used by speculative formatting: create a backup point, try an expression, and RollbackTo if it doesn't fit.
     member this.CreateBackupPoint() : EventNode = this.Tail
@@ -82,6 +85,11 @@ type EventList() =
             this.Head <- null
             this.Tail <- null
         else
+            let discarded = point.Next
+
+            if not (isNull discarded) then
+                discarded.Prev <- null
+
             point.Next <- null
             this.Tail <- point
 
