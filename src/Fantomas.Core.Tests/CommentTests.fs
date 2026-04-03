@@ -2699,3 +2699,25 @@ module I =
             // hi
         ]
 """
+
+[<Test>]
+let ``comment unindented after DU cases, 2606`` () =
+    formatSourceString
+        """
+type Frame =
+    | A
+    | B
+    | C
+    // TODO: Add D
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type Frame =
+    | A
+    | B
+    | C
+    // TODO: Add D
+"""

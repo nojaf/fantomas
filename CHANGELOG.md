@@ -7,6 +7,7 @@
 - Comment without code after it in the current scope should retain their "parent" indentation. [#2286](https://github.com/fsprojects/fantomas/issues/2286)
 - Code comment after expression is assigned to parenthesis. [#1864](https://github.com/fsprojects/fantomas/issues/1864)
 - Misaligned comment in MultiLineBlockBracket. [#1716](https://github.com/fsprojects/fantomas/issues/1716)
+- Comment unindented after DU cases. [#2606](https://github.com/fsprojects/fantomas/issues/2606)
 
 ## [8.0.0-alpha-008] - 2026-03-25
 
