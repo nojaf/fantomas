@@ -804,11 +804,36 @@ let findTrailingTriviaNewline (events: EventList) : EventNode =
             if foundTrivia then current else null
         | _ -> null
 
-/// Unindent that is aware of trailing trivia (comments before closing brackets).
-/// Walks backward from the DLL tail to find trailing trivia (comments, directives).
-/// If found, splices UnIndentBy before the trailing newline so it uses the reduced indent level.
-/// Otherwise, falls back to a normal unindent.
-///
+/// Indent + newline that is aware of trailing trivia.
+/// If the DLL tail has trailing trivia (comment + WriteLineBecauseOfTrivia),
+/// splice IndentBy before the trivia block so the comment is already at the indented level.
+/// The trivia's own newline serves as the sepNln — no extra newline is added.
+/// Otherwise, fall back to normal indent + sepNln.
+let indentSepNlnWithTriviaAwareness (ctx: Context) =
+    let indentAmount = ctx.Config.IndentSize
+    let triviaNewline = findTrailingTriviaNewline ctx.WriterEvents
+
+    if not (isNull triviaNewline) then
+        // Find the start of the trivia block — walk backward from the trivia newline
+        // past trivia events to find where the block begins.
+        let mutable start = triviaNewline
+
+        while not (isNull start.Prev)
+              && (match start.Prev.Event with
+                  | WriteTrivia _
+                  | WriteLineInsideTrivia
+                  | WriteLineBecauseOfTrivia -> true
+                  | _ -> false) do
+            start <- start.Prev
+
+        // Splice IndentBy before the trivia block — the trivia's newline acts as sepNln
+        ctx.WriterEvents.InsertBefore(start, IndentBy indentAmount) |> ignore
+
+        { ctx with
+            WriterModel = WriterModel.update ctx.Config.MaxLineLength (IndentBy indentAmount) ctx.WriterModel }
+    else
+        (indent +> sepNln) ctx
+
 /// This replaces the pattern of `+> unindent` after expressions that may have trailing trivia,
 /// centralizing the splice + WriterModel update in one place.
 let unindentWithTriviaAwareness (ctx: Context) =
@@ -827,7 +852,7 @@ let unindentWithTriviaAwareness (ctx: Context) =
         writerEvent (UnIndentBy unindentAmount) ctx
 
 let indentSepNlnUnindent f =
-    indent +> sepNln +> f +> unindentWithTriviaAwareness
+    indentSepNlnWithTriviaAwareness +> f +> unindentWithTriviaAwareness
 
 let expressionExceedsPageWidthWithLayout (layout: LongExpressionLayout) (addSpaceBefore: bool) expr (ctx: Context) =
     let beforeShort = if addSpaceBefore then sepSpace else sepNone
