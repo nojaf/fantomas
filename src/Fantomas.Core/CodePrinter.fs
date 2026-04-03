@@ -4087,7 +4087,11 @@ let addFinalNewline (ctx: Context) =
                 WriterModel =
                     { ctx.WriterModel with
                         LineCount = max 0 (ctx.WriterModel.LineCount - 1) } }
-    | _ -> onlyIf ctx.Config.InsertFinalNewline sepNln ctx
+    | _ ->
+        if not ctx.Config.InsertFinalNewline then
+            ctx
+        else
+            sepNlnUnlessLastEventIsNewline ctx
 
 let genFile (oak: Oak) =
     (col sepNln oak.ParsedHashDirectives genParsedHashDirective

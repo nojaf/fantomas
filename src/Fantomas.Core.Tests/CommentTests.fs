@@ -2676,7 +2676,7 @@ let f () =
 """
 
 [<Test>]
-let ``misaligned comment in multiline block bracket, 1716`` () =
+let ``comment inside aligned bracket list retains content indentation, 1716`` () =
     formatSourceString
         """
 module I =
@@ -2701,7 +2701,7 @@ module I =
 """
 
 [<Test>]
-let ``comment unindented after DU cases, 2606`` () =
+let ``trailing comment after last DU case retains indentation, 2606`` () =
     formatSourceString
         """
 type Frame =
@@ -2720,4 +2720,38 @@ type Frame =
     | B
     | C
     // TODO: Add D
+"""
+
+[<Test>]
+let ``commented-out match case retains indentation, 2653`` () =
+    formatSourceString
+        """
+let test x =
+    match x with
+    | Value1 -> 1
+    // | Value2 -> 2
+    | Value3 -> 3
+
+let test2 x =
+    match x with
+    | Value1 -> 1
+    | Value2 -> 2
+    // | Value3 -> 3
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let test x =
+    match x with
+    | Value1 -> 1
+    // | Value2 -> 2
+    | Value3 -> 3
+
+let test2 x =
+    match x with
+    | Value1 -> 1
+    | Value2 -> 2
+    // | Value3 -> 3
 """
