@@ -2560,3 +2560,23 @@ comp {
     ()
 }
 """
+
+[<Test>]
+let ``comment after body of computation expression, 2476`` () =
+    formatSourceString
+        """
+seq {
+    yield! [1;2]
+    // hi!
+}
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+seq {
+    yield! [ 1; 2 ]
+    // hi!
+}
+"""

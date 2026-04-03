@@ -675,7 +675,7 @@ let genExpr (e: Expr) =
             +> sepSpace
             +> genSingleTextNode node.OpeningBrace
             +> indentSepNlnUnindent (genExpr node.Body)
-            +> sepNln
+            +> sepNlnUnlessLastEventIsNewline
             +> genSingleTextNode node.ClosingBrace
 
         expressionFitsOnRestOfLine short long |> genNode node
