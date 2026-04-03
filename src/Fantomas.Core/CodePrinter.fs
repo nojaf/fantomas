@@ -1408,7 +1408,7 @@ let genExpr (e: Expr) =
                 node.Else
 
         let longExpr =
-            col sepNln node.Branches (fun (node: ExprIfThenNode) ->
+            col sepNlnUnlessLastEventIsNewline node.Branches (fun (node: ExprIfThenNode) ->
                 genControlExpressionStartCore (Choice2Of2 node.If) node.IfExpr node.Then
                 +> indentSepNlnUnindent (genExpr node.ThenExpr)
                 |> genNode node)
