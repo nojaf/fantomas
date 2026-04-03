@@ -2674,3 +2674,28 @@ let f () =
     // two blank lines before this comment
     x + 1
 """
+
+[<Test>]
+let ``misaligned comment in multiline block bracket, 1716`` () =
+    formatSourceString
+        """
+module I =
+    let f =
+        [
+            ""
+            // hi
+        ]
+"""
+        { config with
+            MultilineBracketStyle = Aligned }
+    |> prepend newline
+    |> should
+        equal
+        """
+module I =
+    let f =
+        [
+            ""
+            // hi
+        ]
+"""
