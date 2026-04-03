@@ -912,7 +912,84 @@ let list = [
 ]
 """
 
-[<Test; Ignore("Trivia reassignment regression - to be fixed")>]
+// The following tests cover an edge case where a line comment sits after #endif
+// but before the closing bracket. The core problem:
+//
+//   1. findNodeBeforeWithMatchingColumn matches "item1" (column 4) for the comment (column 4),
+//      assigning it as ContentAfter on item1 — but #else/#endif sit between them in the source.
+//   2. The directives are assigned as ContentBefore on ] (they go through the default path).
+//   3. This reverses the source order: the comment (line 8) is emitted before #else (line 5).
+//
+// After formatting, directives move to column 0, so on the second pass the comment is no longer
+// at the same column as the preceding item — breaking the column-matching heuristic and causing
+// the comment to shift between passes (not idempotent).
+//
+// A proper fix would need findNodeBeforeWithMatchingColumn to be aware of directive boundaries:
+// if a #if/#else/#endif sits between the candidate node and the comment, the match is invalid.
+// This is a very specific interaction between the column-matching trivia assignment and the
+// multi-define formatting pipeline.
+
+[<Test; Ignore("Trivia ordering broken when comment follows #endif - see comment above")>]
+let ``comment before closing list bracket with hash directive, something defined`` () =
+    formatSourceStringWithDefines
+        [ "something" ]
+        """
+let list = [
+    someItem
+    #if something
+    item1
+    #else
+    item2
+    #endif
+    // comment
+                ]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let list = [
+    someItem
+#if something
+    item1
+#else
+#endif
+    // comment
+]
+"""
+
+[<Test; Ignore("Trivia ordering broken when comment follows #endif - see comment above")>]
+let ``comment before closing list bracket with hash directive, nothing defined`` () =
+    formatSourceStringWithDefines
+        []
+        """
+let list = [
+    someItem
+    #if something
+    item1
+    #else
+    item2
+    #endif
+    // comment
+                ]
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+let list = [
+    someItem
+#if something
+#else
+    item2
+#endif
+    // comment
+]
+"""
+
+[<Test; Ignore("Trivia ordering broken when comment follows #endif - see comment above")>]
 let ``comment before closing list bracket with hash directive`` () =
     formatSourceString
         """
@@ -931,16 +1008,15 @@ let list = [
     |> should
         equal
         """
-let list =
-    [
-        someItem
+let list = [
+    someItem
 #if something
-        item1
+    item1
 #else
-        item2
+    item2
 #endif
     // comment
-    ]
+]
 """
 
 [<Test>]
