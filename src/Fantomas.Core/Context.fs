@@ -762,6 +762,7 @@ let expressionExceedsPageWidth beforeShort afterShort beforeLong afterLong expr 
             fallbackExpression ctx
 
 /// Describes how an expression should be laid out when it doesn't fit on a single line.
+[<Struct>]
 type LongExpressionLayout =
     | IndentAndUnindent
     | DoubleIndentAndUnindent

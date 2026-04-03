@@ -249,6 +249,7 @@ val unindentWithTriviaAwareness: ctx: Context -> Context
 
 /// Describes how an expression should be laid out when it doesn't fit on a single line.
 /// Used by expressionExceedsPageWidth to centralize indentation and unindentation logic.
+[<Struct>]
 type LongExpressionLayout =
     /// indent +> sepNln +> expr +> unindent
     | IndentAndUnindent
