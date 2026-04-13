@@ -22,7 +22,9 @@ module String =
         let mutable i = 0
 
         while not hasNonAscii && i < s.Length do
-            if s.[i] > '\u007F' then hasNonAscii <- true
+            if s.[i] > '\u007F' then
+                hasNonAscii <- true
+
             i <- i + 1
 
         if hasNonAscii then
