@@ -3856,10 +3856,17 @@ let genMemberDefn (md: MemberDefn) =
     | MemberDefn.ExternBinding node -> genExternBinding node
     | MemberDefn.DoExpr node -> genExpr (Expr.Single node)
     | MemberDefn.ExplicitCtor node ->
+        // Paren/unit patterns respect SpaceBeforeClassConstructor; bare patterns always need a space.
+        let sepBeforeCtorPat =
+            match node.Pattern with
+            | Pattern.Paren _
+            | Pattern.Unit _ -> sepSpaceBeforeClassConstructor
+            | _ -> sepSpace
+
         let short =
             genAccessOpt node.Accessibility
             +> genSingleTextNode node.New
-            +> sepSpaceBeforeClassConstructor
+            +> sepBeforeCtorPat
             +> genPat node.Pattern
             +> optSingle (fun alias -> sepSpace +> !-"as" +> sepSpace +> genSingleTextNode alias) node.Alias
             +> sepSpace
@@ -3871,7 +3878,7 @@ let genMemberDefn (md: MemberDefn) =
             leadingExpressionIsMultiline
                 (genAccessOpt node.Accessibility
                  +> genSingleTextNode node.New
-                 +> sepSpaceBeforeClassConstructor
+                 +> sepBeforeCtorPat
                  +> autoIndentAndNlnIfExpressionExceedsPageWidth (genLongParenPatParameter node.Pattern)
                  +> optSingle (fun alias -> sepSpace +> !-"as" +> sepSpace +> genSingleTextNode alias) node.Alias)
                 (fun isMultiline ctx ->

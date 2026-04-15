@@ -2858,9 +2858,7 @@ let mkMemberDefn (creationAide: CreationAide) (md: SynMemberDefn) =
             xmlDoc = px
             valData = SynValData(memberFlags = Some { MemberKind = SynMemberKind.Constructor }; thisIdOpt = ido)
             headPat = SynPat.LongIdent(
-                longDotId = SynLongIdent(id = [ newIdent ])
-                argPats = SynArgPats.Pats [ SynPat.Paren _ as pat ]
-                accessibility = ao)
+                longDotId = SynLongIdent(id = [ newIdent ]); argPats = SynArgPats.Pats [ pat ]; accessibility = ao)
             expr = expr
             trivia = { EqualsRange = Some mEq })) when (newIdent.idText = "new") ->
         let exprNode = mkExpr creationAide expr
