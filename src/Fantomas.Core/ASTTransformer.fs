@@ -2859,7 +2859,7 @@ let mkMemberDefn (creationAide: CreationAide) (md: SynMemberDefn) =
             valData = SynValData(memberFlags = Some { MemberKind = SynMemberKind.Constructor }; thisIdOpt = ido)
             headPat = SynPat.LongIdent(
                 longDotId = SynLongIdent(id = [ newIdent ])
-                argPats = SynArgPats.Pats [ SynPat.Paren _ as pat ]
+                argPats = SynArgPats.Pats [ pat ]
                 accessibility = ao)
             expr = expr
             trivia = { EqualsRange = Some mEq })) when (newIdent.idText = "new") ->

@@ -241,3 +241,45 @@ let instance =
             | None -> 0.0m
     )
 """
+
+[<Test>]
+let ``struct constructor with unparenthesized parameter should not be renamed, 3349`` () =
+    formatSourceString
+        """
+type Cont = SuccessCont
+
+[]
+type ContStackFrame =
+    val Cont: Cont
+    new cont = { Cont = cont }
+"""
+        config
+    |> prepend newline
+    |> should
+        equal
+        """
+type Cont = SuccessCont
+
+[]
+
+type ContStackFrame =
+    val Cont: Cont
+    new cont = { Cont = cont }
+"""
+
+[<Test>]
+let ``struct constructor with unparenthesized parameter should be idempotent, 3349`` () =
+    // Previously each formatting pass prepended "new" to the parameter name.
+    let formatted =
+        formatSourceString
+            """
+type Cont = SuccessCont
+
+[]
+type ContStackFrame =
+    val Cont: Cont
+    new cont = { Cont = cont }
+"""
+            config
+
+    formatSourceString formatted config |> should equal formatted
