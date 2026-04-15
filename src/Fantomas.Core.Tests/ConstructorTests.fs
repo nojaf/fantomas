@@ -248,7 +248,7 @@ let ``struct constructor with unparenthesized parameter should not be renamed, 3
         """
 type Cont = SuccessCont
 
-[]
+[<Struct>]
 type ContStackFrame =
     val Cont: Cont
     new cont = { Cont = cont }
@@ -260,8 +260,7 @@ type ContStackFrame =
         """
 type Cont = SuccessCont
 
-[]
-
+[<Struct>]
 type ContStackFrame =
     val Cont: Cont
     new cont = { Cont = cont }
@@ -275,7 +274,7 @@ let ``struct constructor with unparenthesized parameter should be idempotent, 33
             """
 type Cont = SuccessCont
 
-[]
+[<Struct>]
 type ContStackFrame =
     val Cont: Cont
     new cont = { Cont = cont }

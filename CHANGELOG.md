@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.0.0-alpha-010] - 2026-04-15
+
+### Fixed
+
+- Struct constructor with unparenthesized parameter incorrectly renamed, causing a compile error. [#3349](https://github.com/fsprojects/fantomas/issues/3349)
+
 ## [8.0.0-alpha-009] - 2026-04-03
 
 ### Fixed
@@ -14,7 +20,6 @@
 - Comments lost the indented after formatting. [#2362](https://github.com/fsprojects/fantomas/issues/2362)
 - Comments can be lost or shifted when at the end of expressions. [#932](https://github.com/fsprojects/fantomas/issues/932)
 - Should not move the starting point of a single-line comment. [#1233](https://github.com/fsprojects/fantomas/issues/1233)
-- Struct constructor with unparenthesized parameter incorrectly renamed, causing a compile error. [#3349](https://github.com/fsprojects/fantomas/issues/3349)
 
 ## [8.0.0-alpha-008] - 2026-03-25
 
