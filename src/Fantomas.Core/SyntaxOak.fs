@@ -1314,6 +1314,27 @@ type ExprDynamicNode(funcExpr: Expr, argExpr: Expr, range) =
     member val FuncExpr = funcExpr
     member val ArgExpr = argExpr
 
+/// A single `?member` (with optional paren or unit argument) inside a <see cref="ExprDynamicChainNode"/>.
+type ExprDynamicChainItemNode(memberExpr: Expr, parenArg: Expr option, range) =
+    inherit NodeBase(range)
+
+    override val Children: Node array = [| yield Expr.Node memberExpr; yield! noa (Option.map Expr.Node parenArg) |]
+
+    member val MemberExpr = memberExpr
+    member val ParenArg = parenArg
+
+/// Example: `x?a("")?b(t)` — a chain of two or more `?` operator accesses.
+/// Captured as a dedicated node so the printer can keep `?member(arg)` tight,
+/// because adding a space before the paren argument changes parsing of the
+/// following `?member`. See #3159.
+type ExprDynamicChainNode(leadingExpr: Expr, items: ExprDynamicChainItemNode list, range) =
+    inherit NodeBase(range)
+
+    override val Children: Node array = [| yield Expr.Node leadingExpr; yield! nodes items |]
+
+    member val LeadingExpr = leadingExpr
+    member val Items = items
+
 /// Example: `!x`, `-x`, `~~~x` — a prefix (unary) operator applied to an expression.
 type ExprPrefixAppNode(operator: SingleTextNode, expr: Expr, range) =
     inherit NodeBase(range)
@@ -1915,6 +1936,7 @@ type Expr =
     | ParenFunctionNameWithStar of ExprParenFunctionNameWithStarNode
     | Paren of ExprParenNode
     | Dynamic of ExprDynamicNode
+    | DynamicChain of ExprDynamicChainNode
     | PrefixApp of ExprPrefixAppNode
     | SameInfixApps of ExprSameInfixAppsNode
     | InfixApp of ExprInfixAppNode
@@ -1983,6 +2005,7 @@ type Expr =
         | ParenFunctionNameWithStar n -> n
         | Paren n -> n
         | Dynamic n -> n
+        | DynamicChain n -> n
         | PrefixApp n -> n
         | SameInfixApps n -> n
         | InfixApp n -> n
