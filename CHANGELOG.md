@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Chained `?` operator accesses (e.g. `x?a("")?b(t)`) no longer add a space before parenthesised arguments, which previously changed how the next `?member` was parsed. Detected during AST→Oak transformation and represented as a new `Expr.DynamicChain` node so the printer can keep the chain tight; lone `?` calls still respect `SpaceBefore(Upper|Lower)caseInvocation`. [#3159](https://github.com/fsprojects/fantomas/issues/3159)
+
 ## [8.0.0-alpha-009] - 2026-04-03
 
 ### Fixed

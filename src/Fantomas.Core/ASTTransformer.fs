@@ -696,6 +696,41 @@ let (|UnitExpr|_|) e =
     | SynExpr.Const(constant = SynConst.Unit) -> ValueSome e.Range
     | _ -> ValueNone
 
+/// Matches the argument of a dynamic-chain item: a paren expression (excluding lambdas)
+/// or a unit literal.
+[<return: Struct>]
+let (|DynamicChainArg|_|) (e: SynExpr) =
+    match e with
+    | SynExpr.Const(constant = SynConst.Unit) -> ValueSome e
+    | SynExpr.Paren(expr = inner) ->
+        match inner with
+        | SynExpr.Lambda _
+        | SynExpr.MatchLambda _ -> ValueNone
+        | _ -> ValueSome e
+    | _ -> ValueNone
+
+/// Walks an expression outermost-to-innermost, prepending each `?member` (and any paren arg)
+/// onto the accumulator. Because we recurse from outer to inner, the resulting list is in
+/// source order without a reversal step.
+[<TailCall>]
+let rec visitDynamicChain acc e =
+    match e with
+    | SynExpr.App(_, false, SynExpr.Dynamic(funcExpr, _, memberExpr, _), (DynamicChainArg _ as parenArg), _) ->
+        visitDynamicChain ((memberExpr, Some parenArg) :: acc) funcExpr
+    | SynExpr.Dynamic(funcExpr, _, memberExpr, _) -> visitDynamicChain ((memberExpr, None) :: acc) funcExpr
+    | _ -> e, acc
+
+/// Detects two or more consecutive `?` operator accesses (e.g. `x?a("")?b(t)`),
+/// returning the leading expression and the ordered list of items.
+/// Each item is a member expression and an optional paren/unit argument.
+[<return: Struct>]
+let (|DynamicChain|_|) (e: SynExpr) =
+    let leading, items = visitDynamicChain [] e
+
+    match items with
+    | _ :: _ :: _ -> ValueSome(leading, items)
+    | _ -> ValueNone
+
 [<return: Struct>]
 let (|ParenExpr|_|) e =
     match e with
@@ -1254,6 +1289,23 @@ let mkExpr (creationAide: CreationAide) (e: SynExpr) : Expr =
             |> Expr.BeginEnd
         else
             mkParenExpr creationAide lpr e rpr pr |> Expr.Paren
+    | DynamicChain(leading, items) ->
+        let chainItems =
+            items
+            |> List.map (fun (memberExpr, parenArg) ->
+                let memberExpr' = mkExpr creationAide memberExpr
+
+                let parenArg' = parenArg |> Option.map (mkExpr creationAide)
+
+                let itemRange =
+                    match parenArg with
+                    | Some pa -> unionRanges memberExpr.Range pa.Range
+                    | None -> memberExpr.Range
+
+                ExprDynamicChainItemNode(memberExpr', parenArg', itemRange))
+
+        ExprDynamicChainNode(mkExpr creationAide leading, chainItems, exprRange)
+        |> Expr.DynamicChain
     | SynExpr.Dynamic(funcExpr, _, argExpr, _) ->
         ExprDynamicNode(mkExpr creationAide funcExpr, mkExpr creationAide argExpr, exprRange)
         |> Expr.Dynamic

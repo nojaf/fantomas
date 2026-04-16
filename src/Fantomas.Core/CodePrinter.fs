@@ -66,6 +66,7 @@ let rec (|UppercaseExpr|LowercaseExpr|) (expr: Expr) =
     | Expr.DotIndexedGet node -> (|UppercaseExpr|LowercaseExpr|) node.ObjectExpr
     | Expr.TypeApp node -> (|UppercaseExpr|LowercaseExpr|) node.Identifier
     | Expr.Dynamic node -> (|UppercaseExpr|LowercaseExpr|) node.FuncExpr
+    | Expr.DynamicChain node -> (|UppercaseExpr|LowercaseExpr|) node.LeadingExpr
     | Expr.AppLongIdentAndSingleParenArg node -> lastFragmentInList node.FunctionName
     | Expr.AppSingleParenArg node -> (|UppercaseExpr|LowercaseExpr|) node.FunctionExpr
     | Expr.Paren node -> (|UppercaseExpr|LowercaseExpr|) node.Expr
@@ -772,6 +773,18 @@ let genExpr (e: Expr) =
             | _ -> genExpr node.FuncExpr
 
         genFuncExpr +> !-"?" +> genExpr node.ArgExpr |> genNode node
+    | Expr.DynamicChain node ->
+        // A chain of `?` accesses is printed tight (no space before paren args).
+        // Adding a space changes the parsing of the next `?member`. See #3159.
+        let genItem (item: ExprDynamicChainItemNode) =
+            !-"?"
+            +> genExpr item.MemberExpr
+            +> (match item.ParenArg with
+                | Some arg -> genExpr arg
+                | None -> sepNone)
+            |> genNode item
+
+        genExpr node.LeadingExpr +> col sepNone node.Items genItem |> genNode node
     | Expr.PrefixApp node ->
         let genWithoutSpace = genSingleTextNode node.Operator +> genExpr node.Expr
         let genWithSpace = genSingleTextNode node.Operator +> sepSpace +> genExpr node.Expr
