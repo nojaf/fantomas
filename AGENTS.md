@@ -5,7 +5,7 @@ F# source code formatter. Parses F# to an untyped AST (via vendored FCS), transf
 ## Build & Test
 
 ```bash
-dotnet build fantomas.sln
+dotnet build fantomas.slnx
 dotnet test src/Fantomas.Core.Tests/
 ```
 

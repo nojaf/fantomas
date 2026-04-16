@@ -2,6 +2,13 @@
 
 This is the changelog for the Fantomas.Client package specifically. It's distinct from that of the overall libraries and command-line tool.
 
+## [0.11.0] - 2026-04-16
+
+### Changed
+- Bump `FSharp.Core` to `10.0.100`.
+- Bump `StreamJsonRpc` to `2.24.84`.
+- Bump `SemanticVersioning` to `3.0.0`.
+
 ## [0.10.0] - 2025-01-13
 
 ### Changed

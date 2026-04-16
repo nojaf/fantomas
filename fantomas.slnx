@@ -1,0 +1,41 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/docs/">
+    <File Path="docs/.README.md" />
+    <File Path="docs/docs/end-users/Configuration.fsx" />
+    <File Path="docs/index.html" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".fantomasignore" />
+    <File Path=".git-blame-ignore-revs" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path=".gitpod.yml" />
+    <File Path="build.fsx" />
+    <File Path="CHANGELOG.md" />
+    <File Path="CODE_OF_CONDUCT.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="LICENSE.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/Fantomas.Benchmarks/Fantomas.Benchmarks.fsproj" />
+  <Project Path="src/Fantomas.Client.Tests/Fantomas.Client.Tests.fsproj" />
+  <Project Path="src/Fantomas.Client/Fantomas.Client.fsproj" />
+  <Project Path="src/Fantomas.Core.Tests/Fantomas.Core.Tests.fsproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="src/Fantomas.Core/Fantomas.Core.fsproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+  </Project>
+  <Project Path="src/Fantomas.FCS/Fantomas.FCS.fsproj" />
+  <Project Path="src/Fantomas.Tests/Fantomas.Tests.fsproj" />
+  <Project Path="src/Fantomas/Fantomas.fsproj" />
+</Solution>
