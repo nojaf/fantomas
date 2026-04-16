@@ -6,6 +6,18 @@
 
 - Chained `?` operator accesses (e.g. `x?a("")?b(t)`) no longer add a space before parenthesised arguments, which previously changed how the next `?member` was parsed. Detected during AST→Oak transformation and represented as a new `Expr.DynamicChain` node so the printer can keep the chain tight; lone `?` calls still respect `SpaceBefore(Upper|Lower)caseInvocation`. [#3159](https://github.com/fsprojects/fantomas/issues/3159)
 
+## [8.0.0-alpha-011] - 2026-04-15
+
+### Fixed
+
+- Unicode strings with combining characters caused incorrect column tracking, leading to wrong indentation decisions. [#2945](https://github.com/fsprojects/fantomas/issues/2945)
+
+## [8.0.0-alpha-010] - 2026-04-15
+
+### Fixed
+
+- Struct constructor with unparenthesized parameter incorrectly renamed, causing a compile error. [#3349](https://github.com/fsprojects/fantomas/issues/3349)
+
 ## [8.0.0-alpha-009] - 2026-04-03
 
 ### Fixed
