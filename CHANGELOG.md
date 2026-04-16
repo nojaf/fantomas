@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Bump `FSharp.Core` to `10.0.100`.
+
 ## [8.0.0-alpha-011] - 2026-04-15
 
 ### Fixed
