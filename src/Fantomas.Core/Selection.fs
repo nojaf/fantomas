@@ -219,6 +219,9 @@ let mkTreeWithSingleNode (node: Node) : TreeForSelection =
     | :? ExprDynamicNode as node ->
         let expr = Expr.Dynamic node
         mkOakFromModuleDecl (ModuleDecl.DeclExpr expr)
+    | :? ExprDynamicChainNode as node ->
+        let expr = Expr.DynamicChain node
+        mkOakFromModuleDecl (ModuleDecl.DeclExpr expr)
     | :? ExprPrefixAppNode as node ->
         let expr = Expr.PrefixApp node
         mkOakFromModuleDecl (ModuleDecl.DeclExpr expr)
