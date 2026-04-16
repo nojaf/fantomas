@@ -21,41 +21,44 @@ let internal collectTriviaFromCodeComments
     (codeRange: range)
     : TriviaNode list =
     codeComments
-    |> List.filter (fun ct -> RangeHelpers.rangeContainsRange codeRange ct.Range)
-    |> List.map (function
-        | CommentTrivia.BlockComment r ->
-            let content = source.GetSubTextFromRange r
-            let startLine = source.GetLineString(r.StartLine - 1)
-            let endLine = source.GetLineString(r.EndLine - 1)
+    |> List.choose (fun ct ->
+        if not (RangeHelpers.rangeContainsRange codeRange ct.Range) then
+            None
+        else
+            match ct with
+            | CommentTrivia.BlockComment r ->
+                let content = source.GetSubTextFromRange r
+                let startLine = source.GetLineString(r.StartLine - 1)
+                let endLine = source.GetLineString(r.EndLine - 1)
 
-            let contentBeforeComment =
-                startLine.Substring(0, r.StartColumn).TrimStart(' ', ';').Length
+                let contentBeforeComment =
+                    startLine.Substring(0, r.StartColumn).TrimStart(' ', ';').Length
 
-            let contentAfterComment = endLine.Substring(r.EndColumn).TrimEnd(' ', ';').Length
+                let contentAfterComment = endLine.Substring(r.EndColumn).TrimEnd(' ', ';').Length
 
-            let content =
-                if contentBeforeComment = 0 && contentAfterComment = 0 then
-                    CommentOnSingleLine content
-                else
-                    BlockComment(content, false, false)
+                let content =
+                    if contentBeforeComment = 0 && contentAfterComment = 0 then
+                        CommentOnSingleLine content
+                    else
+                        BlockComment(content, false, false)
 
-            TriviaNode(content, r)
-        | CommentTrivia.LineComment r ->
-            let content = source.GetSubTextFromRange r
-            let index = r.StartLine - 1
-            let line = source.GetLineString index
+                Some(TriviaNode(content, r))
+            | CommentTrivia.LineComment r ->
+                let content = source.GetSubTextFromRange r
+                let index = r.StartLine - 1
+                let line = source.GetLineString index
 
-            let content =
-                let trimmedLine = line.TrimStart(' ', ';')
+                let content =
+                    let trimmedLine = line.TrimStart(' ', ';')
 
-                if index = 0 && String.startsWithOrdinal "#!" trimmedLine then // shebang
-                    CommentOnSingleLine content
-                else if String.startsWithOrdinal "//" trimmedLine then
-                    CommentOnSingleLine content
-                else
-                    LineCommentAfterSourceCode content
+                    if index = 0 && String.startsWithOrdinal "#!" trimmedLine then // shebang
+                        CommentOnSingleLine content
+                    else if String.startsWithOrdinal "//" trimmedLine then
+                        CommentOnSingleLine content
+                    else
+                        LineCommentAfterSourceCode content
 
-            TriviaNode(content, r))
+                Some(TriviaNode(content, r)))
 
 let internal collectTriviaFromBlankLines
     (config: FormatConfig)
