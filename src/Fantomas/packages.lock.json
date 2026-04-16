@@ -28,7 +28,7 @@
         "type": "Direct",
         "requested": "[10.0.100, )",
         "resolved": "10.0.100",
-        "contentHash": "086+usYoFagObWfl0HhGEOCJumdwYeqWXt7cEi1jUZj0pbUMkAH2IGsJVHTlwpLRyUXvmKxpskso0V3UjYpRQw=="
+        "contentHash": "c/r6T/HE9MWL0O0OispLtaKhVwDsiYQlLS249LoxSo1HNH/wfc0f5DE4pI6WpTXkCEdeXa66K5f9FmKLr/0cmw=="
       },
       "G-Research.FSharp.Analyzers": {
         "type": "Direct",
