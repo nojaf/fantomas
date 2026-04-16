@@ -4,6 +4,7 @@ open NUnit.Framework
 open FsUnit
 open Fantomas.Core
 open FsCheck
+open FsCheck.FSharp
 
 [<Test>]
 let ``when input is empty`` () =
@@ -42,7 +43,7 @@ let ``when predicate returns true until certain index`` () =
 
     let gen =
         gen {
-            let! xs = Arb.generate<int> |> Gen.nonEmptyListOf
+            let! xs = ArbMap.defaults |> ArbMap.generate<int> |> Gen.nonEmptyListOf
             let len = List.length xs
             let! n = Gen.choose (0, len - 1)
 

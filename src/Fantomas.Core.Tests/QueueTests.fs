@@ -4,6 +4,7 @@ open Fantomas.Core
 open NUnit.Framework
 open FsUnit
 open FsCheck
+open FsCheck.FSharp
 
 module Queue =
     let ofLists xss =
