@@ -1698,10 +1698,12 @@ let genExpr (e: Expr) =
                         // right-hand side goes down and the operator stays where it is.
                         let lhsMultiline: bool = futureNlnCheck lhs ctx
 
+                        // Someone who set `stroustrup` asked for a bracket to hug what precedes
+                        // it. That is honoured whether or not the left-hand side is multiline, so
+                        // it outranks the operator taking a line of its own.
                         let hugsUnderStroustrup: bool =
                             ctx.Config.ExperimentalInfixLayout = HybridStroustrup
                             && ctx.Config.MultilineBracketStyle = Stroustrup
-                            && not lhsMultiline
                             && (
                                 match node.RightHandSide with
                                 | Expr.ArrayOrList _

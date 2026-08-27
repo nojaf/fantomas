@@ -44,10 +44,34 @@ dotnet build src/Fantomas/Fantomas.fsproj
 ./scripts/infix-lab.fsx
 ```
 
-It prints a table of every layout against four checks that can be automated: the output parses,
-formatting it again returns the same text, an infix `%` has not silently become a quotation splice,
-and renaming the left-hand side moves nothing. It also counts lines whose indentation is not a
-multiple of the indent size, which is what separates the last two candidates from the rest.
+It prints a table of every layout against four checks that can be automated:
+
+- **invalid**: the output is parsed back, so a layout that emits code the compiler rejects is caught
+  rather than admired.
+- **not idempotent**: the output is formatted a second time and compared. A layout that does not
+  settle is unusable whatever it looks like.
+- **meaning changed**: inside a quotation, an infix `%` at the wrong column is read as a splice. The
+  Oak of the output is checked so that this cannot slip through as merely ugly.
+- **shifted by a rename**: each example carries `LHS` where the name on the left goes, and is
+  formatted twice, with `xs` and with `xsy`. A layout that places the right-hand side relative to
+  that name shifts by exactly that one column.
+
+The two names differ by a single character deliberately. A longer name would push examples over the
+page width, and the reflow that follows would hide the shift being measured. Where even one
+character crosses the width, the example is reported as inconclusive rather than counted either way;
+the same three examples are inconclusive under every layout, which is what a page-width effect looks
+like.
+
+It also counts lines whose indentation is not a multiple of the indent size. A construct placed
+under its own opening token lands wherever that token happens to sit, which is a column nobody chose
+and which moves when anything before it changes width. Two of those survive under the best layouts,
+both a tuple placing its second element under its own opening parenthesis, which every layout does
+because the tuple does it.
+
+One thing the table does not cover: every example is formatted at the default bracket style, so the
+Stroustrup behaviour is not exercised. Under `aligned` it changes nothing, and the two layouts that
+differ only in it come out identical. Those examples were produced by hand with the setting turned
+on and checked the same way, but they are not in the counts.
 
 It writes `infix-lab/SUMMARY.md` with the results in full, and one folder per layout under
 `infix-lab/output/`, so two layouts can be compared directly:
