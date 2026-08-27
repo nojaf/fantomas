@@ -19,18 +19,17 @@ If you point a coding agent at Fantomas, give it [llms.txt](https://fsprojects.g
 
 ## This branch: an experiment in infix layout
 
-This branch is not a change to Fantomas. It is a working note and a test bench for one style
-question, kept together so that the note's claims can be checked rather than taken on trust.
+This branch is not a change to Fantomas. It is the test bench behind a style-guide discussion,
+published so that the claims made there can be checked rather than taken on trust.
 
 **The question.** When an infix expression with `=`, `>`, `<`, `%` or `%%` is too long for one line,
 where does the right-hand side go? Fantomas has answered it three different ways over the years and
 none of them is written down in either F# style guide.
 
-**The note** is [no-break-infix-layout.md](./no-break-infix-layout.md). It sets out what the parser
-rules out, what a good layout has to achieve, ten candidate layouts with the same examples under
-each, and what is proposed. It is meant as material for a conversation at
-[fsharp/fslang-design](https://github.com/fsharp/fslang-design#style-guide), which is where F# style
-is decided.
+**The note** is an issue on [fsharp/fslang-design](https://github.com/fsharp/fslang-design#style-guide),
+which is where F# style is decided. It sets out what the parser rules out, what a good layout has to
+achieve, the candidate layouts with the same examples under each, and what is proposed. This branch
+is what it was written from, so that every sample in it can be reproduced.
 
 **The bench** is `infix-lab/`. Forty examples, each formatted under all ten layouts, twice over with
 two different names on the left so that a layout which places the right-hand side relative to the
@@ -59,17 +58,18 @@ diff -r infix-lab/output/beside_bracket_aware infix-lab/output/hybrid_stroustrup
 
 ### Trying a layout on your own code
 
-Every layout sits behind an experimental setting, defaulting to what Fantomas does today, so nothing
-changes unless you ask for it:
+Every layout sits behind an experimental setting. It defaults to `beside_bracket_aware`, which is
+what Fantomas does today, so that checking out the branch changes nothing. That is the only reason
+it is the default: it is one of the layouts the note rejects, and it is not consistent with itself
+either, since its bracket carve-out reaches lists and arrays and stops there.
 
 ```
 dotnet fsi scripts/format.fsx --editorconfig "fsharp_experimental_infix_layout=hybrid_stroustrup" YourFile.fs
 ```
 
-The accepted values are `beside`, `beside_indented`, `beside_bracket_aware` (the default, and what
-Fantomas does today), `own_line_when_needed`, `own_line_always`, `operator_next_line`,
-`operator_next_line_own`, `operator_next_line_deep`, `hybrid` and `hybrid_stroustrup`. The note
-explains each of them, in that order.
+The accepted values are `beside`, `beside_indented`, `beside_bracket_aware`, `own_line_when_needed`,
+`own_line_always`, `operator_next_line`, `operator_next_line_own`, `operator_next_line_deep`,
+`hybrid` and `hybrid_stroustrup`. The note explains each of them, in that order.
 
 None of this is intended to ship as a setting. It exists so the options can be compared against real
 input before one of them is argued for.
