@@ -95,6 +95,7 @@ let parseSettingValue (defaultValue: obj) (value: string) : obj option =
     | :? MultilineFormatterType -> MultilineFormatterType.OfConfigString value |> Option.map box
     | :? EndOfLineStyle -> EndOfLineStyle.OfConfigString value |> Option.map box
     | :? MultilineBracketStyle -> MultilineBracketStyle.OfConfigString value |> Option.map box
+    | :? ExperimentalInfixLayout -> ExperimentalInfixLayout.OfConfigString value |> Option.map box
     | _ -> None
 
 [<RequireQualifiedAccess>]
@@ -244,6 +245,7 @@ let settingValueToString (value: obj) : string option =
     | :? MultilineFormatterType as mft -> Some(MultilineFormatterType.ToConfigString mft)
     | :? EndOfLineStyle as eols -> Some(EndOfLineStyle.ToConfigString eols)
     | :? MultilineBracketStyle as mbs -> Some(MultilineBracketStyle.ToConfigString mbs)
+    | :? ExperimentalInfixLayout as eil -> Some(ExperimentalInfixLayout.ToConfigString eil)
     | _ -> None
 
 /// Every setting of a configuration, under the name it is written with, in record field order.

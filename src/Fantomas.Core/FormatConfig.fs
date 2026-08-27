@@ -44,6 +44,63 @@ type MultilineBracketStyle =
         | "stroustrup" -> Some Stroustrup
         | _ -> None
 
+/// EXPERIMENTAL. The layout of an infix expression whose operator is one of `=`, `>`, `<`, `%` or
+/// `%%`, when the expression does not fit on one line. Present so that the options can be compared
+/// against real input; see `scripts/infix-lab.fsx`. Not intended to ship.
+[<Struct>]
+type ExperimentalInfixLayout =
+    /// `a = b`, with the right-hand side beside the operator and no indent of its own.
+    | Beside
+    /// The same, with the right-hand side indented one level.
+    | BesideIndented
+    /// The same, except that a right-hand side which opens a bracket is not indented.
+    | BesideBracketAware
+    /// The right-hand side on a line of its own, one level in, when it does not fit beside the
+    /// operator.
+    | OwnLineWhenNeeded
+    /// The right-hand side on a line of its own, one level in, always.
+    | OwnLineAlways
+    /// The operator starts the next line, one level in, with the right-hand side beside it.
+    | OperatorNextLine
+    /// The operator alone on the next line, one level in, with the right-hand side on the line
+    /// after it at the same column.
+    | OperatorNextLineOwn
+    /// The same, with the right-hand side a further level in.
+    | OperatorNextLineDeep
+    /// The operator alone on the next line when both sides are multiline, and the right-hand side
+    /// on a line of its own when it does not fit otherwise.
+    | Hybrid
+    /// `Hybrid`, with one addition: under the Stroustrup bracket style a right-hand side which
+    /// opens a bracket keeps hugging the operator, as long as the left-hand side is one line.
+    | HybridStroustrup
+
+    static member ToConfigString(cfg: ExperimentalInfixLayout) =
+        match cfg with
+        | Beside -> "beside"
+        | BesideIndented -> "beside_indented"
+        | BesideBracketAware -> "beside_bracket_aware"
+        | OwnLineWhenNeeded -> "own_line_when_needed"
+        | OwnLineAlways -> "own_line_always"
+        | OperatorNextLine -> "operator_next_line"
+        | OperatorNextLineOwn -> "operator_next_line_own"
+        | OperatorNextLineDeep -> "operator_next_line_deep"
+        | Hybrid -> "hybrid"
+        | HybridStroustrup -> "hybrid_stroustrup"
+
+    static member OfConfigString(cfgString: string) =
+        match cfgString with
+        | "beside" -> Some Beside
+        | "beside_indented" -> Some BesideIndented
+        | "beside_bracket_aware" -> Some BesideBracketAware
+        | "own_line_when_needed" -> Some OwnLineWhenNeeded
+        | "own_line_always" -> Some OwnLineAlways
+        | "operator_next_line" -> Some OperatorNextLine
+        | "operator_next_line_own" -> Some OperatorNextLineOwn
+        | "operator_next_line_deep" -> Some OperatorNextLineDeep
+        | "hybrid" -> Some Hybrid
+        | "hybrid_stroustrup" -> Some HybridStroustrup
+        | _ -> None
+
 [<RequireQualifiedAccess; Struct>]
 type EndOfLineStyle =
     | LF
@@ -227,6 +284,9 @@ type FormatConfig =
         [<Category("Convention")>]
         [<DisplayName("Applies the Stroustrup style to the final (two) array or list argument(s) in a function application")>]
         ExperimentalElmish: bool
+
+        [<DisplayName("EXPERIMENTAL: layout of a no-break infix expression that does not fit on one line")>]
+        ExperimentalInfixLayout: ExperimentalInfixLayout
     }
 
     member x.IsStroustrupStyle = x.MultilineBracketStyle = Stroustrup
@@ -269,4 +329,5 @@ type FormatConfig =
             KeepMaxNumberOfBlankLines = 100
             NewlineBeforeMultilineComputationExpression = true
             ExperimentalElmish = false
+            ExperimentalInfixLayout = BesideBracketAware
         }

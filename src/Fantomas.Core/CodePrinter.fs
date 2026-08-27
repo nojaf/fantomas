@@ -1646,19 +1646,16 @@ let genExpr (e: Expr) =
         // always use the multiline layout to avoid any change in semantics.
         if isOpenEndedExpression node.LeftHandSide then
             genMultilineInfixExpr node |> genNode node
-        // No-break operators (=, >, <, %) keep the operator on the same line as the LHS.
+        // No-break operators (=, >, <, %, %%) cannot sit at the column of the left-hand side: there
+        // the parser reads `=`, `>` and `<` as the `=` of a binding, and reads `%` and `%%` inside
+        // a quotation as a splice. Every layout below keeps them off that column, and which of them
+        // to prefer is what `ExperimentalInfixLayout` is here to compare. See infix-lab.
         elif isNoBreakInfixOp then
-            // The right-hand side is indented so that a comment between it and the operator lands
-            // below the operator rather than at the column of the left-hand side, and so that the
-            // lines under an application or a chain are not read as a continuation of the
-            // left-hand side. See #2944.
-            // A list or an array that opens on the line of the operator needs neither: the bracket
-            // says where the right-hand side begins and indents its items from the left-hand side
-            // itself, so indenting it again pushes the items and the closing bracket a level too
-            // far. See #3428. Other bracketed right-hand sides have the same problem and are left
-            // alone here on purpose: where a no-break operator should put what follows it is a
-            // wider question than this fix.
-            let genRightHandSide (ctx: Context) : Context =
+            let genRhs: Context -> Context = genRhsExpr node.RightHandSide
+
+            // Indented unless the right-hand side opens a bracket on the operator's line, in which
+            // case the bracket already places its own contents. See #3428.
+            let genBracketAware (ctx: Context) : Context =
                 let opensBracketOnThisLine: bool =
                     (match node.RightHandSide with
                      | Expr.ArrayOrList _ -> true
@@ -1669,15 +1666,59 @@ let genExpr (e: Expr) =
                 (onlyIfNot opensBracketOnThisLine indent
                  +> sepNlnWhenWriteBeforeNewlineNotEmpty
                  +> sepSpace
-                 +> genRhsExpr node.RightHandSide
+                 +> genRhs
                  +> onlyIfNot opensBracketOnThisLine unindent)
                     ctx
 
-            let genLongNoBreakInfixExpr =
-                genExpr node.LeftHandSide
-                +> sepSpace
-                +> genSingleTextNode node.Operator
-                +> genRightHandSide
+            let genLongNoBreakInfixExpr (ctx: Context) : Context =
+                let lhs: Context -> Context = genExpr node.LeftHandSide
+                let op: Context -> Context = genSingleTextNode node.Operator
+                let beside: Context -> Context = lhs +> sepSpace +> op
+
+                let layout: Context -> Context =
+                    match ctx.Config.ExperimentalInfixLayout with
+                    | Beside -> beside +> sepNlnWhenWriteBeforeNewlineNotEmpty +> sepSpace +> genRhs
+                    | BesideIndented ->
+                        beside
+                        +> indent
+                        +> sepNlnWhenWriteBeforeNewlineNotEmpty
+                        +> sepSpace
+                        +> genRhs
+                        +> unindent
+                    | BesideBracketAware -> beside +> genBracketAware
+                    | OwnLineWhenNeeded -> beside +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth genRhs
+                    | OwnLineAlways -> beside +> indentSepNlnUnindent genRhs
+                    | OperatorNextLine -> lhs +> indent +> sepNln +> op +> sepSpace +> genRhs +> unindent
+                    | OperatorNextLineOwn -> lhs +> indent +> sepNln +> op +> sepNln +> genRhs +> unindent
+                    | OperatorNextLineDeep -> lhs +> indent +> sepNln +> op +> indentSepNlnUnindent genRhs +> unindent
+                    | Hybrid
+                    | HybridStroustrup ->
+                        // When both sides are multiline the operator has no good line to sit at
+                        // the end of, so it takes one of its own between them. Otherwise the
+                        // right-hand side goes down and the operator stays where it is.
+                        let lhsMultiline: bool = futureNlnCheck lhs ctx
+
+                        let hugsUnderStroustrup: bool =
+                            ctx.Config.ExperimentalInfixLayout = HybridStroustrup
+                            && ctx.Config.MultilineBracketStyle = Stroustrup
+                            && not lhsMultiline
+                            && (
+                                match node.RightHandSide with
+                                | Expr.ArrayOrList _
+                                | Expr.Record _
+                                | Expr.AnonStructRecord _
+                                | Expr.NamedComputation _ -> true
+                                | _ -> false
+                            )
+
+                        if hugsUnderStroustrup then
+                            beside +> genBracketAware
+                        elif lhsMultiline && futureNlnCheck genRhs ctx then
+                            lhs +> indent +> sepNln +> op +> sepNln +> genRhs +> unindent
+                        else
+                            beside +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth genRhs
+
+                layout ctx
 
             fun ctx ->
                 genNode
