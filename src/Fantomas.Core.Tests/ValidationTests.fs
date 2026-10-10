@@ -423,15 +423,15 @@ let ``UnionCase.name falls back to the type name for something that is not a uni
     Fantomas.Core.UnionCase.name 42 |> should equal "Int32"
 
 // Trivia the parser recorded and assignment found no node for is caught on the Oak, before
-// printing. A comment right after `when`, with the guard on the next line, is one: the tree gives
-// `when` no range. The day Fantomas keeps it, this needs another sample.
+// printing. A block comment between `open` and the module name is one: the Oak node of an `open`
+// has no children, so nothing inside it can take the comment. The day Fantomas keeps it, this needs
+// another sample.
 
 [<Test>]
 let ``a comment trivia assignment drops is caught on the Oak`` () =
     let failure: exn option =
         try
-            formatSourceString "match x with\n| _\n    when // c\n        a -> b\n" FormatConfig.Default
-            |> ignore
+            formatSourceString "open (* c *) System\n" FormatConfig.Default |> ignore
 
             None
         with error ->
@@ -444,4 +444,4 @@ let ``a comment trivia assignment drops is caught on the Oak`` () =
     error.Message
     |> should haveSubstring "Trivia the parser recorded is attached to no node of the Oak"
 
-    error.Message |> should haveSubstring "// c"
+    error.Message |> should haveSubstring "(* c *)"
