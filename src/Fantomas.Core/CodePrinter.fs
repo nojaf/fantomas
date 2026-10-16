@@ -3712,7 +3712,50 @@ let genNamePatPair (node: NamePatPairNode) =
     +> genPat node.Pattern
     |> genNode node
 
-let genPat (p: Pattern) =
+let genPat (p: Pattern) (ctx: Context) : Context =
+    if ctx.Config.ExperimentalBetterPatterns then
+        genPatBetter p ctx
+    else
+        genPatLegacy p ctx
+
+/// How `fsharp_experimental_better_patterns` lays out a pattern. What it does not cover yet is left
+/// to `genPatLegacy`.
+let genPatBetter (p: Pattern) : Context -> Context =
+    match p with
+    | Pattern.NamePatPairs node ->
+        let short: Context -> Context =
+            col sepSemi node.Pairs genNamePatPair +> genSingleTextNode node.ClosingParen
+
+        // One field per line, one indent level in, then the closer on a line of its own. As in an
+        // expression, the closer goes back to the column the line of the opening parenthesis starts on,
+        // but a new line cannot start left of `AtColumn`. In a clause that is the column of the pattern,
+        // right of the bar: the parser takes a token on the column of the bar as the end of the clause,
+        // see `genPatInClause`.
+        let long (ctx: Context) : Context =
+            let lineStart: int = ctx.WriterModel.Indent
+            let atColumn: int = ctx.WriterModel.AtColumn
+            let indentSize: int = ctx.Config.IndentSize
+
+            // The first whole indent level from the line start that is not left of `AtColumn`.
+            let fieldColumn: int =
+                if lineStart + indentSize >= atColumn then
+                    lineStart + indentSize
+                else
+                    lineStart + (atColumn - lineStart + indentSize - 1) / indentSize * indentSize
+
+            (atIndentLevel true fieldColumn (sepNln +> col sepNln node.Pairs genNamePatPair)
+             +> atIndentLevel true (max lineStart atColumn) (sepNln +> genSingleTextNode node.ClosingParen))
+                ctx
+
+        genIdentListNode node.Identifier
+        +> optSingle genTyparDecls node.TyparDecls
+        +> addSpaceBeforeParenInPattern node.Identifier
+        +> genSingleTextNode node.OpeningParen
+        +> expressionFitsOnRestOfLine short long
+        |> genNode node
+    | _ -> genPatLegacy p
+
+let genPatLegacy (p: Pattern) : Context -> Context =
     match p with
     | Pattern.OptionalVal n -> genSingleTextNode n
     | Pattern.Or node -> genPatLeftMiddleRight node
@@ -3863,7 +3906,10 @@ let genPatInClause (pat: Pattern) =
                 | Choice1Of2 barNode -> genSingleTextNode barNode +> sepSpace
                 | Choice2Of2 _ -> sepBar
 
-            genPatMultiline p.LeftHandSide +> sepNln +> genBar +> genPat p.RightHandSide
+            genPatMultiline p.LeftHandSide
+            +> sepNln
+            +> genBar
+            +> genPatMultiline p.RightHandSide
 
         | Pattern.As p ->
             let genAs =
@@ -3877,6 +3923,9 @@ let genPatInClause (pat: Pattern) =
             +> sepSpace
             +> genPat p.RightHandSide
 
+        // The column of an alternative, after its `| `, is where its lines may start. With
+        // `fsharp_experimental_better_patterns` this keeps a closing bracket off the column of the bar,
+        // where it would end the clause.
         | p -> atCurrentColumn (genPat p)
 
     genPatMultiline pat
