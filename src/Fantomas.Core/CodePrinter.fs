@@ -3727,11 +3727,20 @@ let genPatParenLongBetter (content: Context -> Context) (closingParen: SingleTex
 let genPatBetter (p: Pattern) : Context -> Context =
     match p with
     | Pattern.NamePatPairs node ->
+        // A pattern that does not fit behind the `=` goes on the next line, one indent level in, as the
+        // value of a named argument does. A record pattern cannot do this, so it keeps `genNamePatPair`.
+        let genPair (pair: NamePatPairNode) : Context -> Context =
+            genIdentListNode pair.FieldName
+            +> sepSpace
+            +> genSingleTextNode pair.Equals
+            +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth (genPat pair.Pattern)
+            |> genNode pair
+
         let short: Context -> Context =
-            col sepSemi node.Pairs genNamePatPair +> genSingleTextNode node.ClosingParen
+            col sepSemi node.Pairs genPair +> genSingleTextNode node.ClosingParen
 
         let long: Context -> Context =
-            genPatParenLongBetter (col sepNln node.Pairs genNamePatPair) node.ClosingParen
+            genPatParenLongBetter (col sepNln node.Pairs genPair) node.ClosingParen
 
         genIdentListNode node.Identifier
         +> optSingle genTyparDecls node.TyparDecls
