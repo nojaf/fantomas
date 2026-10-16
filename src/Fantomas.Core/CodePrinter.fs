@@ -2950,7 +2950,48 @@ let genClauses (clauses: MatchClauseNode list) =
             genClause isLastItem clause
         )
 
-let genClause (isLastItem: bool) (node: MatchClauseNode) =
+let genClause (isLastItem: bool) (node: MatchClauseNode) (ctx: Context) : Context =
+    if ctx.Config.ExperimentalBetterPatterns then
+        genClauseBetter isLastItem node ctx
+    else
+        genClauseLegacy isLastItem node ctx
+
+/// How `fsharp_experimental_better_patterns` lays out a clause. What it does not cover yet is left to
+/// `genClauseLegacy`.
+let genClauseBetter (isLastItem: bool) (node: MatchClauseNode) (ctx: Context) : Context =
+    let isCovered: bool =
+        node.WhenExpr.IsNone
+        && not node.Pattern.IsOr
+        && not node.Arrow.HasContentBefore
+        && not (isStroustrupStyleExpr ctx.Config node.BodyExpr)
+        && not (ctx.Config.ExperimentalKeepIndentInBranch && isLastItem)
+
+    if not isCovered then
+        genClauseLegacy isLastItem node ctx
+    else
+
+    let genBar: Context -> Context =
+        match node.Bar with
+        | None -> sepBar
+        | Some barNode -> genSingleTextNodeWithSpaceSuffix sepSpace barNode
+
+    (genBar
+     +> leadingExpressionIsMultiline
+         (genPatInClause node.Pattern)
+         (fun patternIsMultiline ->
+             sepSpace
+             +> genSingleTextNodeWithSpaceSuffix sepSpace node.Arrow
+             // After a multiline pattern the body goes on a line of its own, however short it is, as it
+             // does after the multiline signature of a binding.
+             +> ifElse
+                 patternIsMultiline
+                 (indentSepNlnUnindent (genExpr node.BodyExpr))
+                 (autoIndentAndNlnIfExpressionExceedsPageWidth (genExpr node.BodyExpr))
+         )
+     |> genNode node)
+        ctx
+
+let genClauseLegacy (isLastItem: bool) (node: MatchClauseNode) : Context -> Context =
     let genBar =
         match node.Bar with
         | Some barNode -> genSingleTextNodeWithSpaceSuffix sepSpace barNode

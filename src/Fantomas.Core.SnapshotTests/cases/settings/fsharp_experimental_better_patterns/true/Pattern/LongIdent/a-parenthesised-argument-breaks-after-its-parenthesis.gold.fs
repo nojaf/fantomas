@@ -5,7 +5,8 @@ match ast with
         isScript = isScript
         fileName = fileName
     )
-  ) -> body
+  ) ->
+    body
 | Some(
     Some(
         ParsedImplFileInput(
@@ -14,10 +15,12 @@ match ast with
             fileName = fileName
         )
     )
-  ) -> body
+  ) ->
+    body
 | (ParsedImplFileInput(
     modules = modules
     isScript = isScript
     fileName = fileName
-  )) -> body
+  )) ->
+    body
 | _ -> ()
