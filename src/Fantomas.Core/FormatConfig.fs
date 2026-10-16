@@ -227,6 +227,11 @@ type FormatConfig =
         [<Category("Convention")>]
         [<DisplayName("Applies the Stroustrup style to the final (two) array or list argument(s) in a function application")>]
         ExperimentalElmish: bool
+
+        [<Category("Convention")>]
+        [<DisplayName("Format multiline patterns the way expressions are formatted")>]
+        [<Description("Experimental feature, use at your own risk.")>]
+        ExperimentalBetterPatterns: bool
     }
 
     member x.IsStroustrupStyle = x.MultilineBracketStyle = Stroustrup
@@ -269,4 +274,5 @@ type FormatConfig =
             KeepMaxNumberOfBlankLines = 100
             NewlineBeforeMultilineComputationExpression = true
             ExperimentalElmish = false
+            ExperimentalBetterPatterns = false
         }

@@ -1146,6 +1146,34 @@ fsharp_experimental_elmish = true
 (*** include-output ***)
 
 (**
+<fantomas-setting orange></fantomas-setting>
+### fsharp_experimental_better_patterns
+<copy-to-clipboard text="fsharp_experimental_better_patterns = true"></copy-to-clipboard>
+
+Formats a pattern that does not fit on one line the way an expression is formatted, instead of
+aligning it to a column that depends on a name.
+
+*This feature is experimental and is subject to change. It is meant to become the default, after which the setting goes away.*
+*)
+
+(*** hide ***)
+printfn
+    $"# Default\n{toEditorConfigName (nameof FormatConfig.Default.ExperimentalBetterPatterns)} = {FormatConfig.Default.ExperimentalBetterPatterns.ToString().ToLower()}"
+(*** include-output ***)
+
+formatCode
+    """
+match x with
+| SynExpr.ObjExpr(objType = objType; argOptions = argOptions; extraImpls = extraImpls123456780) -> body
+| _ -> ()
+    """
+    """
+fsharp_experimental_better_patterns = true
+max_line_length = 60
+    """
+(*** include-output ***)
+
+(**
 <fantomas-nav source="{{fsdocs-source-filename}}" previous="{{fsdocs-previous-page-link}}" next="{{fsdocs-next-page-link}}"></fantomas-nav>
 
 *)
