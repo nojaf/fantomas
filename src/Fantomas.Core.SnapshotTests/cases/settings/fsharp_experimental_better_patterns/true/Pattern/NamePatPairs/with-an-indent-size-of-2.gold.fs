@@ -7,5 +7,6 @@ match e with
         extra = extra
       )
     argExpr = argExpr
-  ) -> body
+  ) ->
+  body
 | _ -> ()

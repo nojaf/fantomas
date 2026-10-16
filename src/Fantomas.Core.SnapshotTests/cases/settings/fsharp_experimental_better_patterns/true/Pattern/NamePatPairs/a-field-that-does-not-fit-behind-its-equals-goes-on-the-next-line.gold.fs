@@ -4,7 +4,8 @@ match e with
     funcExpr =
         SynExpr.LongIdent(longDotId = longDotIdentifier1)
     argExpr = argExpr
-  ) -> body
+  ) ->
+    body
 | SynExpr.App(
     isInfix = true
     funcExpr =
@@ -13,5 +14,6 @@ match e with
             extra = extra
         )
     argExpr = argExpr
-  ) -> body
+  ) ->
+    body
 | _ -> ()
