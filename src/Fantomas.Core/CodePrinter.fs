@@ -3718,6 +3718,10 @@ let genPat (p: Pattern) (ctx: Context) : Context =
     else
         genPatLegacy p ctx
 
+/// The content one indent level in, then the closing parenthesis on a line of its own.
+let genPatParenLongBetter (content: Context -> Context) (closingParen: SingleTextNode) : Context -> Context =
+    indentSepNlnUnindent content +> sepNln +> genSingleTextNode closingParen
+
 /// How `fsharp_experimental_better_patterns` lays out a pattern. What it does not cover yet is left
 /// to `genPatLegacy`.
 let genPatBetter (p: Pattern) : Context -> Context =
@@ -3726,26 +3730,8 @@ let genPatBetter (p: Pattern) : Context -> Context =
         let short: Context -> Context =
             col sepSemi node.Pairs genNamePatPair +> genSingleTextNode node.ClosingParen
 
-        // One field per line, one indent level in, then the closer on a line of its own. As in an
-        // expression, the closer goes back to the column the line of the opening parenthesis starts on,
-        // but a new line cannot start left of `AtColumn`. In a clause that is the column of the pattern,
-        // right of the bar: the parser takes a token on the column of the bar as the end of the clause,
-        // see `genPatInClause`.
-        let long (ctx: Context) : Context =
-            let lineStart: int = ctx.WriterModel.Indent
-            let atColumn: int = ctx.WriterModel.AtColumn
-            let indentSize: int = ctx.Config.IndentSize
-
-            // The first whole indent level from the line start that is not left of `AtColumn`.
-            let fieldColumn: int =
-                if lineStart + indentSize >= atColumn then
-                    lineStart + indentSize
-                else
-                    lineStart + (atColumn - lineStart + indentSize - 1) / indentSize * indentSize
-
-            (atIndentLevel true fieldColumn (sepNln +> col sepNln node.Pairs genNamePatPair)
-             +> atIndentLevel true (max lineStart atColumn) (sepNln +> genSingleTextNode node.ClosingParen))
-                ctx
+        let long: Context -> Context =
+            genPatParenLongBetter (col sepNln node.Pairs genNamePatPair) node.ClosingParen
 
         genIdentListNode node.Identifier
         +> optSingle genTyparDecls node.TyparDecls
@@ -3753,6 +3739,27 @@ let genPatBetter (p: Pattern) : Context -> Context =
         +> genSingleTextNode node.OpeningParen
         +> expressionFitsOnRestOfLine short long
         |> genNode node
+    // A single argument in parentheses, `Some(…)`, breaks after the opening parenthesis, as the
+    // argument of an application does. A pattern in parentheses on its own, `(…)`, keeps hugging them,
+    // as an expression in parentheses does. A tuple in parentheses is not covered yet.
+    | Pattern.LongIdent node ->
+        match node.Parameters with
+        | [ Pattern.Paren parenNode ] when not parenNode.Pattern.IsTuple ->
+            let short: Context -> Context =
+                genPat parenNode.Pattern +> genSingleTextNode parenNode.ClosingParen
+
+            let long: Context -> Context =
+                genPatParenLongBetter (genPat parenNode.Pattern) parenNode.ClosingParen
+
+            genAccessOpt node.Accessibility
+            +> genIdentListNode node.Identifier
+            +> optSingle genTyparDecls node.TyparDecls
+            +> addSpaceBeforeParenInPattern node.Identifier
+            +> (genSingleTextNode parenNode.OpeningParen
+                +> expressionFitsOnRestOfLine short long
+                |> genNode parenNode)
+            |> genNode node
+        | _ -> genPatLegacy p
     | _ -> genPatLegacy p
 
 let genPatLegacy (p: Pattern) : Context -> Context =
