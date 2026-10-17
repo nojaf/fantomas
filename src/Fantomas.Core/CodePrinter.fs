@@ -3814,8 +3814,9 @@ let genPatNamePatPairsBetter
     |> genNode node
 
 /// A single argument in parentheses, `Some(…)`, breaks after the opening parenthesis, as the argument
-/// of an application does. A tuple in parentheses is not covered yet. When the argument goes on a line
-/// of its own, `indentArgument` wraps it, and `beforeClosing` is written before the closing parenthesis.
+/// of an application does. A tuple in parentheses then puts one item per line, as the arguments of a
+/// method call do. When the argument goes on a line of its own, `indentArgument` wraps it, and
+/// `beforeClosing` is written before the closing parenthesis.
 let genPatLongIdentBetter
     (indentArgument: (Context -> Context) -> Context -> Context)
     (beforeClosing: Context -> Context)
@@ -3823,12 +3824,27 @@ let genPatLongIdentBetter
     : Context -> Context
     =
     match node.Parameters with
-    | [ Pattern.Paren parenNode ] when not parenNode.Pattern.IsTuple ->
+    | [ Pattern.Paren parenNode ] ->
+        let genArgument (sepAfterComma: Context -> Context) : Context -> Context =
+            match parenNode.Pattern with
+            | Pattern.Tuple tupleNode ->
+                col
+                    sepNone
+                    tupleNode.Items
+                    (fun (item: Choice<Pattern, SingleTextNode>) ->
+                        match item with
+                        | Choice1Of2 p -> genPat p
+                        | Choice2Of2 comma -> genSingleTextNode comma +> sepAfterComma
+                    )
+                |> genNode tupleNode
+            | p -> genPat p
+
         let short: Context -> Context =
-            genPat parenNode.Pattern +> genSingleTextNode parenNode.ClosingParen
+            genArgument addSpaceIfSpaceAfterComma
+            +> genSingleTextNode parenNode.ClosingParen
 
         let long: Context -> Context =
-            indentArgument (indentSepNlnUnindent (genPat parenNode.Pattern))
+            indentArgument (indentSepNlnUnindent (genArgument sepNln))
             +> sepNln
             +> beforeClosing
             +> genSingleTextNode parenNode.ClosingParen
