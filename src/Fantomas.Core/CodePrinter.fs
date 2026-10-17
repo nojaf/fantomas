@@ -2961,7 +2961,6 @@ let genClause (isLastItem: bool) (node: MatchClauseNode) (ctx: Context) : Contex
 let genClauseBetter (isLastItem: bool) (node: MatchClauseNode) (ctx: Context) : Context =
     let isCovered: bool =
         node.WhenExpr.IsNone
-        && not node.Pattern.IsOr
         && not node.Arrow.HasContentBefore
         && not (isStroustrupStyleExpr ctx.Config node.BodyExpr)
         && not (ctx.Config.ExperimentalKeepIndentInBranch && isLastItem)
@@ -3759,58 +3758,84 @@ let genPat (p: Pattern) (ctx: Context) : Context =
     else
         genPatLegacy p ctx
 
-/// The content one indent level in, then the closing parenthesis on a line of its own.
-let genPatParenLongBetter (content: Context -> Context) (closingParen: SingleTextNode) : Context -> Context =
-    indentSepNlnUnindent content +> sepNln +> genSingleTextNode closingParen
-
 /// How `fsharp_experimental_better_patterns` lays out a pattern. What it does not cover yet is left
 /// to `genPatLegacy`.
 let genPatBetter (p: Pattern) : Context -> Context =
     match p with
-    | Pattern.NamePatPairs node ->
-        // A pattern that does not fit behind the `=` goes on the next line, one indent level in, as the
-        // value of a named argument does. A record pattern cannot do this, so it keeps `genNamePatPair`.
-        let genPair (pair: NamePatPairNode) : Context -> Context =
-            genIdentListNode pair.FieldName
-            +> sepSpace
-            +> genSingleTextNode pair.Equals
-            +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth (genPat pair.Pattern)
-            |> genNode pair
+    | Pattern.NamePatPairs node -> genPatNamePatPairsBetter id id node
+    | Pattern.LongIdent node -> genPatLongIdentBetter id id node
+    // A pattern in parentheses on its own hugs them, so its closing parenthesis follows the one of the
+    // pattern inside, on the same line.
+    | Pattern.Paren node ->
+        genSingleTextNode node.OpeningParen
+        +> genPatBetter node.Pattern
+        +> genSingleTextNode node.ClosingParen
+        |> genNode node
+    | Pattern.ListCons node -> !-"todo 2.6" |> genNode node
+    | _ -> genPatLegacy p
 
+/// A pattern that does not fit behind the `=` of its field goes on the next line, one indent level in,
+/// as the value of a named argument does. A record pattern cannot do this, so it keeps `genNamePatPair`.
+/// When the fields go on lines of their own, `indentFields` wraps them, and `beforeClosing` is written
+/// before the closing parenthesis.
+let genPatNamePatPairsBetter
+    (indentFields: (Context -> Context) -> Context -> Context)
+    (beforeClosing: Context -> Context)
+    (node: PatNamePatPairsNode)
+    : Context -> Context
+    =
+    let genPair (pair: NamePatPairNode) : Context -> Context =
+        genIdentListNode pair.FieldName
+        +> sepSpace
+        +> genSingleTextNode pair.Equals
+        +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth (genPat pair.Pattern)
+        |> genNode pair
+
+    let short: Context -> Context =
+        col sepSemi node.Pairs genPair +> genSingleTextNode node.ClosingParen
+
+    let long: Context -> Context =
+        indentFields (indentSepNlnUnindent (col sepNln node.Pairs genPair))
+        +> sepNln
+        +> beforeClosing
+        +> genSingleTextNode node.ClosingParen
+
+    genIdentListNode node.Identifier
+    +> optSingle genTyparDecls node.TyparDecls
+    +> addSpaceBeforeParenInPattern node.Identifier
+    +> genSingleTextNode node.OpeningParen
+    +> expressionFitsOnRestOfLine short long
+    |> genNode node
+
+/// A single argument in parentheses, `Some(…)`, breaks after the opening parenthesis, as the argument
+/// of an application does. A tuple in parentheses is not covered yet. When the argument goes on a line
+/// of its own, `indentArgument` wraps it, and `beforeClosing` is written before the closing parenthesis.
+let genPatLongIdentBetter
+    (indentArgument: (Context -> Context) -> Context -> Context)
+    (beforeClosing: Context -> Context)
+    (node: PatLongIdentNode)
+    : Context -> Context
+    =
+    match node.Parameters with
+    | [ Pattern.Paren parenNode ] when not parenNode.Pattern.IsTuple ->
         let short: Context -> Context =
-            col sepSemi node.Pairs genPair +> genSingleTextNode node.ClosingParen
+            genPat parenNode.Pattern +> genSingleTextNode parenNode.ClosingParen
 
         let long: Context -> Context =
-            genPatParenLongBetter (col sepNln node.Pairs genPair) node.ClosingParen
+            indentArgument (indentSepNlnUnindent (genPat parenNode.Pattern))
+            +> sepNln
+            +> beforeClosing
+            +> genSingleTextNode parenNode.ClosingParen
 
-        genIdentListNode node.Identifier
+        genAccessOpt node.Accessibility
+        +> genIdentListNode node.Identifier
         +> optSingle genTyparDecls node.TyparDecls
         +> addSpaceBeforeParenInPattern node.Identifier
-        +> genSingleTextNode node.OpeningParen
-        +> expressionFitsOnRestOfLine short long
+        +> (genSingleTextNode parenNode.OpeningParen
+            +> expressionFitsOnRestOfLine short long
+            |> genNode parenNode)
         |> genNode node
-    // A single argument in parentheses, `Some(…)`, breaks after the opening parenthesis, as the
-    // argument of an application does. A pattern in parentheses on its own, `(…)`, keeps hugging them,
-    // as an expression in parentheses does. A tuple in parentheses is not covered yet.
-    | Pattern.LongIdent node ->
-        match node.Parameters with
-        | [ Pattern.Paren parenNode ] when not parenNode.Pattern.IsTuple ->
-            let short: Context -> Context =
-                genPat parenNode.Pattern +> genSingleTextNode parenNode.ClosingParen
-
-            let long: Context -> Context =
-                genPatParenLongBetter (genPat parenNode.Pattern) parenNode.ClosingParen
-
-            genAccessOpt node.Accessibility
-            +> genIdentListNode node.Identifier
-            +> optSingle genTyparDecls node.TyparDecls
-            +> addSpaceBeforeParenInPattern node.Identifier
-            +> (genSingleTextNode parenNode.OpeningParen
-                +> expressionFitsOnRestOfLine short long
-                |> genNode parenNode)
-            |> genNode node
-        | _ -> genPatLegacy p
-    | _ -> genPatLegacy p
+    | _ -> genPatLegacy (Pattern.LongIdent node)
 
 let genPatLegacy (p: Pattern) : Context -> Context =
     match p with
@@ -3954,11 +3979,11 @@ let genPatLegacy (p: Pattern) : Context -> Context =
     | Pattern.IsInst node -> genSingleTextNode node.Token +> sepSpace +> genType node.Type |> genNode node
     | Pattern.QuoteExpr node -> genQuoteExpr node
 
-let genPatInClause (pat: Pattern) =
-    let rec genPatMultiline p =
+let genPatInClause (pat: Pattern) : Context -> Context =
+    let rec genPatMultiline (p: Pattern) : Context -> Context =
         match p with
         | Pattern.Or p ->
-            let genBar =
+            let genBar: Context -> Context =
                 match p.Middle with
                 | Choice1Of2 barNode -> genSingleTextNode barNode +> sepSpace
                 | Choice2Of2 _ -> sepBar
@@ -3969,7 +3994,7 @@ let genPatInClause (pat: Pattern) =
             +> genPatMultiline p.RightHandSide
 
         | Pattern.As p ->
-            let genAs =
+            let genAs: Context -> Context =
                 match p.Middle with
                 | Choice1Of2 asNode -> genSingleTextNode asNode
                 | Choice2Of2 _ -> !-"as"
@@ -3980,10 +4005,25 @@ let genPatInClause (pat: Pattern) =
             +> sepSpace
             +> genPat p.RightHandSide
 
-        // The column of an alternative, after its `| `, is where its lines may start. With
-        // `fsharp_experimental_better_patterns` this keeps a closing bracket off the column of the bar,
-        // where it would end the clause.
-        | p -> atCurrentColumn (genPat p)
+        | p ->
+            fun ctx ->
+                if not ctx.Config.ExperimentalBetterPatterns then
+                    atCurrentColumn (genPat p) ctx
+                else
+                // An alternative starts two columns right of the bar, after `| `. A closing parenthesis goes
+                // back there, because on the column of the bar it would end the clause.
+                // With an indent of 2, one level in from the bar is where the closer goes. What is inside
+                // the parentheses goes a level further, so it stands right of its closer.
+                let indentContent: (Context -> Context) -> Context -> Context =
+                    if ctx.Config.IndentSize = 2 then
+                        fun (content: Context -> Context) -> indent +> content +> unindent
+                    else
+                        id
+
+                match p with
+                | Pattern.NamePatPairs node -> genPatNamePatPairsBetter indentContent !-"  " node ctx
+                | Pattern.LongIdent node -> genPatLongIdentBetter indentContent !-"  " node ctx
+                | _ -> genPatBetter p ctx
 
     genPatMultiline pat
 

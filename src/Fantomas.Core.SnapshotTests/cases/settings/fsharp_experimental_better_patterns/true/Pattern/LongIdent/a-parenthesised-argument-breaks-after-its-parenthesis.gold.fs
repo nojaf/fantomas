@@ -21,6 +21,6 @@ match ast with
     modules = modules
     isScript = isScript
     fileName = fileName
-  )) ->
+)) ->
     body
 | _ -> ()

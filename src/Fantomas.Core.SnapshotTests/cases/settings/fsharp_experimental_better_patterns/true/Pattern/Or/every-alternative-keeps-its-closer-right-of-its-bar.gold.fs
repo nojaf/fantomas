@@ -6,5 +6,6 @@ match x with
 | OtherCase(
     firstArgumentPattern = a
     secondArgumentPattern = b
-  ) -> body
+  ) ->
+    body
 | _ -> ()
