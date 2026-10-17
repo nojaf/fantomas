@@ -2978,14 +2978,20 @@ let genClauseBetter (isLastItem: bool) (node: MatchClauseNode) (ctx: Context) : 
      +> leadingExpressionIsMultiline
          (genPatInClause node.Pattern)
          (fun patternIsMultiline ->
-             sepSpace
-             +> genSingleTextNodeWithSpaceSuffix sepSpace node.Arrow
+             if not patternIsMultiline then
+                 sepSpace
+                 +> genSingleTextNodeWithSpaceSuffix sepSpace node.Arrow
+                 +> autoIndentAndNlnIfExpressionExceedsPageWidth (genExpr node.BodyExpr)
              // After a multiline pattern the body goes on a line of its own, however short it is, as it
-             // does after the multiline signature of a binding.
-             +> ifElse
-                 patternIsMultiline
-                 (indentSepNlnUnindent (genExpr node.BodyExpr))
-                 (autoIndentAndNlnIfExpressionExceedsPageWidth (genExpr node.BodyExpr))
+             // does after the multiline signature of a binding. The arrow follows the `=` of that binding:
+             // with `fsharp_align_function_signature_to_indentation` it gets a line of its own, on the
+             // column of the body.
+             elif ctx.Config.AlignFunctionSignatureToIndentation then
+                 indentSepNlnUnindent (genSingleTextNode node.Arrow +> sepNln +> genExpr node.BodyExpr)
+             else
+                 sepSpace
+                 +> genSingleTextNodeWithSpaceSuffix sepSpace node.Arrow
+                 +> indentSepNlnUnindent (genExpr node.BodyExpr)
          )
      |> genNode node)
         ctx
