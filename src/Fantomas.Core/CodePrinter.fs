@@ -3815,8 +3815,8 @@ let genPatNamePatPairsBetter
 
 /// A single argument in parentheses, `Some(…)`, breaks after the opening parenthesis, as the argument
 /// of an application does. A tuple in parentheses then puts one item per line, as the arguments of a
-/// method call do. When the argument goes on a line of its own, `indentArgument` wraps it, and
-/// `beforeClosing` is written before the closing parenthesis.
+/// method call do. Curried arguments go on lines of their own. When the arguments go on lines of their
+/// own, `indentArgument` wraps them, and `beforeClosing` is written before a closing parenthesis.
 let genPatLongIdentBetter
     (indentArgument: (Context -> Context) -> Context -> Context)
     (beforeClosing: Context -> Context)
@@ -3824,6 +3824,8 @@ let genPatLongIdentBetter
     : Context -> Context
     =
     match node.Parameters with
+    | []
+    | [ Pattern.Unit _ ] -> genPatLegacy (Pattern.LongIdent node)
     | [ Pattern.Paren parenNode ] ->
         let genArgument (sepAfterComma: Context -> Context) : Context -> Context =
             match parenNode.Pattern with
@@ -3857,7 +3859,19 @@ let genPatLongIdentBetter
             +> expressionFitsOnRestOfLine short long
             |> genNode parenNode)
         |> genNode node
-    | _ -> genPatLegacy (Pattern.LongIdent node)
+    // Curried arguments that do not fit go on lines of their own, one indent level in, as the arguments
+    // of an application do.
+    | parameters ->
+        let short: Context -> Context = sepSpace +> col sepSpace parameters genPat
+
+        let long: Context -> Context =
+            indentArgument (indentSepNlnUnindent (col sepNln parameters genPat))
+
+        genAccessOpt node.Accessibility
+        +> genIdentListNode node.Identifier
+        +> optSingle genTyparDecls node.TyparDecls
+        +> expressionFitsOnRestOfLine short long
+        |> genNode node
 
 let genPatLegacy (p: Pattern) : Context -> Context =
     match p with
@@ -4029,25 +4043,50 @@ let genPatInClause (pat: Pattern) : Context -> Context =
 
         | p ->
             fun ctx ->
-                if not ctx.Config.ExperimentalBetterPatterns then
-                    atCurrentColumn (genPat p) ctx
+                if ctx.Config.ExperimentalBetterPatterns then
+                    genPatInClauseBetter p ctx
                 else
-                // An alternative starts two columns right of the bar, after `| `. A closing parenthesis goes
-                // back there, because on the column of the bar it would end the clause.
-                // With an indent of 2, one level in from the bar is where the closer goes. What is inside
-                // the parentheses goes a level further, so it stands right of its closer.
-                let indentContent: (Context -> Context) -> Context -> Context =
-                    if ctx.Config.IndentSize = 2 then
-                        fun (content: Context -> Context) -> indent +> content +> unindent
-                    else
-                        id
-
-                match p with
-                | Pattern.NamePatPairs node -> genPatNamePatPairsBetter indentContent !-"  " node ctx
-                | Pattern.LongIdent node -> genPatLongIdentBetter indentContent !-"  " node ctx
-                | _ -> genPatBetter p ctx
+                    atCurrentColumn (genPat p) ctx
 
     genPatMultiline pat
+
+/// How `fsharp_experimental_better_patterns` lays out a pattern after the bar of a clause, or after the bar
+/// of one of its alternatives.
+let genPatInClauseBetter (p: Pattern) (ctx: Context) : Context =
+    // A pattern starts two columns right of the bar, after `| `. A closing parenthesis goes back there,
+    // because on the column of the bar it would end the clause.
+    // With an indent of 2, one level in from the bar is where the closer goes. What is inside the
+    // parentheses goes a level further, so it stands right of its closer.
+    let indentContent: (Context -> Context) -> Context -> Context =
+        if ctx.Config.IndentSize = 2 then
+            fun (content: Context -> Context) -> indent +> content +> unindent
+        else
+            id
+
+    let genPatAfterBar (p: Pattern) : Context -> Context =
+        match p with
+        | Pattern.NamePatPairs node -> genPatNamePatPairsBetter indentContent !-"  " node
+        | Pattern.LongIdent node -> genPatLongIdentBetter indentContent !-"  " node
+        | _ -> genPatBetter p
+
+    match p with
+    | Pattern.Tuple node ->
+        // A tuple that does not fit puts one item per line, each where the first one starts, after `| `,
+        // and each laid out as a pattern there.
+        let genItems (sepAfterComma: Context -> Context) : Context -> Context =
+            col
+                sepNone
+                node.Items
+                (fun (item: Choice<Pattern, SingleTextNode>) ->
+                    match item with
+                    | Choice1Of2 p -> genPatAfterBar p
+                    | Choice2Of2 comma -> genSingleTextNode comma +> sepAfterComma
+                )
+
+        (expressionFitsOnRestOfLine (genItems addSpaceIfSpaceAfterComma) (genItems (sepNln +> !-"  "))
+         |> genNode node)
+            ctx
+    | _ -> genPatAfterBar p ctx
 
 let genReturnTypeBinding (node: BindingReturnInfoNode option) =
     match node with
