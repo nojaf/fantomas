@@ -3778,6 +3778,27 @@ let genPatBetter (p: Pattern) : Context -> Context =
         +> genSingleTextNode node.ClosingParen
         |> genNode node
     | Pattern.ListCons node -> !-"todo 2.6" |> genNode node
+    // A list that does not fit puts its items on lines of their own, one indent level in, as a list
+    // expression does. Its closing bracket goes back to where the list starts.
+    | Pattern.ArrayOrList node when not node.Patterns.IsEmpty ->
+        let short: Context -> Context =
+            genSingleTextNode node.OpenToken
+            +> addSpaceIfSpaceAroundDelimiter
+            +> col sepSemi node.Patterns genPat
+            +> addSpaceIfSpaceAroundDelimiter
+            +> genSingleTextNode node.CloseToken
+
+        let long: Context -> Context =
+            genSingleTextNode node.OpenToken
+            +> indentSepNlnUnindent (col sepNln node.Patterns genPat)
+            +> sepNln
+            +> genSingleTextNode node.CloseToken
+
+        fun (ctx: Context) ->
+            match ctx.Config.MultilineBracketStyle with
+            | Cramped -> (expressionFitsOnRestOfLine short !-"todo cramped" |> genNode node) ctx
+            | Stroustrup -> (expressionFitsOnRestOfLine short !-"todo stroustrup" |> genNode node) ctx
+            | Aligned -> (expressionFitsOnRestOfLine short long |> genNode node) ctx
     | _ -> genPatLegacy p
 
 /// A pattern that does not fit behind the `=` of its field goes on the next line, one indent level in,
@@ -4078,10 +4099,14 @@ let genPatInClauseBetter (p: Pattern) (ctx: Context) : Context =
         match p with
         | Pattern.NamePatPairs node -> genPatNamePatPairsBetter indentContent !-"  " node
         | Pattern.LongIdent node -> genPatLongIdentBetter indentContent !-"  " node
+        | Pattern.ArrayOrList node when node.Patterns.IsEmpty ->
+            genSingleTextNode node.OpenToken +> genSingleTextNode node.CloseToken
+            |> genNode node
         // A list that does not fit puts its items on lines of their own, one indent level in, as a list
         // expression does. Its closing bracket goes back to where the list starts. Stroustrup has nothing
         // to hug here, so it looks the same. Cramped keeps the items behind the opening bracket.
-        | Pattern.ArrayOrList node when not node.Patterns.IsEmpty && ctx.Config.MultilineBracketStyle <> Cramped ->
+        | Pattern.ArrayOrList _ when ctx.Config.MultilineBracketStyle = Cramped -> genPatLegacy p
+        | Pattern.ArrayOrList node ->
             let short: Context -> Context =
                 genSingleTextNode node.OpenToken
                 +> addSpaceIfSpaceAroundDelimiter
