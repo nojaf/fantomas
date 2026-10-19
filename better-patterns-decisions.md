@@ -663,16 +663,21 @@ match e with
 | _ -> ()
 ```
 
-### 1.16 A list inside another pattern takes the layout of a list expression, under aligned
+### 1.16 A list inside another pattern takes the layout of a list expression, under aligned and cramped
 
-Implemented for aligned. Cramped and Stroustrup are still open (2.4), and for now write a todo
+Implemented for aligned and cramped. Stroustrup is still open (2.4), and for now writes a todo
 marker when such a list does not fit.
 
-A list or array inside another pattern that does not fit puts its items on lines of their own, one
-indent level in from where the list starts, and its closing bracket goes back there. That holds
-wherever the list is: the argument of a constructor, with or without parentheses, an item of a
-tuple, a curried argument, the value of a named field, or an item of another list. With an indent
-of 2 the items go two columns in.
+Under aligned, a list or array inside another pattern that does not fit puts its items on lines of
+their own, one indent level in from where the list starts, and its closing bracket goes back there.
+That holds wherever the list is: the argument of a constructor, with or without parentheses, an
+item of a tuple, a curried argument, the value of a named field, or an item of another list. With
+an indent of 2 the items go two columns in.
+
+Cramped keeps the items behind the opening bracket, as the cramped list expression does, and keeps
+the layout the flag wrote before. It differs from the expression only inside an item: the fields of
+`SynBinding(` go two columns in from the start of the item, where the expression puts them one
+indent level in. The closer of an item goes under the start of that item, in both.
 
 What is inside an item is laid out as it would be anywhere else. A list at the top of a clause,
 also as an item of a tuple there, follows 1.15.
@@ -762,6 +767,63 @@ match e with
 | _ -> ()
 ```
 
+✅ Cramped:
+
+```fsharp
+match e with
+| Some(
+    [ SynExpr.Ident firstIdentifier
+      SynExpr.Ident secondIdentifier
+      SynExpr.Ident thirdIdentifier ]
+  ) ->
+    body
+| Some
+    [ SynExpr.Ident firstIdentifier
+      SynExpr.Ident secondIdentifier
+      SynExpr.Ident thirdIdentifier ] ->
+    body
+| SynExpr.Tuple(
+    false,
+    [ SynExpr.Ident firstIdentifier
+      SynExpr.Ident secondIdentifier ],
+    commaRanges,
+    range
+  ) ->
+    body
+| ParseArguments
+    [ SynExpr.Ident firstIdentifier
+      SynExpr.Ident secondIdentifier ]
+    otherArgument ->
+    body
+| [ [ SynExpr.Ident firstIdentifier
+      SynExpr.Ident secondIdentifier ]
+    [ SynExpr.Ident thirdIdentifier ] ] ->
+    body
+| SynModuleDecl.Let(
+    bindings =
+        [ SynBinding(
+            headPat = SynPat.Named(ident = ident)
+            expr = expr
+          ) as binding ]
+  ) ->
+    body
+| _ -> ()
+```
+
+The cramped list as an expression, for comparison. The fields of `SynBinding(` go one indent level
+in from the start of the item:
+
+```fsharp
+let g =
+    SynModuleDecl.Let(
+        bindings =
+            [ SynBinding(
+                  headPat = SynPat.Named(ident = ident),
+                  expr = expr
+              ) ]
+    )
+```
+
 ## 2. Decisions still to make
 
 Some patterns ask two questions, and the answers may differ: a. how the pattern looks inside another
@@ -840,127 +902,11 @@ match e with
 | _ -> ()
 ```
 
-### 2.4 A list inside another pattern, under cramped and Stroustrup
+### 2.4 A list inside another pattern, under Stroustrup
 
-Under aligned, a list inside another pattern takes the layout of a list expression (1.16). Under
-cramped and Stroustrup the flag writes a todo marker today when such a list does not fit. A list
+Under aligned and cramped, a list inside another pattern takes the layout of a list expression
+(1.16). Under Stroustrup the flag writes a todo marker today when such a list does not fit. A list
 at the top of a clause is settled for every style (1.15).
-
-The examples put a list in each place it can be: the argument of a constructor, with or without
-parentheses, an item of a tuple, a curried argument, an item of another list, and the value of a
-named field.
-
-#### Cramped
-
-The lists as expressions. The items go behind `[ `, and a closer inside an item goes under the
-start of that item:
-
-```fsharp
-let a =
-    Some(
-        [ SynExpr.Ident firstIdentifier
-          SynExpr.Ident secondIdentifier
-          SynExpr.Ident thirdIdentifier ]
-    )
-
-let b =
-    Some
-        [ SynExpr.Ident firstIdentifier
-          SynExpr.Ident secondIdentifier
-          SynExpr.Ident thirdIdentifier ]
-
-let c =
-    SynExpr.Tuple(
-        false,
-        [ SynExpr.Ident firstIdentifier
-          SynExpr.Ident secondIdentifier ],
-        commaRanges,
-        range
-    )
-
-let e =
-    parseArguments
-        [ SynExpr.Ident firstIdentifier
-          SynExpr.Ident secondIdentifier ]
-        otherArgument
-
-let f =
-    [ [ SynExpr.Ident firstIdentifier
-        SynExpr.Ident secondIdentifier ]
-      [ SynExpr.Ident thirdIdentifier ] ]
-
-let g =
-    SynModuleDecl.Let(
-        bindings =
-            [ SynBinding(
-                  headPat = SynPat.Named(ident = ident),
-                  expr = expr
-              ) ]
-    )
-```
-
-Option A, keep the legacy layout, which the flag wrote before 1.16. It looks like the expression,
-except inside an item: the fields of `SynBinding(` go two columns in, and its closer under the
-start of the item:
-
-```fsharp
-match e with
-| Some(
-    [ SynExpr.Ident firstIdentifier
-      SynExpr.Ident secondIdentifier
-      SynExpr.Ident thirdIdentifier ]
-  ) ->
-    body
-| Some
-    [ SynExpr.Ident firstIdentifier
-      SynExpr.Ident secondIdentifier
-      SynExpr.Ident thirdIdentifier ] ->
-    body
-| SynExpr.Tuple(
-    false,
-    [ SynExpr.Ident firstIdentifier
-      SynExpr.Ident secondIdentifier ],
-    commaRanges,
-    range
-  ) ->
-    body
-| ParseArguments
-    [ SynExpr.Ident firstIdentifier
-      SynExpr.Ident secondIdentifier ]
-    otherArgument ->
-    body
-| [ [ SynExpr.Ident firstIdentifier
-      SynExpr.Ident secondIdentifier ]
-    [ SynExpr.Ident thirdIdentifier ] ] ->
-    body
-| SynModuleDecl.Let(
-    bindings =
-        [ SynBinding(
-            headPat = SynPat.Named(ident = ident)
-            expr = expr
-          ) as binding ]
-  ) ->
-    body
-| _ -> ()
-```
-
-Option B, the same, but inside an item as the expression has it: the fields of `SynBinding(` go one
-indent level in from the start of the item, and its closer under the start of the item:
-
-```fsharp
-match e with
-| SynModuleDecl.Let(
-    bindings =
-        [ SynBinding(
-              headPat = SynPat.Named(ident = ident)
-              expr = expr
-          ) as binding ]
-  ) ->
-    body
-| _ -> ()
-```
-
-#### Stroustrup
 
 The lists as expressions. They are the same as aligned, except where the list hugs what comes
 before it: after `Some [`, after `= [` of a named argument, and after `let f = [`. In parentheses,
