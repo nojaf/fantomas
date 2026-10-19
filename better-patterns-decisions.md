@@ -211,9 +211,9 @@ match e with
 Implemented.
 
 `Some(…)` breaks like the argument of an application. A pattern in parentheses on its own, `(…)`,
-keeps hugging them, as a parenthesised expression does, and its closers go back to the start of the
-line, as in an expression. Whether that stays is open (2.13). A tuple in parentheses puts one item
-per line.
+keeps them next to it, `(Some(` and `))`, as a parenthesised expression does, and its closers go
+back to the start of the line, as in an expression. Whether that stays is open (2.13). A tuple in
+parentheses puts one item per line.
 
 🟦
 
@@ -609,9 +609,9 @@ Implemented.
 
 A list or array at the top of a clause that does not fit puts its items on lines of their own, one
 indent level in from the bar, and its closing bracket goes back to where the list starts, two
-columns right of the bar. Stroustrup has nothing to hug there, and its closer cannot go back to the
-bar, so it looks the same as aligned. With an indent of 2 the items go one level further, so they
-stand right of the closing bracket.
+columns right of the bar. Under Stroustrup only the bar comes before the list, and its closer cannot
+go back to the bar, so it looks the same as aligned. With an indent of 2 the items go one level
+further, so they stand right of the closing bracket.
 
 Cramped keeps the items behind the opening bracket, as the cramped list expression does. A closer
 inside an item goes under the start of that item.
@@ -944,12 +944,12 @@ With it off, the arrow stays behind the closer (`) ->`) and the body goes on the
 The setting's name says nothing about patterns. The other way is a setting of its own for the
 arrow.
 
-### 2.2 Does a Stroustrup body hug the arrow after a multiline pattern?
+### 2.2 Does a Stroustrup body open on the line of the arrow after a multiline pattern?
 
 A multiline pattern puts its body on a line of its own. A clause with a Stroustrup body keeps the
-old clause layout for now, so its body still hugs the arrow.
+old clause layout for now, so its body still opens behind the arrow: `) -> {`.
 
-✅ Stroustrup, today. The body hugs the arrow, as it does after a pattern on one line:
+✅ Stroustrup, today. The body opens behind the arrow, as it does after a pattern on one line:
 
 ```fsharp
 match e with
@@ -965,7 +965,7 @@ match e with
 | _ -> ()
 ```
 
-Option A, keep hugging (as above). A binding hugs `= {` after a multiline signature (🟦,
+Option A, keep `) -> {` (as above). A binding keeps `= {` after a multiline signature (🟦,
 Stroustrup):
 
 ```fsharp
@@ -1602,8 +1602,8 @@ isInfix`) or moves with the arrow is part of this choice.
 
 #### 2.13a Inside another pattern
 
-The parentheses hug the pattern inside, as they do around an expression, and the closers go back
-to the start of their line. Fine for now. Curried arguments, as an example:
+The parentheses stay next to the pattern inside, `(Some(` and `))`, as they do around an expression,
+and the closers go back to the start of their line. Fine for now. Curried arguments, as an example:
 
 ✅ Today, with `fsharp_align_function_signature_to_indentation`:
 
@@ -1753,8 +1753,8 @@ match e with
 | _ -> ()
 ```
 
-The record as an expression. Aligned and cramped look as the pattern does today. Stroustrup hugs
-`Some {` and `= {`:
+The record as an expression. Aligned and cramped look as the pattern does today. Stroustrup keeps
+the brace on the line, `Some {` and `= {`:
 
 ```fsharp
 let x =
@@ -1774,8 +1774,8 @@ let y =
     )
 ```
 
-Option, Stroustrup hugs as the expression does. The closer after `Some {` goes back to where the
-pattern starts, after `| `:
+Option, Stroustrup keeps `Some {` and `= {` as the expression does. The closer after `Some {` goes
+back to where the pattern starts, after `| `:
 
 ```fsharp
 match e with
@@ -2126,9 +2126,9 @@ let f x =
 Left to the old clause layout, as is every Stroustrup body (2.2). The old code takes an absolute
 column for it.
 
-A body that hugs the arrow closes its bracket back on the column its line starts on, which is the
-column of the bar. There the bar of the next clause no longer parses. So the column after `| ` is
-taken as the start column, and the closer lands under the pattern.
+A body that opens behind the arrow, `-> {`, closes its bracket back on the column its line starts
+on, which is the column of the bar. There the bar of the next clause no longer parses. So the column
+after `| ` is taken as the start column, and the closer lands under the pattern.
 
 🟦 and ✅, Stroustrup:
 
