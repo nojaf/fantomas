@@ -23,8 +23,9 @@ Implemented for what section 1 covers.
 
 The style guide says "Pattern matching formatting should be consistent with expression formatting".
 When a pattern has an expression counterpart, it takes that layout. It deviates where the parser
-rejects the expression layout, and each deviation below names the error it avoids. The one
-deviation by choice is a single list in parentheses under Stroustrup, `Some([` (1.16).
+rejects the expression layout, and each deviation below names the error it avoids. The
+deviations by choice are a single list in parentheses under Stroustrup, `Some([` (1.16), and the
+parentheses around a `::` chain (1.17).
 
 Expression:
 
@@ -917,6 +918,360 @@ let g =
     )
 ```
 
+### 1.17 A `::` chain puts every `::` at the start of a line
+
+Implemented.
+
+A `::` chain that does not fit puts every `::` at the start of a line, as the `::` expression does.
+The `::` does not stay behind the closer of the item before it (`) :: rest`), and does not end the
+line either: a trailing `::` parses, but no expression writes it.
+
+At the top of a clause every `::` goes two columns right of the bar, after `| `, and each item is
+laid out as a pattern there, as the items of a tuple are (1.14): its closer goes back to that
+column, its content one indent level in from the bar. That holds for the item after a `::` too, so
+its content is not one level in from its `::`, as in the expression. A `::` chain as an item of a
+tuple there gets the same layout.
+
+Inside another pattern every `::` goes under the first item: in `Some(`, after `bindings =`, and in
+a list.
+
+What is inside an item is laid out as it would be anywhere else: named fields, a tuple in
+parentheses, a list and a record each keep their own layout.
+
+Parentheses around a chain on its own are where the layout chooses not to follow the expression,
+which keeps the opening parenthesis on the line of the first item and puts the closer of that item
+and the `::` one column right of it. At the top of a clause the parentheses go on lines of their
+own, as around the argument of `Some(`, and the closing one goes back after `| `. Inside another
+pattern the opening parenthesis stays on the line of the first item, and the closer of that item and
+the `::` go back to the column of the parenthesis.
+
+🟦
+
+```fsharp
+match e with
+| x :: rest -> body
+| firstIdentifier :: secondIdentifier :: thirdIdentifier :: rest ->
+    body
+| SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) :: rest ->
+    body
+| head :: SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) ->
+    body
+| SynExpr.App(ExprAtomicFlag.NonAtomic,
+              false,
+              funcExpr,
+              argExpr,
+              range) :: rest -> body
+| SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) :: SynExpr.Lambda(
+      fromMethod = fromMethod; body = lambdaBody) :: rest ->
+    body
+| SynExpr.App(isInfix = true; argExpr = argExpr) :: SynExpr.Lambda(
+    fromMethod = fromMethod; body = lambdaBody) :: rest ->
+    body
+| [ SynExpr.Ident firstIdentifier
+    SynExpr.Ident secondIdentifier ] :: rest -> body
+| {
+      FirstField = firstField
+      SecondField = secondField
+      ThirdField = thirdField
+  } :: rest -> body
+| SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) :: rest,
+  otherArgument -> body
+| (SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) :: rest) ->
+    body
+| Some(SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) :: rest) ->
+    body
+| ParseArguments (SynExpr.App(
+                     isInfix = true
+                     funcExpr = funcExpr
+                     argExpr = argExpr) :: rest) otherArgument ->
+    body
+| SynModuleDecl.Let(
+    bindings = SynBinding(
+        headPat = SynPat.Named(ident = ident); expr = expr) :: rest) ->
+    body
+| [ SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr) :: rest
+    otherList ] -> body
+| _ -> ()
+```
+
+✅
+
+```fsharp
+match e with
+| x :: rest -> body
+| firstIdentifier
+  :: secondIdentifier
+  :: thirdIdentifier
+  :: rest ->
+    body
+| SynExpr.App(
+    isInfix = true
+    funcExpr = funcExpr
+    argExpr = argExpr
+  )
+  :: rest ->
+    body
+| head
+  :: SynExpr.App(
+    isInfix = true
+    funcExpr = funcExpr
+    argExpr = argExpr
+  ) ->
+    body
+| SynExpr.App(
+    ExprAtomicFlag.NonAtomic,
+    false,
+    funcExpr,
+    argExpr,
+    range
+  )
+  :: rest ->
+    body
+| SynExpr.App(
+    isInfix = true
+    funcExpr = funcExpr
+    argExpr = argExpr
+  )
+  :: SynExpr.Lambda(
+    fromMethod = fromMethod
+    body = lambdaBody
+  )
+  :: rest ->
+    body
+| SynExpr.App(isInfix = true; argExpr = argExpr)
+  :: SynExpr.Lambda(
+    fromMethod = fromMethod
+    body = lambdaBody
+  )
+  :: rest ->
+    body
+| [
+    SynExpr.Ident firstIdentifier
+    SynExpr.Ident secondIdentifier
+  ]
+  :: rest ->
+    body
+| {
+      FirstField = firstField
+      SecondField = secondField
+      ThirdField = thirdField
+  }
+  :: rest ->
+    body
+| SynExpr.App(
+    isInfix = true
+    funcExpr = funcExpr
+    argExpr = argExpr
+  )
+  :: rest,
+  otherArgument ->
+    body
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )
+    :: rest
+  ) ->
+    body
+| Some(
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )
+    :: rest
+  ) ->
+    body
+| ParseArguments
+    (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )
+    :: rest)
+    otherArgument ->
+    body
+| SynModuleDecl.Let(
+    bindings =
+        SynBinding(
+            headPat = SynPat.Named(ident = ident)
+            expr = expr
+        )
+        :: rest
+  ) ->
+    body
+| [
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )
+    :: rest
+    otherList
+  ] ->
+    body
+| _ -> ()
+```
+
+Expression:
+
+```fsharp
+let fits = x :: rest
+
+let shortItems =
+    firstIdentifier
+    :: secondIdentifier
+    :: thirdIdentifier
+    :: rest
+
+let multilineHead =
+    SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    )
+    :: rest
+
+let multilineLast =
+    head
+    :: SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    )
+
+let positionalHead =
+    SynExpr.App(
+        ExprAtomicFlag.NonAtomic,
+        false,
+        funcExpr,
+        argExpr,
+        range
+    )
+    :: rest
+
+let twoMultiline =
+    SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    )
+    :: SynExpr.Lambda(
+        fromMethod = fromMethod,
+        body = lambdaBody
+    )
+    :: rest
+
+let shortHead =
+    SynExpr.App(isInfix = true, argExpr = argExpr)
+    :: SynExpr.Lambda(
+        fromMethod = fromMethod,
+        body = lambdaBody
+    )
+    :: rest
+
+let listHead =
+    [
+        SynExpr.Ident firstIdentifier
+        SynExpr.Ident secondIdentifier
+    ]
+    :: rest
+
+let recordHead =
+    {
+        FirstField = firstField
+        SecondField = secondField
+        ThirdField = thirdField
+    }
+    :: rest
+
+let tuple =
+    SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    )
+    :: rest,
+    otherArgument
+
+let inParentheses =
+    (SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+     )
+     :: rest)
+
+let argument =
+    Some(
+        SynExpr.App(
+            isInfix = true,
+            funcExpr = funcExpr,
+            argExpr = argExpr
+        )
+        :: rest
+    )
+
+let curried =
+    parseArguments
+        (SynExpr.App(
+            isInfix = true,
+            funcExpr = funcExpr,
+            argExpr = argExpr
+         )
+         :: rest)
+        otherArgument
+
+let namedField =
+    SynModuleDecl.Let(
+        bindings =
+            SynBinding(
+                headPat = SynPat.Named(ident = ident),
+                expr = expr
+            )
+            :: rest
+    )
+
+let listItem =
+    [
+        SynExpr.App(
+            isInfix = true,
+            funcExpr = funcExpr,
+            argExpr = argExpr
+        )
+        :: rest
+        otherList
+    ]
+```
+
+Option, the parentheses inside another pattern as the expression has them, with the closer and the
+`::` under the first item. It parses, and may replace today's layout later:
+
+```fsharp
+match e with
+| ParseArguments
+    (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+     )
+     :: rest)
+    otherArgument ->
+    body
+| _ -> ()
+```
+
 ## 2. Decisions still to make
 
 Some patterns ask two questions, and the answers may differ: a. how the pattern looks inside another
@@ -1157,130 +1512,6 @@ match e with
         secondIdentifier
     SynExpr.Ident thirdIdentifier
   ] ->
-    body
-| _ -> ()
-```
-
-### 2.6 `::` chains
-
-Not covered by the flag yet. With the flag on, a `::` pattern comes out as the text `todo 2.6`, so
-the gap cannot be missed. In our own code that is 93 places in 18 files.
-
-#### 2.6a Inside another pattern
-
-🟦
-
-```fsharp
-match e with
-| Some(SynExpr.App(
-    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) :: rest) ->
-    body
-| _ -> ()
-```
-
-Expression:
-
-```fsharp
-let v =
-    Some(
-        SynExpr.App(
-            isInfix = true,
-            funcExpr = funcExpr,
-            argExpr = argExpr
-        )
-        :: rest
-    )
-```
-
-Option A, keep `) ::` on the line of the closer:
-
-```fsharp
-match e with
-| Some(
-    SynExpr.App(
-        isInfix = true
-        funcExpr = funcExpr
-        argExpr = argExpr
-    ) :: rest
-  ) ->
-    body
-| _ -> ()
-```
-
-Option B, every `::` at the start of a line, like the expression:
-
-```fsharp
-match e with
-| Some(
-    SynExpr.App(
-        isInfix = true
-        funcExpr = funcExpr
-        argExpr = argExpr
-    )
-    :: rest
-  ) ->
-    body
-| _ -> ()
-```
-
-#### 2.6b As the pattern of a clause
-
-🟦
-
-```fsharp
-match e with
-| SynExpr.App(
-    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) :: SynExpr.Lambda(
-      fromMethod = fromMethod; body = lambdaBody) :: rest ->
-    body
-| _ -> ()
-```
-
-Expression:
-
-```fsharp
-let x =
-    SynExpr.App(
-        isInfix = true,
-        funcExpr = funcExpr,
-        argExpr = argExpr
-    )
-    :: SynExpr.Lambda(
-        fromMethod = fromMethod,
-        body = lambdaBody
-    )
-    :: rest
-```
-
-Option A, keep `) ::` on the line of the closer, with every item's content at bar + 4:
-
-```fsharp
-match e with
-| SynExpr.App(
-    isInfix = true
-    argExpr = argExpr
-  ) :: SynExpr.Lambda(
-    fromMethod = fromMethod
-    body = lambdaBody
-  ) :: rest ->
-    body
-| _ -> ()
-```
-
-Option B, every `::` at the start of a line, like the expression. As in the expression, the
-content of the second item is one level in from its `::`, and its closer goes back under the `::`:
-
-```fsharp
-match e with
-| SynExpr.App(
-    isInfix = true
-    argExpr = argExpr
-  )
-  :: SynExpr.Lambda(
-      fromMethod = fromMethod
-      body = lambdaBody
-  )
-  :: rest ->
     body
 | _ -> ()
 ```
@@ -1599,6 +1830,8 @@ pattern gets a line of its own. Whether a short guard then stays behind the clos
 isInfix`) or moves with the arrow is part of this choice.
 
 ### 2.13 A pattern in parentheses on its own
+
+A `::` chain in parentheses is settled in 1.17.
 
 #### 2.13a Inside another pattern
 

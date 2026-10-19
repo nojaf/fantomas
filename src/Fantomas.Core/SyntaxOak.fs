@@ -621,7 +621,6 @@ type Type =
 /// A pattern composed from a left hand-side pattern, a single text token/operator and a right hand-side pattern.
 /// Example (Or): `A | B`
 /// Example (As): `x as y`
-/// Example (ListCons): `head :: tail`
 type PatLeftMiddleRight(lhs: Pattern, middle: Choice<SingleTextNode, string>, rhs: Pattern, range) =
     inherit NodeBase(range)
 
@@ -764,6 +763,21 @@ type PatParenNode(openingParen: SingleTextNode, pat: Pattern, closingParen: Sing
     member val Pattern = pat
     member val ClosingParen = closingParen
 
+/// Example: `a :: b :: rest` (a chain of `::` in one node, each `::` paired with the pattern after it)
+type PatListConsNode(leadingPattern: Pattern, subsequentPatterns: (SingleTextNode * Pattern) list, range: range) =
+    inherit NodeBase(range)
+
+    override val Children: Node array =
+        [|
+            yield Pattern.Node leadingPattern
+            for operator, pat in subsequentPatterns do
+                yield operator
+                yield Pattern.Node pat
+        |]
+
+    member val LeadingPattern: Pattern = leadingPattern
+    member val SubsequentPatterns: (SingleTextNode * Pattern) list = subsequentPatterns
+
 /// Example: `a, b, c` (a tuple pattern)
 type PatTupleNode(items: Choice<Pattern, SingleTextNode> list, range) =
     inherit NodeBase(range)
@@ -824,7 +838,7 @@ type Pattern =
     | NamedParenStarIdent of PatNamedParenStarIdentNode
     | Named of PatNamedNode
     | As of PatLeftMiddleRight
-    | ListCons of PatLeftMiddleRight
+    | ListCons of PatListConsNode
     | NamePatPairs of PatNamePatPairsNode
     | LongIdent of PatLongIdentNode
     | Unit of UnitNode

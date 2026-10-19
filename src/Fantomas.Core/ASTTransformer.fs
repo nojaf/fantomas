@@ -2174,6 +2174,28 @@ let (|PatParameter|_|) (p: SynPat) =
     | SynPat.Attrib(pat = pat; attributes = attributes) -> ValueSome(attributes, pat, None)
     | _ -> ValueNone
 
+/// `a :: b :: rest` nests to the right, `a :: (b :: rest)`. Gives its first pattern, and each `::` with the
+/// pattern after it.
+[<return: Struct>]
+let (|ListConsPats|_|) (p: SynPat) : (SynPat * (SingleTextNode * SynPat) list) voption =
+    let rec visit
+        (pat: SynPat)
+        (colonColonRange: range)
+        (xs: Queue<SingleTextNode * SynPat>)
+        : Queue<SingleTextNode * SynPat>
+        =
+        match pat with
+        | SynPat.ListCons(lhs, rhs, _, trivia) ->
+            xs.Enqueue(stn "::" colonColonRange, lhs)
+            visit rhs trivia.ColonColonRange xs
+        | p ->
+            xs.Enqueue(stn "::" colonColonRange, p)
+            xs
+
+    match p with
+    | SynPat.ListCons(lhs, rhs, _, trivia) -> ValueSome(lhs, Seq.toList (visit rhs trivia.ColonColonRange (Queue())))
+    | _ -> ValueNone
+
 let mkUnit (StartEndRange 1 (lpr, m, rpr)) = UnitNode(stn "(" lpr, stn ")" rpr, m)
 
 let mkTuplePat (creationAide: CreationAide) (pats: SynPat list) (commas: range list) (m: range) =
@@ -2227,14 +2249,12 @@ let mkPat (creationAide: CreationAide) (p: SynPat) =
     | SynPat.As(p1, p2, _) ->
         PatLeftMiddleRight(mkPat creationAide p1, Choice2Of2 "as", mkPat creationAide p2, patternRange)
         |> Pattern.As
-    | SynPat.ListCons(p1, p2, _, trivia) ->
-        PatLeftMiddleRight(
-            mkPat creationAide p1,
-            Choice1Of2(stn "::" trivia.ColonColonRange),
-            mkPat creationAide p2,
-            patternRange
-        )
-        |> Pattern.ListCons
+    | ListConsPats(head, xs) ->
+        let rest: (SingleTextNode * Pattern) list =
+            xs
+            |> List.map (fun (operator: SingleTextNode, p: SynPat) -> operator, mkPat creationAide p)
+
+        PatListConsNode(mkPat creationAide head, rest, patternRange) |> Pattern.ListCons
     | SynPat.LongIdent(synLongIdent,
                        _,
                        vtdo,
