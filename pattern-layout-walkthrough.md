@@ -735,8 +735,8 @@ f {
 }
 ```
 
-The styles differ in two places: whether the opening bracket hugs what is in front of it
-(`TokenInfo = {` or `TokenInfo =` with `{` on the next line), and where the closer goes (trailing
+The styles differ in two places: whether the opening bracket stays on the line of what is in front
+of it (`TokenInfo = {` or `TokenInfo =` with `{` on the next line), and where the closer goes (trailing
 in Cramped, on a line of its own in the other two).
 
 ### 5.2 A parser rule that takes Aligned off the table for records
@@ -755,7 +755,7 @@ The same break in an expression parses, and so does a named field
 ····modules =
 ········[ ... ])`). So for a nested record in a record pattern, the
 Aligned expression shape (`TokenInfo =`, then `{` on its own line) is impossible. Every style has to
-hug: `TokenInfo = {`.
+keep the bracket behind the `=`: `TokenInfo = {`.
 
 As a result, **Aligned and Stroustrup produce the same patterns** in the prototype. Both get the
 layouts from section 3, and every sample in section 4 is identical in the two styles.
@@ -1404,7 +1404,7 @@ Decisions taken so far:
 - The content clears the bar by one indent level, not the pattern column. With an indent size of 2
   it lands on the pattern's own column (section 4.11).
 - Let bindings use the shape in section 6, with the two decisions in 6.5.
-- `foo (function` keeps hugging: the style guide prescribes this for a match lambda that is the last
+- `foo (function` stays on one line: the style guide prescribes this for a match lambda that is the last
   argument ("Treat match lambda's in a similar fashion"), and it is an expression rule, not a
   pattern rule. Changing it would be a separate proposal.
 - Aligned and Stroustrup produce the same patterns. Cramped records and lists keep their layout
