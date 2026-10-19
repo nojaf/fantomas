@@ -3770,8 +3770,10 @@ let genPatBetter (p: Pattern) : Context -> Context =
     match p with
     | Pattern.NamePatPairs node -> genPatNamePatPairsBetter id id node
     | Pattern.LongIdent node -> genPatLongIdentBetter id id node
-    // A pattern in parentheses on its own hugs them, so its closing parenthesis follows the one of the
-    // pattern inside, on the same line.
+    // A pattern in parentheses on its own:
+    // (Some(
+    //     a
+    // ))
     | Pattern.Paren node ->
         genSingleTextNode node.OpeningParen
         +> genPatBetter node.Pattern
@@ -3779,28 +3781,43 @@ let genPatBetter (p: Pattern) : Context -> Context =
         |> genNode node
     | Pattern.ListCons node -> !-"todo 2.6" |> genNode node
     | Pattern.ArrayOrList node when not node.Patterns.IsEmpty ->
-        let short: Context -> Context =
-            genSingleTextNode node.OpenToken
-            +> addSpaceIfSpaceAroundDelimiter
-            +> col sepSemi node.Patterns genPat
-            +> addSpaceIfSpaceAroundDelimiter
-            +> genSingleTextNode node.CloseToken
-
-        // The items go on lines of their own, one indent level in, as in a list expression. The closing
-        // bracket goes back to where the list starts.
-        let long: Context -> Context =
-            genSingleTextNode node.OpenToken
-            +> indentSepNlnUnindent (col sepNln node.Patterns genPat)
-            +> sepNln
-            +> genSingleTextNode node.CloseToken
-
         fun (ctx: Context) ->
             match ctx.Config.MultilineBracketStyle with
-            // Cramped keeps the items behind the opening bracket.
+            // [ a
+            //   b ]
             | Cramped -> genPatLegacy p ctx
-            | Stroustrup -> (expressionFitsOnRestOfLine short !-"todo stroustrup" |> genNode node) ctx
-            | Aligned -> (expressionFitsOnRestOfLine short long |> genNode node) ctx
+            // `Some [` and `field = [` under Stroustrup are written by `genPatLongIdentBetter` and
+            // `genPatNamePatPairsBetter`.
+            | Aligned
+            | Stroustrup ->
+
+            let short: Context -> Context =
+                genSingleTextNode node.OpenToken
+                +> addSpaceIfSpaceAroundDelimiter
+                +> col sepSemi node.Patterns genPat
+                +> addSpaceIfSpaceAroundDelimiter
+                +> genSingleTextNode node.CloseToken
+
+            // [
+            //     a
+            //     b
+            // ]
+            let long: Context -> Context =
+                genSingleTextNode node.OpenToken
+                +> indentSepNlnUnindent (col sepNln node.Patterns genPat)
+                +> sepNln
+                +> genSingleTextNode node.CloseToken
+
+            (expressionFitsOnRestOfLine short long |> genNode node) ctx
     | _ -> genPatLegacy p
+
+/// A list or array pattern with items, when `fsharp_multiline_bracket_style` is Stroustrup.
+[<return: Struct>]
+let (|StroustrupListPattern|_|) (ctx: Context) (p: Pattern) : PatArrayOrListNode voption =
+    match p with
+    | Pattern.ArrayOrList listNode when ctx.Config.IsStroustrupStyle && not listNode.Patterns.IsEmpty ->
+        ValueSome listNode
+    | _ -> ValueNone
 
 /// A pattern that does not fit behind the `=` of its field goes on the next line, one indent level in,
 /// as the value of a named argument does. A record pattern cannot do this, so it keeps `genNamePatPair`.
@@ -3812,12 +3829,21 @@ let genPatNamePatPairsBetter
     (node: PatNamePatPairsNode)
     : Context -> Context
     =
-    let genPair (pair: NamePatPairNode) : Context -> Context =
-        genIdentListNode pair.FieldName
-        +> sepSpace
-        +> genSingleTextNode pair.Equals
-        +> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth (genPat pair.Pattern)
-        |> genNode pair
+    let genPair (pair: NamePatPairNode) (ctx: Context) : Context =
+        let genValue: Context -> Context =
+            match pair.Pattern with
+            // field = [
+            //     a
+            // ]
+            | StroustrupListPattern ctx _ -> sepSpace +> genPat pair.Pattern
+            | p -> sepSpaceOrIndentAndNlnIfExpressionExceedsPageWidth (genPat p)
+
+        (genIdentListNode pair.FieldName
+         +> sepSpace
+         +> genSingleTextNode pair.Equals
+         +> genValue
+         |> genNode pair)
+            ctx
 
     let short: Context -> Context =
         col sepSemi node.Pairs genPair +> genSingleTextNode node.ClosingParen
@@ -3843,11 +3869,23 @@ let genPatLongIdentBetter
     (indentArgument: (Context -> Context) -> Context -> Context)
     (beforeClosing: Context -> Context)
     (node: PatLongIdentNode)
-    : Context -> Context
+    (ctx: Context)
+    : Context
     =
+    // Some [      Some([
+    //     a           a
+    // ]           ])
+    let genListStroustrup (listNode: PatArrayOrListNode) : Context -> Context =
+        genSingleTextNode listNode.OpenToken
+        +> indentArgument (indentSepNlnUnindent (col sepNln listNode.Patterns genPat))
+        +> sepNln
+        +> beforeClosing
+        +> genSingleTextNode listNode.CloseToken
+        |> genNode listNode
+
     match node.Parameters with
     | []
-    | [ Pattern.Unit _ ] -> genPatLegacy (Pattern.LongIdent node)
+    | [ Pattern.Unit _ ] -> genPatLegacy (Pattern.LongIdent node) ctx
     | [ Pattern.Paren parenNode ] ->
         let genArgument (sepAfterComma: Context -> Context) : Context -> Context =
             match parenNode.Pattern with
@@ -3868,32 +3906,41 @@ let genPatLongIdentBetter
             +> genSingleTextNode parenNode.ClosingParen
 
         let long: Context -> Context =
+            match parenNode.Pattern with
+            | StroustrupListPattern ctx listNode ->
+                genListStroustrup listNode +> genSingleTextNode parenNode.ClosingParen
+            | _ ->
+
             indentArgument (indentSepNlnUnindent (genArgument sepNln))
             +> sepNln
             +> beforeClosing
             +> genSingleTextNode parenNode.ClosingParen
 
-        genAccessOpt node.Accessibility
-        +> genIdentListNode node.Identifier
-        +> optSingle genTyparDecls node.TyparDecls
-        +> addSpaceBeforeParenInPattern node.Identifier
-        +> (genSingleTextNode parenNode.OpeningParen
-            +> expressionFitsOnRestOfLine short long
-            |> genNode parenNode)
-        |> genNode node
+        (genAccessOpt node.Accessibility
+         +> genIdentListNode node.Identifier
+         +> optSingle genTyparDecls node.TyparDecls
+         +> addSpaceBeforeParenInPattern node.Identifier
+         +> (genSingleTextNode parenNode.OpeningParen
+             +> expressionFitsOnRestOfLine short long
+             |> genNode parenNode)
+         |> genNode node)
+            ctx
     // Curried arguments that do not fit go on lines of their own, one indent level in, as the arguments
     // of an application do.
     | parameters ->
         let short: Context -> Context = sepSpace +> col sepSpace parameters genPat
 
         let long: Context -> Context =
-            indentArgument (indentSepNlnUnindent (col sepNln parameters genPat))
+            match parameters with
+            | [ StroustrupListPattern ctx listNode ] -> sepSpace +> genListStroustrup listNode
+            | _ -> indentArgument (indentSepNlnUnindent (col sepNln parameters genPat))
 
-        genAccessOpt node.Accessibility
-        +> genIdentListNode node.Identifier
-        +> optSingle genTyparDecls node.TyparDecls
-        +> expressionFitsOnRestOfLine short long
-        |> genNode node
+        (genAccessOpt node.Accessibility
+         +> genIdentListNode node.Identifier
+         +> optSingle genTyparDecls node.TyparDecls
+         +> expressionFitsOnRestOfLine short long
+         |> genNode node)
+            ctx
 
 let genPatLegacy (p: Pattern) : Context -> Context =
     match p with
@@ -4103,9 +4150,8 @@ let genPatInClauseBetter (p: Pattern) (ctx: Context) : Context =
         | Pattern.ArrayOrList node when node.Patterns.IsEmpty ->
             genSingleTextNode node.OpenToken +> genSingleTextNode node.CloseToken
             |> genNode node
-        // A list that does not fit puts its items on lines of their own, one indent level in, as a list
-        // expression does. Its closing bracket goes back to where the list starts. Stroustrup has nothing
-        // to hug here, so it looks the same. Cramped keeps the items behind the opening bracket.
+        // | [ a
+        //     b ] ->
         | Pattern.ArrayOrList _ when ctx.Config.MultilineBracketStyle = Cramped -> genPatLegacy p
         | Pattern.ArrayOrList node ->
             let short: Context -> Context =
@@ -4115,6 +4161,10 @@ let genPatInClauseBetter (p: Pattern) (ctx: Context) : Context =
                 +> addSpaceIfSpaceAroundDelimiter
                 +> genSingleTextNode node.CloseToken
 
+            // | [
+            //     a
+            //     b
+            //   ] ->
             let long: Context -> Context =
                 genSingleTextNode node.OpenToken
                 +> indentContent (indentSepNlnUnindent (col sepNln node.Patterns genPat))

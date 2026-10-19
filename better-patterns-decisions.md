@@ -22,8 +22,9 @@ About the examples:
 Implemented for what section 1 covers.
 
 The style guide says "Pattern matching formatting should be consistent with expression formatting".
-When a pattern has an expression counterpart, it takes that layout. It only deviates where the
-parser rejects the expression layout, and each deviation below names the error it avoids.
+When a pattern has an expression counterpart, it takes that layout. It deviates where the parser
+rejects the expression layout, and each deviation below names the error it avoids. The one
+deviation by choice is a single list in parentheses under Stroustrup, `Some([` (1.16).
 
 Expression:
 
@@ -62,7 +63,7 @@ match e with
 Implemented for what section 1 covers.
 
 Cramped, aligned and Stroustrup each apply to patterns as they do to expressions. They start to
-differ with lists (1.15, 1.16, 2.4) and records (2.14). For named fields the three give the
+differ with lists (1.15, 1.16) and records (2.14). For named fields the three give the
 same output.
 
 ✅ Cramped, aligned and Stroustrup alike:
@@ -663,10 +664,9 @@ match e with
 | _ -> ()
 ```
 
-### 1.16 A list inside another pattern takes the layout of a list expression, under aligned and cramped
+### 1.16 A list inside another pattern takes the layout of a list expression
 
-Implemented for aligned and cramped. Stroustrup is still open (2.4), and for now writes a todo
-marker when such a list does not fit.
+Implemented.
 
 Under aligned, a list or array inside another pattern that does not fit puts its items on lines of
 their own, one indent level in from where the list starts, and its closing bracket goes back there.
@@ -678,6 +678,16 @@ Cramped keeps the items behind the opening bracket, as the cramped list expressi
 the layout the flag wrote before. It differs from the expression only inside an item: the fields of
 `SynBinding(` go two columns in from the start of the item, where the expression puts them one
 indent level in. The closer of an item goes under the start of that item, in both.
+
+Stroustrup is the same as aligned, except where the list is the single argument of a name, with or
+without parentheses, or the value of a named field. There the opening bracket stays on that line:
+`Some [`, `Some([` and `bindings = [`. The items go one indent level in, and the closing bracket
+goes back to where the pattern or the field starts, after `| ` at the top of a clause. With several
+arguments, or a tuple in parentheses, nothing changes.
+
+`Some [` and `bindings = [` are what the Stroustrup expression does. `Some([` is not: the expression
+puts the list on a line of its own inside the parentheses. The pattern keeps the bracket on the line
+anyway, because that is what users of Stroustrup expect.
 
 What is inside an item is laid out as it would be anywhere else. A list at the top of a clause,
 also as an item of a tuple there, follows 1.15.
@@ -824,6 +834,89 @@ let g =
     )
 ```
 
+✅ Stroustrup:
+
+```fsharp
+match e with
+| Some([
+    SynExpr.Ident firstIdentifier
+    SynExpr.Ident secondIdentifier
+    SynExpr.Ident thirdIdentifier
+  ]) ->
+    body
+| Some [
+    SynExpr.Ident firstIdentifier
+    SynExpr.Ident secondIdentifier
+    SynExpr.Ident thirdIdentifier
+  ] ->
+    body
+| SynExpr.Tuple(
+    false,
+    [
+        SynExpr.Ident firstIdentifier
+        SynExpr.Ident secondIdentifier
+    ],
+    commaRanges,
+    range
+  ) ->
+    body
+| ParseArguments
+    [
+        SynExpr.Ident firstIdentifier
+        SynExpr.Ident secondIdentifier
+    ]
+    otherArgument ->
+    body
+| [
+    [
+        SynExpr.Ident firstIdentifier
+        SynExpr.Ident secondIdentifier
+    ]
+    [ SynExpr.Ident thirdIdentifier ]
+  ] ->
+    body
+| SynModuleDecl.Let(
+    bindings = [
+        SynBinding(
+            headPat = SynPat.Named(ident = ident)
+            expr = expr
+        ) as binding
+    ]
+  ) ->
+    body
+| _ -> ()
+```
+
+The Stroustrup expressions, for comparison. `Some(` puts the list on a line of its own:
+
+```fsharp
+let a =
+    Some(
+        [
+            SynExpr.Ident firstIdentifier
+            SynExpr.Ident secondIdentifier
+            SynExpr.Ident thirdIdentifier
+        ]
+    )
+
+let b =
+    Some [
+        SynExpr.Ident firstIdentifier
+        SynExpr.Ident secondIdentifier
+        SynExpr.Ident thirdIdentifier
+    ]
+
+let g =
+    SynModuleDecl.Let(
+        bindings = [
+            SynBinding(
+                headPat = SynPat.Named(ident = ident),
+                expr = expr
+            )
+        ]
+    )
+```
+
 ## 2. Decisions still to make
 
 Some patterns ask two questions, and the answers may differ: a. how the pattern looks inside another
@@ -899,69 +992,6 @@ match e with
         Argument = argumentExpression
         Range = range
     }
-| _ -> ()
-```
-
-### 2.4 A list inside another pattern, under Stroustrup
-
-Under aligned and cramped, a list inside another pattern takes the layout of a list expression
-(1.16). Under Stroustrup the flag writes a todo marker today when such a list does not fit. A list
-at the top of a clause is settled for every style (1.15).
-
-The lists as expressions. They are the same as aligned, except where the list hugs what comes
-before it: after `Some [`, after `= [` of a named argument, and after `let f = [`. In parentheses,
-as a tuple item and as a curried argument, the list does not hug:
-
-```fsharp
-let b =
-    Some [
-        SynExpr.Ident firstIdentifier
-        SynExpr.Ident secondIdentifier
-        SynExpr.Ident thirdIdentifier
-    ]
-
-let f = [
-    [
-        SynExpr.Ident firstIdentifier
-        SynExpr.Ident secondIdentifier
-    ]
-    [ SynExpr.Ident thirdIdentifier ]
-]
-
-let g =
-    SynModuleDecl.Let(
-        bindings = [
-            SynBinding(
-                headPat = SynPat.Named(ident = ident),
-                expr = expr
-            )
-        ]
-    )
-```
-
-Option A, the same as aligned (1.16) everywhere, so nothing hugs.
-
-Option B, the same as aligned, and hug only where the expression does. After `Some [`, the closing
-bracket goes back to where the pattern starts, after `| `. After `= [`, it goes back to the start
-of the named field:
-
-```fsharp
-match e with
-| Some [
-    SynExpr.Ident firstIdentifier
-    SynExpr.Ident secondIdentifier
-    SynExpr.Ident thirdIdentifier
-  ] ->
-    body
-| SynModuleDecl.Let(
-    bindings = [
-        SynBinding(
-            headPat = SynPat.Named(ident = ident)
-            expr = expr
-        ) as binding
-    ]
-  ) ->
-    body
 | _ -> ()
 ```
 

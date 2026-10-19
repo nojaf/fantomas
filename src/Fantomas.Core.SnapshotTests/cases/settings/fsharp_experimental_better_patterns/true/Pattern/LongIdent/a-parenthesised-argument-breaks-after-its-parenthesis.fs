@@ -1,6 +1,6 @@
 (*---
-# As the argument of an application does. A pattern in parentheses on its own keeps hugging them,
-# as an expression in parentheses does.
+# As the argument of an application does. A pattern in parentheses on its own keeps them next to it,
+# `(Some(` and `))`, as an expression in parentheses does.
 fsharp_experimental_better_patterns = true
 max_line_length = 60
 ---*)

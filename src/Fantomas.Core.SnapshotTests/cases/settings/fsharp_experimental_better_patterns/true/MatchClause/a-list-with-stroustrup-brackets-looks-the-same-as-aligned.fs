@@ -1,6 +1,6 @@
 (*---
-# With Stroustrup brackets a list at the top of a clause has nothing to hug, and its closing bracket
-# cannot go back to the bar, so it looks the same as with aligned brackets.
+# With Stroustrup brackets a list at the top of a clause has only the bar before it, and its closing
+# bracket cannot go back to the bar, so it looks the same as with aligned brackets.
 fsharp_experimental_better_patterns = true
 fsharp_multiline_bracket_style = stroustrup
 max_line_length = 60
