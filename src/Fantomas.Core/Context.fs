@@ -602,6 +602,7 @@ let sepEqFixed = !-"="
 let sepArrow = !-" -> "
 let sepArrowRev = !-" <- "
 let sepBar = !-"| "
+let sepTwoSpaces: Context -> Context = !-"  "
 
 let addSpaceIfSpaceAroundDelimiter (ctx: Context) =
     onlyIf ctx.Config.SpaceAroundDelimiter sepSpace ctx

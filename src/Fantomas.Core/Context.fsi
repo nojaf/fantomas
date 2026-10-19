@@ -149,6 +149,8 @@ val sepEqFixed: (Context -> Context)
 val sepArrow: (Context -> Context)
 val sepArrowRev: (Context -> Context)
 val sepBar: (Context -> Context)
+/// Two spaces, as wide as `sepBar`: from the column of a bar to where the pattern after it starts.
+val sepTwoSpaces: (Context -> Context)
 val addSpaceIfSpaceAroundDelimiter: ctx: Context -> Context
 val addSpaceIfSpaceAfterComma: ctx: Context -> Context
 /// opening token of list
