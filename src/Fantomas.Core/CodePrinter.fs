@@ -3778,8 +3778,6 @@ let genPatBetter (p: Pattern) : Context -> Context =
         +> genSingleTextNode node.ClosingParen
         |> genNode node
     | Pattern.ListCons node -> !-"todo 2.6" |> genNode node
-    // A list that does not fit puts its items on lines of their own, one indent level in, as a list
-    // expression does. Its closing bracket goes back to where the list starts.
     | Pattern.ArrayOrList node when not node.Patterns.IsEmpty ->
         let short: Context -> Context =
             genSingleTextNode node.OpenToken
@@ -3788,6 +3786,8 @@ let genPatBetter (p: Pattern) : Context -> Context =
             +> addSpaceIfSpaceAroundDelimiter
             +> genSingleTextNode node.CloseToken
 
+        // The items go on lines of their own, one indent level in, as in a list expression. The closing
+        // bracket goes back to where the list starts.
         let long: Context -> Context =
             genSingleTextNode node.OpenToken
             +> indentSepNlnUnindent (col sepNln node.Patterns genPat)
@@ -3796,7 +3796,8 @@ let genPatBetter (p: Pattern) : Context -> Context =
 
         fun (ctx: Context) ->
             match ctx.Config.MultilineBracketStyle with
-            | Cramped -> (expressionFitsOnRestOfLine short !-"todo cramped" |> genNode node) ctx
+            // Cramped keeps the items behind the opening bracket.
+            | Cramped -> genPatLegacy p ctx
             | Stroustrup -> (expressionFitsOnRestOfLine short !-"todo stroustrup" |> genNode node) ctx
             | Aligned -> (expressionFitsOnRestOfLine short long |> genNode node) ctx
     | _ -> genPatLegacy p
