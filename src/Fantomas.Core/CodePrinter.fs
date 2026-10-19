@@ -3967,7 +3967,18 @@ let genPatLegacy (p: Pattern) : Context -> Context =
                 | [ Pattern.Or _ ] ->
                     let column = ctx.Column + 1
                     atIndentLevel false column (col sepNln node.Patterns genPatInClause) ctx
-                | _ -> col sepNln node.Patterns genPatInClause ctx
+                // An item of the list is not the pattern of a clause, so its closer has no bar to keep off.
+                | _ ->
+                    col
+                        sepNln
+                        node.Patterns
+                        (fun (p: Pattern) ->
+                            ifElseCtx
+                                (fun (ctx: Context) -> ctx.Config.ExperimentalBetterPatterns)
+                                (genPatBetter p)
+                                (genPatInClause p)
+                        )
+                        ctx
 
             expressionFitsOnRestOfLine short long
 
@@ -4067,6 +4078,25 @@ let genPatInClauseBetter (p: Pattern) (ctx: Context) : Context =
         match p with
         | Pattern.NamePatPairs node -> genPatNamePatPairsBetter indentContent !-"  " node
         | Pattern.LongIdent node -> genPatLongIdentBetter indentContent !-"  " node
+        // A list that does not fit puts its items on lines of their own, one indent level in, as a list
+        // expression does. Its closing bracket goes back to where the list starts. Stroustrup has nothing
+        // to hug here, so it looks the same. Cramped keeps the items behind the opening bracket.
+        | Pattern.ArrayOrList node when not node.Patterns.IsEmpty && ctx.Config.MultilineBracketStyle <> Cramped ->
+            let short: Context -> Context =
+                genSingleTextNode node.OpenToken
+                +> addSpaceIfSpaceAroundDelimiter
+                +> col sepSemi node.Patterns genPat
+                +> addSpaceIfSpaceAroundDelimiter
+                +> genSingleTextNode node.CloseToken
+
+            let long: Context -> Context =
+                genSingleTextNode node.OpenToken
+                +> indentContent (indentSepNlnUnindent (col sepNln node.Patterns genPat))
+                +> sepNln
+                +> !-"  "
+                +> genSingleTextNode node.CloseToken
+
+            expressionFitsOnRestOfLine short long |> genNode node
         | _ -> genPatBetter p
 
     match p with
