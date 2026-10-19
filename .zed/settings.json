@@ -1,0 +1,24 @@
+{
+  "lsp": {
+    "fsautocomplete": {
+      "binary": {
+        "path": "/home/nojaf/Projects/FsAutoComplete-nightly/src/FsAutoComplete/bin/Release/net10.0/fsautocomplete",
+        "arguments": [
+          "--use-fcs-transparent-compiler",
+          "--log-level",
+          "Information",
+          "--adaptive-lsp-server-enabled"
+        ],
+        "env": {
+          "DOTNET_gcServer": "0",
+          "DOTNET_ROLL_FORWARD": "LatestMajor",
+          "DOTNET_ROLL_FORWARD_TO_PRERELEASE": "1"
+        }
+      },
+      "initialization_options": {
+        "CodeLenses": { "References": { "Enabled": false } },
+        "Fsac": { "CleanupIdleProjectsAfterMinutes": 5 }
+      }
+    }
+  }
+}
