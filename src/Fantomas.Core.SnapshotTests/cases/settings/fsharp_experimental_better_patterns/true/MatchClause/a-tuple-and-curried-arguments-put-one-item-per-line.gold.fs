@@ -1,22 +1,19 @@
 match e with
 | SynExpr.Ident firstIdentifier,
   SynExpr.Ident secondIdentifier,
-  SynExpr.Ident thirdIdentifier
-    ->
+  SynExpr.Ident thirdIdentifier ->
     body
 | SynExpr.App(
     isInfix = true
     funcExpr = funcExpr
     argExpr = argExpr
   ),
-  SynExpr.Ident secondIdentifier
-    ->
+  SynExpr.Ident secondIdentifier ->
     body
 | ParseArguments
     firstArgumentPattern
     secondArgumentPattern
-    thirdArgumentPattern
-    ->
+    thirdArgumentPattern ->
     body
 | a, b -> body
 | _ -> ()

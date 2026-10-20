@@ -17,10 +17,4 @@ match ast with
     )
   ) ->
     body
-| (ParsedImplFileInput(
-    modules = modules
-    isScript = isScript
-    fileName = fileName
-)) ->
-    body
 | _ -> ()

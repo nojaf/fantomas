@@ -3684,14 +3684,39 @@ let sepSpaceBeforeParenInFuncInvocation (functionExpr: Expr) (argExpr: Expr) ctx
 
 // end expressions
 
+/// The `as` or the bar between the two patterns.
+let genPatMiddle (node: PatLeftMiddleRight) : Context -> Context =
+    match node.Middle with
+    | Choice1Of2 middle -> genSingleTextNode middle
+    | Choice2Of2 text -> !-text
+
+/// `a as b`. `genLeft` writes `a`. What follows `as` goes on the next line, one indent level in, when it
+/// does not fit, and `indentRight` can push it further.
+let genPatAs
+    (genLeft: Pattern -> Context -> Context)
+    (indentRight: (Context -> Context) -> Context -> Context)
+    (node: PatLeftMiddleRight)
+    : Context -> Context
+    =
+    genLeft node.LeftHandSide
+    +> sepSpace
+    +> genPatMiddle node
+    +> sepSpace
+    +> indentRight (autoIndentAndNlnIfExpressionExceedsPageWidth (genPatBetter node.RightHandSide))
+    |> genNode node
+
+/// With an indent of 2, one level in from the bar of a clause is the column after `| `, where the pattern
+/// starts and a closer goes. Content goes a level further there, so it stands right of that column.
+let indentContentAfterBar (content: Context -> Context) (ctx: Context) : Context =
+    if ctx.Config.IndentSize <> 2 then
+        content ctx
+    else
+        (indent +> content +> unindent) ctx
+
 let genPatLeftMiddleRight (node: PatLeftMiddleRight) =
     genPat node.LeftHandSide
     +> sepSpace
-    +> (
-        match node.Middle with
-        | Choice1Of2 node -> genSingleTextNode node
-        | Choice2Of2 text -> !-text
-    )
+    +> genPatMiddle node
     +> sepSpace
     +> genPat node.RightHandSide
     |> genNode node
@@ -3770,6 +3795,14 @@ let genPatBetter (p: Pattern) : Context -> Context =
     match p with
     | Pattern.NamePatPairs node -> genPatNamePatPairsBetter id id node
     | Pattern.LongIdent node -> genPatLongIdentBetter id id node
+    // Some(
+    //     a
+    //     :: rest
+    // )
+    | Pattern.ListCons node -> genPatListCons genPatBetter sepNln node
+    // a as
+    //     someLongAlias
+    | Pattern.As node -> genPatAs genPatBetter id node
     // A pattern in parentheses on its own:
     // (Some(
     //     a
@@ -3779,11 +3812,6 @@ let genPatBetter (p: Pattern) : Context -> Context =
         +> genPatBetter node.Pattern
         +> genSingleTextNode node.ClosingParen
         |> genNode node
-    // Some(
-    //     a
-    //     :: rest
-    // )
-    | Pattern.ListCons node -> genPatListCons genPatBetter sepNln node
     | Pattern.ArrayOrList node when not node.Patterns.IsEmpty ->
         fun (ctx: Context) ->
             match ctx.Config.MultilineBracketStyle with
@@ -3821,16 +3849,6 @@ let (|StroustrupListPattern|_|) (ctx: Context) (p: Pattern) : PatArrayOrListNode
     match p with
     | Pattern.ArrayOrList listNode when ctx.Config.IsStroustrupStyle && not listNode.Patterns.IsEmpty ->
         ValueSome listNode
-    | _ -> ValueNone
-
-/// A `::` chain in parentheses on its own: `(a :: rest)`.
-[<return: Struct>]
-let (|ParenListConsPattern|_|) (p: Pattern) : (PatParenNode * PatListConsNode) voption =
-    match p with
-    | Pattern.Paren parenNode ->
-        match parenNode.Pattern with
-        | Pattern.ListCons consNode -> ValueSome(parenNode, consNode)
-        | _ -> ValueNone
     | _ -> ValueNone
 
 /// A pattern that does not fit behind the `=` of its field goes on the next line, one indent level in,
@@ -4143,16 +4161,18 @@ let genPatInClause (pat: Pattern) : Context -> Context =
             +> genPatMultiline p.RightHandSide
 
         | Pattern.As p ->
-            let genAs: Context -> Context =
-                match p.Middle with
-                | Choice1Of2 asNode -> genSingleTextNode asNode
-                | Choice2Of2 _ -> !-"as"
-
-            genPatMultiline p.LeftHandSide
-            +> sepSpace
-            +> genAs
-            +> sepSpace
-            +> genPat p.RightHandSide
+            fun (ctx: Context) ->
+                if ctx.Config.ExperimentalBetterPatterns then
+                    // | a as
+                    //     someLongAlias ->
+                    genPatAs genPatMultiline indentContentAfterBar p ctx
+                else
+                    (genPatMultiline p.LeftHandSide
+                     +> sepSpace
+                     +> genPatMiddle p
+                     +> sepSpace
+                     +> genPat p.RightHandSide)
+                        ctx
 
         | p ->
             fun ctx ->
@@ -4168,18 +4188,16 @@ let genPatInClause (pat: Pattern) : Context -> Context =
 let genPatInClauseBetter (p: Pattern) (ctx: Context) : Context =
     // A pattern starts two columns right of the bar, after `| `. A closing parenthesis goes back there,
     // because on the column of the bar it would end the clause.
-    // With an indent of 2, one level in from the bar is where the closer goes. What is inside the
-    // parentheses goes a level further, so it stands right of its closer.
-    let indentContent: (Context -> Context) -> Context -> Context =
-        if ctx.Config.IndentSize = 2 then
-            fun (content: Context -> Context) -> indent +> content +> unindent
-        else
-            id
-
     let rec genPatAfterBar (p: Pattern) : Context -> Context =
         match p with
-        | Pattern.NamePatPairs node -> genPatNamePatPairsBetter indentContent sepTwoSpaces node
-        | Pattern.LongIdent node -> genPatLongIdentBetter indentContent sepTwoSpaces node
+        | Pattern.NamePatPairs node -> genPatNamePatPairsBetter indentContentAfterBar sepTwoSpaces node
+        | Pattern.LongIdent node -> genPatLongIdentBetter indentContentAfterBar sepTwoSpaces node
+        // | a
+        //   :: rest ->
+        | Pattern.ListCons node -> genPatListCons genPatAfterBar (sepNln +> sepTwoSpaces) node
+        // | a as
+        //     someLongAlias
+        | Pattern.As node -> genPatAs genPatAfterBar indentContentAfterBar node
         | Pattern.ArrayOrList node when node.Patterns.IsEmpty ->
             genSingleTextNode node.OpenToken +> genSingleTextNode node.CloseToken
             |> genNode node
@@ -4200,33 +4218,29 @@ let genPatInClauseBetter (p: Pattern) (ctx: Context) : Context =
             //   ] ->
             let long: Context -> Context =
                 genSingleTextNode node.OpenToken
-                +> indentContent (indentSepNlnUnindent (col sepNln node.Patterns genPat))
+                +> indentContentAfterBar (indentSepNlnUnindent (col sepNln node.Patterns genPat))
                 +> sepNln
                 +> sepTwoSpaces
                 +> genSingleTextNode node.CloseToken
 
             expressionFitsOnRestOfLine short long |> genNode node
-        // | a
-        //   :: rest ->
-        | Pattern.ListCons node -> genPatListCons genPatAfterBar (sepNln +> sepTwoSpaces) node
         // | (
         //     a
-        //     :: rest
         //   ) ->
-        | ParenListConsPattern(parenNode, consNode) ->
+        | Pattern.Paren node ->
             let short: Context -> Context =
-                genSingleTextNode parenNode.OpeningParen
-                +> genPatListCons genPatBetter sepNln consNode
-                +> genSingleTextNode parenNode.ClosingParen
+                genSingleTextNode node.OpeningParen
+                +> genPatBetter node.Pattern
+                +> genSingleTextNode node.ClosingParen
 
             let long: Context -> Context =
-                genSingleTextNode parenNode.OpeningParen
-                +> indentContent (indentSepNlnUnindent (genPatListCons genPatBetter sepNln consNode))
+                genSingleTextNode node.OpeningParen
+                +> indentContentAfterBar (indentSepNlnUnindent (genPatBetter node.Pattern))
                 +> sepNln
                 +> sepTwoSpaces
-                +> genSingleTextNode parenNode.ClosingParen
+                +> genSingleTextNode node.ClosingParen
 
-            expressionFitsOnRestOfLine short long |> genNode parenNode
+            expressionFitsOnRestOfLine short long |> genNode node
         | _ -> genPatBetter p
 
     match p with

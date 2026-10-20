@@ -3,24 +3,21 @@ match e with
 | firstIdentifier
   :: secondIdentifier
   :: thirdIdentifier
-  :: rest
-  ->
+  :: rest ->
   body
 | SynExpr.App(
     isInfix = true
     funcExpr = funcExpr
     argExpr = argExpr
   )
-  :: rest
-  ->
+  :: rest ->
   body
 | head
   :: SynExpr.App(
     isInfix = true
     funcExpr = funcExpr
     argExpr = argExpr
-  )
-  ->
+  ) ->
   body
 | SynExpr.App(
     ExprAtomicFlag.NonAtomic,
@@ -29,8 +26,7 @@ match e with
     argExpr,
     range
   )
-  :: rest
-  ->
+  :: rest ->
   body
 | head
   :: SynExpr.App(
@@ -39,23 +35,20 @@ match e with
     funcExpr,
     argExpr,
     range
-  )
-  ->
+  ) ->
   body
 | SynExpr.App(isInfix = true; argExpr = argExpr)
   :: SynExpr.Lambda(
     fromMethod = fromMethod
     body = lambdaBody
   )
-  :: rest
-  ->
+  :: rest ->
   body
 | [
     SynExpr.Ident firstIdentifier
     SynExpr.Ident secondIdentifier
   ]
-  :: rest
-  ->
+  :: rest ->
   body
 | SynExpr.App(
     isInfix = true
@@ -63,8 +56,7 @@ match e with
     argExpr = argExpr
   )
   :: rest,
-  otherArgument
-  ->
+  otherArgument ->
   body
 | (
     SynExpr.App(
@@ -73,7 +65,6 @@ match e with
       argExpr = argExpr
     )
     :: rest
-  )
-  ->
+  ) ->
   body
 | _ -> ()
