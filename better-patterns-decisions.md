@@ -24,8 +24,9 @@ Implemented for what section 1 covers.
 The style guide says "Pattern matching formatting should be consistent with expression formatting".
 When a pattern has an expression counterpart, it takes that layout. It deviates where the parser
 rejects the expression layout, and each deviation below names the error it avoids. The
-deviations by choice are a single list in parentheses under Stroustrup, `Some([` (1.16), and the
-parentheses around a `::` chain (1.17).
+deviations by choice are a single list in parentheses under Stroustrup, `Some([` (1.16), the
+parentheses around a `::` chain inside another pattern (1.17), and the parentheses around a pattern
+at the top of a clause (1.18).
 
 Expression:
 
@@ -211,10 +212,9 @@ match e with
 
 Implemented.
 
-`Some(…)` breaks like the argument of an application. A pattern in parentheses on its own, `(…)`,
-keeps them next to it, `(Some(` and `))`, as a parenthesised expression does, and its closers go
-back to the start of the line, as in an expression. Whether that stays is open (2.13). A tuple in
-parentheses puts one item per line.
+`Some(…)` breaks like the argument of an application. At the top of a clause a pattern in
+parentheses on its own, `(…)`, breaks after its parenthesis too (1.18). A tuple in parentheses puts
+one item per line.
 
 🟦
 
@@ -242,11 +242,13 @@ match e with
     )
   ) ->
     body
-| (SynExpr.App(
-    isInfix = true
-    funcExpr = funcExpr
-    argExprLonger = argExpr
-)) ->
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExprLonger = argExpr
+    )
+  ) ->
     body
 | _ -> ()
 ```
@@ -941,9 +943,9 @@ parentheses, a list and a record each keep their own layout.
 Parentheses around a chain on its own are where the layout chooses not to follow the expression,
 which keeps the opening parenthesis on the line of the first item and puts the closer of that item
 and the `::` one column right of it. At the top of a clause the parentheses go on lines of their
-own, as around the argument of `Some(`, and the closing one goes back after `| `. Inside another
-pattern the opening parenthesis stays on the line of the first item, and the closer of that item and
-the `::` go back to the column of the parenthesis.
+own, as around any pattern there (1.18). Inside another pattern the opening parenthesis stays on the
+line of the first item, and the closer of that item and the `::` go back to the column of the
+parenthesis.
 
 🟦
 
@@ -1272,6 +1274,467 @@ match e with
 | _ -> ()
 ```
 
+### 1.18 Parentheses around the pattern of a clause go on lines of their own
+
+Implemented.
+
+A clause pattern only needs parentheses around it for a type annotation: `| x: int -> x` does not
+parse (the type takes `-> x` as a function type), `| (x: int) -> x` does. Anywhere else they can go,
+and a multiline pattern that starts with them is a bit of a smell, so a layout that makes them stand
+out is fine. Fantomas keeps them either way: it never removes parentheses.
+
+At the top of a clause, parentheses that do not fit break after the opening one, as around the
+argument of `Some(` (1.6). What is inside goes one indent level in from the bar, and the closer goes
+on a line of its own, back after `| `. An expression keeps them next to what is inside, `(Some(` and
+`))`, so this is a deviation by choice.
+
+A type annotation and an `as` stay behind the closer of what is inside, `): SynExpr` and
+`) as app`, and what follows them goes on the next line, one indent level in, when it does not fit
+(1.19). The colon follows `fsharp_space_before_colon`. Parentheses as an item of a tuple there
+get the same layout, as every item does (1.14).
+
+Inside another pattern nothing changes: the parentheses stay next to what is inside, as they do
+around an expression, and their closer goes back to the start of its line.
+
+🟦
+
+```fsharp
+match e with
+| (SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr)) ->
+    body
+| (SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr):
+      SynExpr) -> body
+| (SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) as app) ->
+    body
+| (firstLongIdentifier,
+   secondLongIdentifier,
+   thirdLongIdentifier) -> body
+| ((SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr))) ->
+    body
+| (SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) as app),
+  otherArgument -> body
+| _ -> ()
+```
+
+✅
+
+```fsharp
+match e with
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )
+  ) ->
+    body
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ): SynExpr
+  ) ->
+    body
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as app
+  ) ->
+    body
+| (
+    firstLongIdentifier,
+    secondLongIdentifier,
+    thirdLongIdentifier
+  ) ->
+    body
+| (
+    (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ))
+  ) ->
+    body
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as app
+  ),
+  otherArgument ->
+    body
+| _ -> ()
+```
+
+❌ A type annotation or an `as` under the start of what is inside does not parse, as a bar does not
+(2.5):
+
+```fsharp
+match e with
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )
+    : SynExpr
+  ) ->
+    body
+| _ -> ()
+```
+
+```
+error FS0010: Incomplete structured construct at or before this point in pattern.
+Expected ')' or other token.
+```
+
+🟦 Inside another pattern:
+
+```fsharp
+match e with
+| ParseArguments (Some(SynExpr.App(
+                     isInfix = true
+                     funcExpr = funcExpr
+                     argExpr = argExpr))) otherArgument ->
+    body
+| ParseArguments (SynExpr.App(
+                     isInfix = true
+                     funcExpr = funcExpr
+                     argExpr = argExpr) as app) otherArgument ->
+    body
+| Some((SynExpr.App(
+           isInfix = true
+           funcExpr = funcExpr
+           argExpr = argExpr) as app),
+       otherArgument) -> body
+| SynModuleDecl.Let(
+    bindings = (SynBinding(
+        headPat = SynPat.Named(ident = ident); expr = expr) as binding) :: rest) ->
+    body
+| [ (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr) as app)
+    otherItem ] -> body
+| _ -> ()
+```
+
+✅ Inside another pattern:
+
+```fsharp
+match e with
+| ParseArguments
+    (Some(
+        SynExpr.App(
+            isInfix = true
+            funcExpr = funcExpr
+            argExpr = argExpr
+        )
+    ))
+    otherArgument ->
+    body
+| ParseArguments
+    (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as app)
+    otherArgument ->
+    body
+| Some(
+    (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as app),
+    otherArgument
+  ) ->
+    body
+| SynModuleDecl.Let(
+    bindings =
+        (SynBinding(
+            headPat = SynPat.Named(ident = ident)
+            expr = expr
+        ) as binding)
+        :: rest
+  ) ->
+    body
+| [
+    (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as app)
+    otherItem
+  ] ->
+    body
+| _ -> ()
+```
+
+**Expression**:
+
+```fsharp
+let namedFields =
+    (SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    ))
+
+let typed =
+    (SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    )
+    : SynExpr)
+
+let tuple =
+    (firstLongIdentifier,
+     secondLongIdentifier,
+     thirdLongIdentifier)
+
+let doubleParentheses =
+    ((SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    )))
+
+let tupleItem =
+    (SynExpr.App(
+        isInfix = true,
+        funcExpr = funcExpr,
+        argExpr = argExpr
+    )),
+    otherArgument
+
+let curried =
+    parseArguments
+        (Some(
+            SynExpr.App(
+                isInfix = true,
+                funcExpr = funcExpr,
+                argExpr = argExpr
+            )
+        ))
+        otherArgument
+
+let tupleInSome =
+    Some(
+        (SynExpr.App(
+            isInfix = true,
+            funcExpr = funcExpr,
+            argExpr = argExpr
+        )),
+        otherArgument
+    )
+
+let listItem =
+    [
+        (SynExpr.App(
+            isInfix = true,
+            funcExpr = funcExpr,
+            argExpr = argExpr
+        ))
+        otherItem
+    ]
+```
+
+### 1.19 What follows `as` goes on the next line when it does not fit
+
+Implemented. In the pattern of a `let` the shape is open (2.8).
+
+What comes after `as` is usually a name, but it can be a whole pattern. When it does not fit on the
+rest of the line, or goes over several lines, `as` ends the line and what follows goes on the next
+line, one indent level in from the start of the line the pattern before `as` starts on, as the value
+of a named field does (1.7) and the type of an annotation already did. What fits stays behind `as`,
+`) as app`. At the top of a clause that is one indent level in from the bar. With an indent of 2
+that would be the column the pattern starts on, after `| `, so there it goes one level further.
+An `as` that is an item of a tuple there gets the same layout, as every item does (1.14). So does an
+`as` at the head of a `::` chain: `x as a :: rest` is `(x as a) :: rest`, so what follows `as` is
+`a`, not `a :: rest`.
+
+🟦
+
+```fsharp
+match e with
+| Some(SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) as app) ->
+    body
+| Some(SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) as someVeryLongAliasThatDoesNotFitBehindTheCloserOfThePattern) ->
+    body
+| Some(SynExpr.Ident identifier as SynExpr.App(ExprAtomicFlag.NonAtomic,
+                                               false,
+                                               funcExpr,
+                                               argExpr,
+                                               range)) ->
+    body
+| Some(SynExpr.Ident someLongIdentifierName as someEvenLongerAliasForTheWholeThing) ->
+    body
+| _ -> ()
+```
+
+✅
+
+```fsharp
+match e with
+| Some(
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as app
+  ) ->
+    body
+| Some(
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as
+        someVeryLongAliasThatDoesNotFitBehindTheCloserOfThePattern
+  ) ->
+    body
+| Some(
+    SynExpr.Ident identifier as
+        SynExpr.App(
+            ExprAtomicFlag.NonAtomic,
+            false,
+            funcExpr,
+            argExpr,
+            range
+        )
+  ) ->
+    body
+| Some(
+    SynExpr.Ident someLongIdentifierName as
+        someEvenLongerAliasForTheWholeThing
+  ) ->
+    body
+| _ -> ()
+```
+
+✅ In parentheses at the top of a clause (1.18):
+
+```fsharp
+match e with
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) as
+        someVeryLongAliasThatDoesNotFitBehindTheCloserOfThePattern
+  ) ->
+    body
+| _ -> ()
+```
+
+🟦 At the top of a clause, every style. The pattern after `as` lines up behind its opening
+parenthesis:
+
+```fsharp
+match e with
+| SynExpr.App(ExprAtomicFlag.NonAtomic,
+              false,
+              funcExpr,
+              argExpr,
+              range) as application -> body
+| SynExpr.Ident identifier as SynExpr.App(ExprAtomicFlag.NonAtomic,
+                                          false,
+                                          funcExpr,
+                                          argExpr,
+                                          range) -> body
+| SynExpr.Ident someLongIdentifierName as someEvenLongerAliasForTheWholeThing ->
+    body
+| _ -> ()
+```
+
+✅ At the top of a clause:
+
+```fsharp
+match e with
+| SynExpr.App(
+    ExprAtomicFlag.NonAtomic,
+    false,
+    funcExpr,
+    argExpr,
+    range
+  ) as application ->
+    body
+| SynExpr.Ident identifier as
+    SynExpr.App(
+        ExprAtomicFlag.NonAtomic,
+        false,
+        funcExpr,
+        argExpr,
+        range
+    ) ->
+    body
+| SynExpr.Ident someLongIdentifierName as
+    someEvenLongerAliasForTheWholeThing ->
+    body
+| SynExpr.Ident x as y -> body
+| _ -> ()
+```
+
+✅ At the top of a clause, with an indent of 2:
+
+```fsharp
+match e with
+| SynExpr.App(
+    ExprAtomicFlag.NonAtomic,
+    false,
+    funcExpr,
+    argExpr,
+    range
+  ) as application ->
+  body
+| SynExpr.Ident identifier as
+    SynExpr.App(
+      ExprAtomicFlag.NonAtomic,
+      false,
+      funcExpr,
+      argExpr,
+      range
+    ) ->
+  body
+| SynExpr.Ident someLongIdentifierName as
+    someEvenLongerAliasForTheWholeThing ->
+  body
+| SynExpr.Ident x as y -> body
+| _ -> ()
+```
+
+❌ In parentheses, `as` under the start of the pattern it follows does not parse, as a bar does not
+(2.5):
+
+```fsharp
+match e with
+| Some(
+    SynExpr.Ident someLongIdentifierName
+    as someEvenLongerAliasForTheWholeThing
+  ) ->
+    body
+| _ -> ()
+```
+
+```
+error FS0010: Incomplete structured construct at or before this point in pattern.
+Expected ')' or other token.
+```
+
 ## 2. Decisions still to make
 
 Some patterns ask two questions, and the answers may differ: a. how the pattern looks inside another
@@ -1379,6 +1842,44 @@ match e with
     SynExpr.Ident identifierOne | SynExpr.LongIdent(
         longDotId = SynLongIdent([ identifierOne ], _, _)
     )
+  ) ->
+    body
+| _ -> ()
+```
+
+Parentheses around the pattern of a clause break as `Some(` does (1.18), so an or-pattern in them
+gets the same answer. ✅ Today:
+
+```fsharp
+match e with
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) | SynExpr.Ident identifier
+  ) ->
+    body
+| _ -> ()
+```
+
+When the second alternative is the one that breaks, its argument goes away from its name.
+🟦:
+
+```fsharp
+match e with
+| (SynExpr.Ident someLongIdentifierName | SynExpr.Const someOtherIdentifierName) ->
+    body
+| _ -> ()
+```
+
+✅ Today:
+
+```fsharp
+match e with
+| (
+    SynExpr.Ident someLongIdentifierName | SynExpr.Const
+        someOtherIdentifierName
   ) ->
     body
 | _ -> ()
@@ -1620,6 +2121,23 @@ let
     x
 ```
 
+What follows `as` that does not fit goes on the next line, one indent level in (1.19). In a `let`
+that is the column of the body. ✅ Today:
+
+```fsharp
+let (SynExpr.Ident someLongIdentifierName as
+    someEvenLongerAliasForTheWholeThing) =
+    e
+```
+
+Option, two levels in, so it stays off the column of the body:
+
+```fsharp
+let (SynExpr.Ident someLongIdentifierName as
+        someEvenLongerAliasForTheWholeThing) =
+    e
+```
+
 ### 2.9 `try/with` without a bar
 
 The only clause of a `with` can go without a bar. With the flag on, Fantomas cannot format such a
@@ -1829,116 +2347,6 @@ Also open: with `fsharp_align_function_signature_to_indentation` on, the arrow a
 pattern gets a line of its own. Whether a short guard then stays behind the closer (`) when
 isInfix`) or moves with the arrow is part of this choice.
 
-### 2.13 A pattern in parentheses on its own
-
-A `::` chain in parentheses is settled in 1.17.
-
-#### 2.13a Inside another pattern
-
-The parentheses stay next to the pattern inside, `(Some(` and `))`, as they do around an expression,
-and the closers go back to the start of their line. Fine for now. Curried arguments, as an example:
-
-✅ Today, with `fsharp_align_function_signature_to_indentation`:
-
-```fsharp
-match e with
-| ParseArguments
-    (Some(
-        SynExpr.App(
-            ExprAtomicFlag.NonAtomic,
-            false,
-            funcExpr,
-            argExpr,
-            range
-        )
-    ))
-    secondArgumentPattern
-    ->
-    body
-| _ -> ()
-```
-
-Expression:
-
-```fsharp
-let v =
-    ParseArguments
-        (Some(
-            SynExpr.App(
-                ExprAtomicFlag.NonAtomic,
-                false,
-                funcExpr,
-                argExpr,
-                range
-            )
-        ))
-        secondArgumentPattern
-```
-
-#### 2.13b As the pattern of a clause
-
-A clause pattern only needs parentheses around it for a type annotation: `| x: int -> x` does not
-parse (the type takes `-> x` as a function type), `| (x: int) -> x` does. Anywhere else they can go.
-A multiline pattern that starts with them is a bit of a smell in the code, so a layout that makes
-them stand out is fine. Fantomas keeps them either way: it never removes parentheses.
-
-Which closer ends a clause: only the closer of the clause pattern itself. A closer inside
-parentheses may sit on the column of the bar, because the open parenthesis keeps the clause going.
-
-🟦 Default:
-
-```fsharp
-match e with
-| (SynExpr.App(
-    isInfix = true
-    funcExpr = funcExpr
-    argExprLonger = argExpr)) -> body
-| _ -> ()
-```
-
-✅ Today, as the expression. The inner closer sits on the column of the bar, the outer one right of
-it:
-
-```fsharp
-match e with
-| (SynExpr.App(
-    isInfix = true
-    funcExpr = funcExpr
-    argExprLonger = argExpr
-)) ->
-    body
-| _ -> ()
-```
-
-**Expression**, the parentheses stay together and the closers go back to the start of the line:
-
-```fsharp
-let v =
-    (SynExpr.App(
-        isInfix = true,
-        argExprLongerThanThis = argExprAndThisAsWell,
-        funcExpr = funcExpr,
-        range = range,
-        more = moreAndMoreAndMore
-    ))
-```
-
-Option, as `Some(…)`: the parenthesis breaks after `(`, the pattern inside goes one indent level in,
-and every closer gets a line of its own. The parentheses are hard to miss:
-
-```fsharp
-match e with
-| (
-    SynExpr.App(
-        isInfix = true
-        funcExpr = funcExpr
-        argExprLonger = argExpr
-    )
-  ) ->
-    body
-| _ -> ()
-```
-
 ### 2.14 Records
 
 #### 2.14a Inside another pattern
@@ -2114,174 +2522,73 @@ match e with
 | _ -> ()
 ```
 
-### 2.15 `as` that does not fit
+### 2.16 A list or record after `as` with Stroustrup brackets
 
-What comes after `as` is usually a name, but it can be a whole pattern. Two things can go wrong: the
-name does not fit on the rest of the line, or the pattern after `as` goes over several lines.
+With `fsharp_multiline_bracket_style = stroustrup` the flag keeps an opening bracket on the line
+before it after a name or a field, `Some [` and `field = [` (1.16). After `as` it does not: what
+follows `as` goes on the next line (1.19), bracket and all. To pick up when `as` is finalised.
 
-#### 2.15a Inside another pattern
-
-✅ Today. A name that does not fit stays on the line, past the maximum. A pattern after `as` keeps
-`as` on the line, and its closer goes back to where the item starts:
+🟦 Stroustrup:
 
 ```fsharp
 match e with
-| Some(
-    SynExpr.Ident someLongIdentifierName as someEvenLongerAliasForTheWholeThing
-  ) ->
-    body
-| Some(
-    SynExpr.Ident identifier as SynExpr.App(
-        ExprAtomicFlag.NonAtomic,
-        false,
-        funcExpr,
-        argExpr,
-        range
-    )
-  ) ->
+| SynExpr.Ident someLongIdentifierName as {
+                                              FirstField = firstField
+                                              SecondField = secondField
+                                          } -> body
+| SynExpr.Ident someLongIdentifierName as [ firstLongIdentifier
+                                            secondLongIdentifier
+                                            third ] -> body
+| Some(SynExpr.Ident someLongIdentifierName as [ firstLongIdentifier
+                                                 secondLongIdentifier
+                                                 third ]) ->
     body
 | _ -> ()
 ```
 
-Option A, `as` stays on the line. A name that does not fit goes on the next line, one indent level
-in:
+✅ Today, Stroustrup:
 
 ```fsharp
 match e with
-| Some(
-    SynExpr.Ident someLongIdentifierName as
-        someEvenLongerAliasForTheWholeThing
-  ) ->
-    body
-```
-
-Option B, break before `as`, and put `as` one indent level in:
-
-```fsharp
-match e with
-| Some(
-    SynExpr.Ident someLongIdentifierName
-        as someEvenLongerAliasForTheWholeThing
-  ) ->
-    body
-| Some(
-    SynExpr.Ident identifier
-        as SynExpr.App(
-            ExprAtomicFlag.NonAtomic,
-            range
-        )
-  ) ->
-    body
-| _ -> ()
-```
-
-❌ In parentheses, `as` under the start of the pattern it follows does not parse, as a bar does not
-(2.5):
-
-```fsharp
-match e with
-| Some(
-    SynExpr.Ident someLongIdentifierName
-    as someEvenLongerAliasForTheWholeThing
-  ) ->
-    body
-| _ -> ()
-```
-
-```
-error FS0010: Incomplete structured construct at or before this point in pattern.
-Expected ')' or other token.
-```
-
-#### 2.15b As the pattern of a clause
-
-🟦 Every style. The pattern after `as` lines up behind its opening parenthesis:
-
-```fsharp
-match e with
-| SynExpr.App(ExprAtomicFlag.NonAtomic,
-              false,
-              funcExpr,
-              argExpr,
-              range) as application -> body
-| SynExpr.Ident identifier as SynExpr.App(ExprAtomicFlag.NonAtomic,
-                                          false,
-                                          funcExpr,
-                                          argExpr,
-                                          range) -> body
-| SynExpr.Ident someLongIdentifierName as someEvenLongerAliasForTheWholeThing ->
-    body
-| _ -> ()
-```
-
-❌ Today. A name after a multiline pattern is fine, and a name that does not fit stays on the line,
-past the maximum. But the closer of a pattern after `as` goes back to the start of its line, which
-is the column of the bar. That ends the clause, and Fantomas reports that it cannot format the file:
-
-```fsharp
-match e with
-| SynExpr.App(
-    ExprAtomicFlag.NonAtomic,
-    false,
-    funcExpr,
-    argExpr,
-    range
-  ) as application ->
-    body
-| SynExpr.Ident identifier as SynExpr.App(
-    ExprAtomicFlag.NonAtomic,
-    false,
-    funcExpr,
-    argExpr,
-    range
-) ->
-    body
-| SynExpr.Ident someLongIdentifierName as someEvenLongerAliasForTheWholeThing ->
-    body
-| _ -> ()
-```
-
-```
-error FS0010: Incomplete structured construct at or before this point in pattern matching.
-Expected '->' or other token.
-```
-
-Option A, `as` stays on the line. The closer of a pattern after `as` goes back to where the pattern
-starts, after `| `, as other closers do. A name that does not fit goes on the next line, one indent
-level in:
-
-```fsharp
-match e with
-| SynExpr.Ident identifier as SynExpr.App(
-    ExprAtomicFlag.NonAtomic,
-    range
-  ) ->
+| SynExpr.Ident someLongIdentifierName as
+    {
+        FirstField = firstField
+        SecondField = secondField
+    } ->
     body
 | SynExpr.Ident someLongIdentifierName as
-    someEvenLongerAliasForTheWholeThing ->
+    [ firstLongIdentifier; secondLongIdentifier; third ] ->
+    body
+| Some(
+    SynExpr.Ident someLongIdentifierName as
+        [ firstLongIdentifier; secondLongIdentifier; third ]
+  ) ->
     body
 | _ -> ()
 ```
 
-Option B, break before `as`, and put `as` where the pattern starts, after `| `. Here that parses,
-unlike in parentheses (2.15a):
+Option, the bracket stays on the line of `as`, as after `Some` (preferred). It parses:
 
 ```fsharp
 match e with
-| SynExpr.Ident identifier
-  as SynExpr.App(
-      ExprAtomicFlag.NonAtomic,
-      range
+| SynExpr.Ident someLongIdentifierName as {
+    FirstField = firstField
+    SecondField = secondField
+  } ->
+    body
+| SynExpr.Ident someLongIdentifierName as [
+    firstLongIdentifier
+    secondLongIdentifier
+    third
+  ] ->
+    body
+| Some(
+    SynExpr.Ident someLongIdentifierName as [
+        firstLongIdentifier
+        secondLongIdentifier
+        third
+    ]
   ) ->
-    body
-| SynExpr.App(
-    ExprAtomicFlag.NonAtomic,
-    range
-  )
-  as application ->
-    body
-| SynExpr.Ident someLongIdentifierName
-  as someEvenLongerAliasForTheWholeThing ->
     body
 | _ -> ()
 ```
@@ -2388,4 +2695,101 @@ match x with
 
 ```
 error FS0010: Unexpected symbol '|' in implementation file
+```
+
+### 3.4 A comment before an item after the bar
+
+Not handled by the flag. With the flag on, the output does not parse.
+
+At the top of a clause the flag puts an item two columns right of the bar by writing two spaces
+(`sepTwoSpaces`) after a newline, not by raising the indentation. A comment on a line of its own
+before the item ends with a newline, and that newline goes back to the indentation, which is the
+column of the bar. The item lands there and ends the clause. The old code wraps the pattern in
+`atCurrentColumn`, so its indentation is the column after `| `.
+
+It is reproduced for an item of a `::` chain and an item of a tuple. Everywhere the flag writes
+`sepTwoSpaces` after a newline, a comment before the next node can do the same: the closers of a
+list and of parentheses at the top of a clause too.
+
+🟦
+
+```fsharp
+match e with
+| a ::
+  // before b
+  b :: rest -> body
+| _ -> ()
+
+match e with
+| a,
+  // before b
+  b -> body
+| _ -> ()
+```
+
+❌ Flag on, today. The `::` before the comment also stays alone on its line:
+
+```fsharp
+match e with
+| a
+  ::
+// before b
+b
+  :: rest ->
+    body
+| _ -> ()
+
+match e with
+| a,
+  // before b
+b ->
+    body
+| _ -> ()
+```
+
+```
+error FS0010: Incomplete structured construct at or before this point in pattern matching.
+Expected '->' or other token.
+```
+
+### 3.5 A comment before the closer of parentheses at the top of a clause
+
+Not handled by the flag. With the flag on, the output does not parse.
+
+The same cause as 3.4: the closer goes after `| ` through `sepTwoSpaces` after a newline, and the
+newline the comment ends with goes back to the column of the bar. Where the comment starts in the
+source decides how soon that shows: from the layout below the first pass already ends the clause.
+From other sources the first pass parses but adds a blank line after the comment, and the second
+pass ends the clause.
+
+🟦
+
+```fsharp
+match e with
+| (SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr)
+  // before closer
+  ) -> body
+| _ -> ()
+```
+
+❌ Flag on, today, the closer on the column of the bar:
+
+```fsharp
+match e with
+| (
+    SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )
+  // before closer
+) ->
+    body
+| _ -> ()
+```
+
+```
+error FS0010: Incomplete structured construct at or before this point in pattern matching.
+Expected '->' or other token.
 ```

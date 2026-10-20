@@ -11,8 +11,7 @@ match e with
       accessibility = getterAccessibility
       attributes = attributes
     )
-  )
-  ->
+  ) ->
   body
 | Some(
     SynExpr.App(
@@ -26,8 +25,7 @@ match e with
   ParseArguments
     firstArgumentPattern
     secondArgumentPattern
-    thirdArgumentPattern
-  ->
+    thirdArgumentPattern ->
   body
 | ParseArguments
     (Some(
@@ -40,7 +38,6 @@ match e with
       )
     ))
     secondArgumentPattern,
-  other
-  ->
+  other ->
   body
 | _ -> ()

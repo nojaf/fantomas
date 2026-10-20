@@ -2,7 +2,6 @@
 # With an indent of 2, what is inside the parentheses of an item in a :: chain goes right of its
 # closer.
 fsharp_experimental_better_patterns = true
-fsharp_align_function_signature_to_indentation = true
 indent_size = 2
 max_line_length = 60
 ---*)

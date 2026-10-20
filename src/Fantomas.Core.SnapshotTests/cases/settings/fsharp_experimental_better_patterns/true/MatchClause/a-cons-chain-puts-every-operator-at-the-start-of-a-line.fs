@@ -3,7 +3,6 @@
 # columns right of the bar, as the :: expression does. Each item is laid out as a pattern there.
 # Parentheses around the chain go on lines of their own.
 fsharp_experimental_better_patterns = true
-fsharp_align_function_signature_to_indentation = true
 max_line_length = 60
 ---*)
 match e with
