@@ -34,6 +34,7 @@
 - [Visual Studio Code](https://fsprojects.github.io/fantomas/docs/end-users/VSCode.md)
 - [Open-ended expressions](https://fsprojects.github.io/fantomas/docs/end-users/OpenEndedExpressions.md)
 - [Configuration](https://fsprojects.github.io/fantomas/docs/end-users/Configuration.md)
+- [The rule of multitudes](https://fsprojects.github.io/fantomas/docs/end-users/RuleOfMultitudes.md)
 - [Getting Started](https://fsprojects.github.io/fantomas/docs/end-users/GettingStarted.md)
 - [Upgrade guide](https://fsprojects.github.io/fantomas/docs/end-users/UpgradeGuide.md)
 - [Git hooks](https://fsprojects.github.io/fantomas/docs/end-users/GitHooks.md)
