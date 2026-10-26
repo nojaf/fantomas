@@ -2066,10 +2066,29 @@ let genExpr (e: Expr) =
             leadingExpressionResult
                 (enterNode clauseNode
                  +> optSingle (fun bar -> genNode bar sepNone) clauseNode.Bar)
-                (fun ((linesBefore, _), (linesAfter, _)) ->
-                    onlyIfCtx (fun ctx -> linesAfter > linesBefore || hasWriteBeforeNewlineContent ctx) sepBar
+                (fun ((linesBefore, _), (linesAfter, _)) ctx ->
+                    if not ctx.Config.ExperimentalBetterPatterns then
+                        // Trivia put the clause on a line of its own, so it gets a bar.
+                        (onlyIf (linesAfter > linesBefore || hasWriteBeforeNewlineContent ctx) sepBar
+                         +> genPatInClause clauseNode.Pattern)
+                            ctx
+                    elif linesAfter > linesBefore || hasWriteBeforeNewlineContent ctx then
+                        // with
+                        // // trivia
+                        // SynExpr.App(
+                        //     a = a
+                        // ) ->    no bar, so the closer goes back to where the pattern starts
+                        // A line comment after the bar the input had still needs its line ended.
+                        (onlyIf (hasWriteBeforeNewlineContent ctx) sepNln
+                         +> genPatBetter clauseNode.Pattern)
+                            ctx
+                    else
+                        // with SynExpr.App(
+                        //         a = a
+                        //     ) ->    a closer may start one column left of the pattern, no further,
+                        //             so the closer goes strictly past two columns left of the pattern
+                        indentPast (ctx.Column - 2) (indent +> genPatBetter clauseNode.Pattern +> unindent) ctx
                 )
-            +> genPatInClause clauseNode.Pattern
             +> optSingle
                 (fun (whenNode, e) ->
                     sepSpace

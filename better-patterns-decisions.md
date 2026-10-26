@@ -1735,6 +1735,108 @@ error FS0010: Incomplete structured construct at or before this point in pattern
 Expected ')' or other token.
 ```
 
+### 1.20 The only clause of a `with` keeps going without a bar
+
+Implemented.
+
+The only clause of a `with` goes without a bar, as the Microsoft guide asks: "Add a `|` for each
+clause, except when there is only a single clause". Its pattern cannot be laid out from a bar
+then. With the content one level in from `with` and the closer two columns right of it, as after
+a bar (1.4), the closer lands left of the pattern, which does not parse. ❌:
+
+```fsharp
+try
+    body
+with SynExpr.App(
+    isInfix = true
+    funcExpr = funcExpr
+    argExpr = argExpr
+  ) -> // <- the closer at W+2, three columns left of the pattern
+    handler
+```
+
+```
+error FS0010: Incomplete structured construct at or before this point in pattern matching.
+Expected '->' or other token.
+```
+
+A closer may start one column left of the pattern, no further: with `with` at column W the pattern
+starts at W+5, so the closer goes at W+4 or right of it. The pattern steps in by whole indent levels
+until its closer is there, and what is inside goes one level further in. Every line then starts on
+a multiple of the indent size: W+4 and W+8 with an indent of 4, W+4 and W+6 with 2, W+6 and W+9
+with 3.
+
+🟦
+
+```fsharp
+try
+    body
+with SynExpr.App(
+         isInfix = true
+         funcExpr = funcExpr
+         argExpr = argExpr) ->
+    handler
+```
+
+✅
+
+```fsharp
+try
+    body
+with SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) ->
+    handler
+```
+
+Parentheses around the whole pattern stay next to what is inside, `with (SynExpr.App(` and `))`,
+as around an expression. Putting them on lines of their own at the top of a clause (1.18) is a
+choice for a clause with a bar, and is not carried over. ✅:
+
+```fsharp
+try
+    body
+with (SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    )) ->
+    handler
+```
+
+When trivia puts the pattern on a line of its own, it starts on the column of `with`. It gets no bar
+either, though the flag off adds one there. Its closer goes back to that column, and what is inside
+goes one level in.
+
+🟦
+
+```fsharp
+try
+    body
+with
+// trivia
+| SynExpr.App(
+    isInfix = true; funcExpr = funcExpr; argExpr = argExpr) ->
+    handler
+```
+
+✅
+
+```fsharp
+try
+    body
+with
+// trivia
+SynExpr.App(
+    isInfix = true
+    funcExpr = funcExpr
+    argExpr = argExpr
+) ->
+    handler
+```
+
 ## 2. Decisions still to make
 
 Some patterns ask two questions, and the answers may differ: a. how the pattern looks inside another
@@ -2138,72 +2240,6 @@ let (SynExpr.Ident someLongIdentifierName as
     e
 ```
 
-### 2.9 `try/with` without a bar
-
-The only clause of a `with` can go without a bar. With the flag on, Fantomas cannot format such a
-clause when its pattern takes more than one line: it lays the pattern out as if a bar came before
-it, so the closer lands left of the pattern, and the result does not parse. Fantomas then reports a
-bug. This needs fixing whatever the layout becomes.
-
-🟦
-
-```fsharp
-try
-    body
-with SynExpr.App(
-         isInfix = true
-         funcExpr = funcExpr
-         argExpr = argExpr) ->
-    handler
-```
-
-❌ Today, what the flag writes:
-
-```fsharp
-try
-    body
-with SynExpr.App(
-    isInfix = true
-    funcExpr = funcExpr
-    argExpr = argExpr
-  ) ->
-    handler
-```
-
-```
-error FS0010: Incomplete structured construct at or before this point in pattern matching.
-Expected '->' or other token.
-```
-
-Option, add the bar when the pattern is multiline. The clause then looks like any other clause with
-a multiline pattern:
-
-```fsharp
-try
-    body
-with
-| SynExpr.App(
-    isInfix = true
-    funcExpr = funcExpr
-    argExpr = argExpr
-  ) ->
-    handler
-```
-
-Option, keep the content lined up after `with `, and its closer under the start of the pattern, as
-before the flag laid out clauses from their bar:
-
-```fsharp
-try
-    body
-with SynExpr.App(
-         isInfix = true
-         funcExpr = funcExpr
-         argExpr = argExpr
-     ) ->
-    handler
-```
-
 ### 2.11 Update `pattern-layout-walkthrough.md`
 
 Once the layout settles, so it describes what was built.
@@ -2346,6 +2382,150 @@ match e with
 Also open: with `fsharp_align_function_signature_to_indentation` on, the arrow after a multiline
 pattern gets a line of its own. Whether a short guard then stays behind the closer (`) when
 isInfix`) or moves with the arrow is part of this choice.
+
+#### The only clause of a `with`
+
+The only clause of a `with`, without a bar (1.20), is printed by its own code, apart from the clauses
+of a `match`. Whatever 2.12 decides does not reach it on its own: that code needs the same change.
+
+🟦
+
+```fsharp
+try
+    body
+with SynExpr.App(
+         isInfix = true
+         funcExpr = funcExpr
+         argExpr = argExpr) when isInfix ->
+    handler
+
+try
+    body
+with SynExpr.Ident ident when
+    ident.idText.StartsWith("op_")
+    && not (isOperatorWithoutSpace ident.idText) ->
+    handler
+
+try
+    body
+with SynExpr.App(
+         isInfix = true
+         funcExpr = funcExpr
+         argExpr = argExpr) when
+    funcExpr.Range.StartLine <> argExpr.Range.EndLine
+    && isInfix ->
+    handler
+```
+
+✅ Today. It differs from a `match` clause in three ways:
+
+- The body always goes on a line of its own, also after a short guard, with the flag off as well.
+  Only a Stroustrup list or record body stays behind the arrow, as in a `match` clause.
+- A guard that does not fit puts its condition one level in from `with` (two below an indent of 4,
+  see below). After a multiline pattern that is the column of the closer, where a `match` clause has
+  it two columns past the closer with an indent of 4. The arrow stays at the end of the condition
+  instead of going on a line of its own.
+- `fsharp_align_function_signature_to_indentation` does not move the arrow here (1.11): the output
+  is the same with it on.
+
+```fsharp
+try
+    body
+with SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) when isInfix ->
+    handler
+
+try
+    body
+with SynExpr.Ident ident when
+    ident.idText.StartsWith("op_")
+    && not (isOperatorWithoutSpace ident.idText) ->
+    handler
+
+try
+    body
+with SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) when
+    funcExpr.Range.StartLine <> argExpr.Range.EndLine
+    && isInfix ->
+    handler
+```
+
+With an indent below 4 the condition goes two levels in from `with`: one level gave invalid code at
+an indent of 2 (https://github.com/fsprojects/fantomas/issues/2784). ✅ Today, `indent_size = 2`:
+
+```fsharp
+try
+  body
+with SynExpr.App(
+      isInfix = true
+      funcExpr = funcExpr
+      argExpr = argExpr
+    ) when
+    funcExpr.Range.StartLine <> argExpr.Range.EndLine
+    && isInfix ->
+  handler
+```
+
+What the parser allows after `with` limits the options above. Checked with SDK 11:
+
+- An arrow on a line of its own starts at most one column left of the pattern, the same limit as
+  the closer (1.20): with `with` at column W, at W+4 or right of it. That holds after any pattern.
+  After a multiline pattern the closer is at W+4 with an indent of 2 or 4, and at W+6 with 3.
+- With an indent of 4 or more the body is at W+4 or right of it, so the arrow on the column of the
+  body, as a `match` clause has it today and in options A and C, parses. With an indent below 4 it
+  does not (W+2, W+3), and the first column on the indent grid where it does is the column of the
+  condition, which after a multiline pattern is also the column of the closer.
+- `when` on a line of its own, on the column of the closer or one level past it, parses, with the
+  arrow on the column of `when`, as option C has it, or on the column of the closer.
+- The arrow back on the column of `with` does not parse, so option B can take it back no further
+  than W+4, the column of the closer with an indent of 2 or 4:
+
+```fsharp
+try
+    body
+with SynExpr.App(
+        isInfix = true
+        funcExpr = funcExpr
+        argExpr = argExpr
+    ) when
+    funcExpr.Range.StartLine <> argExpr.Range.EndLine
+    && isInfix
+-> // <- on the column of `with`
+    handler
+```
+
+```
+error FS0010: Incomplete structured construct at or before this point in pattern matching.
+Expected '->' or other token.
+```
+
+With an indent of 2, the arrow on the column of the body does not parse either:
+
+```fsharp
+try
+  body
+with SynExpr.App(
+      isInfix = true
+      funcExpr = funcExpr
+      argExpr = argExpr
+    ) when
+    funcExpr.Range.StartLine <> argExpr.Range.EndLine
+    && isInfix
+  -> // <- on the column of the body, W+2
+  handler
+```
+
+```
+error FS0010: Incomplete structured construct at or before this point in pattern matching.
+Expected '->' or other token.
+```
 
 ### 2.14 Records
 
